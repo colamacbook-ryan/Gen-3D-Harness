@@ -1,4 +1,4 @@
-# Gen-Stage for VS Code — spike V0 + V1 (chế độ nền, driver não) + V2 (giọng nói)
+# Gen-Stage for VS Code — spike V0 + V1 (chế độ nền, driver não) + V2 (giọng nói) + V3 (giác quan IDE)
 
 Extension đưa **sân khấu Gen-Stage vào một tab editor đặt cạnh code** và một
 **Chatroom ở cột phải** (Secondary Side Bar, STD-08 §0). Extension chỉ là *một
@@ -81,6 +81,32 @@ code --install-extension gen-stage-vscode-0.0.1.vsix
 
 Rồi: `Ctrl+Shift+P` → **Gen-Stage: Mở sân khấu**. Chatroom: biểu tượng Gen-Stage ở Secondary Side Bar (`Ctrl+Alt+B` để mở cột phải).
 
+## Giác quan IDE (V3)
+
+Sếp code trong VS Code → sân khấu "thấy" việc thật. Host nghe 4 nguồn rồi gửi `stage.notice {kind, level, summary, data}`
+qua **cùng ws client của chatroom** (vai client); sân khấu bắn `ide.event`. Logic thuần ở `src/thuan/giac-quan.ts`
+(class `GiacQuan`), `extension.ts` chỉ nối sự kiện.
+
+| Nguồn VS Code | Gửi khi | `kind` / `level` | `summary` / `data` |
+| --- | --- | --- | --- |
+| `workspace.onDidSaveTextDocument` | gộp **5 s** tính từ lần lưu đầu (autosave không đẩy lùi mãi) | `save` / `info` | "Lưu N file: a.ts, b.ts (+k)" — tối đa 5 tên · `{count, files}` |
+| `languages.onDidChangeDiagnostics` | số lỗi **Error** trong workspace đứng yên **3 s** rồi mới đếm; chỉ khi **0 → >0** hoặc **>0 → 0**; lúc mở chỉ ghi mốc | `diag` / `bad` · `good` | "Có N lỗi biên dịch" / "Hết lỗi biên dịch" · `{errors[, before]}` |
+| `tasks.onDidEndTaskProcess` | exit code 0 → `good`, ≠ 0 → `bad`; `undefined` → không gửi. Nhóm `test` hoặc tên có chữ "test" → `test`, còn lại `task` | `test`/`task` | 'Test "unit" fail (mã 1)' · `{exitCode, name}` |
+| extension `vscode.git` (`getAPI(1)`), `repository.state.onDidChange` | `HEAD.commit` đổi **và commit mới có cha = HEAD cũ** (checkout/reset/pull không tính); lần đầu thấy repo chỉ ghi mốc. Không có git extension / API lỗi → bỏ qua êm (ghi log) | `git` / `good` | "Commit abc1234: <dòng đầu message, cắt 80>" · `{commit}` |
+
+Mỗi notice gửi **thành công** hiện một dòng nhỏ "👁 …" trong chatroom (textContent). Gửi lỗi (bridge chưa nối) → chỉ ghi log.
+
+**Gen phản ứng thế nào**: phản xạ trong trình duyệt (`src/behavior/phan-xa.ts`) emote nhẹ cho `test`/`task`/`git`/`diag`
+`good`/`bad` (vui · bối rối · thành công · suy nghĩ), chỉ khi Gen rảnh, không giữa cuộc nói chuyện, cách nhau ≥ 20 s;
+`save` và mọi `info` → không làm gì. Driver não (`nao-agy`/`nao-local`) chỉ nghĩ cho `test`/`task`/`git` `good`/`bad`, gộp 800 ms
+thành một lượt "Sếp vừa …", cách nhau ≥ 60 s; câu Sếp đang gộp/đang chờ/đang chạy → bỏ sự kiện IDE. Lưu file không bao giờ gọi LLM.
+
+**Riêng tư (bất biến)** — KHÔNG BAO GIỜ gửi: nội dung file, đường dẫn tuyệt đối (chỉ `asRelativePath(uri, false)` của file
+`file:` nằm trong một workspace folder; bỏ `.git/`, `node_modules/`, `..`, file ngoài workspace, untitled), message của
+diagnostics (chỉ **đếm**), biến môi trường. Đường repo git chỉ làm khoá nội bộ. Sân khấu còn tự chặn `data` không phẳng /
+chuỗi > 120 ký tự / `summary` > 200 ký tự. Workspace **chưa tin cậy → không gửi gì**. MCP của não gọi `stage_notice` bị từ
+chối (não không được giả giác quan).
+
 ## Cấu hình
 
 | Khoá | Mặc định | Ghi chú |
@@ -93,6 +119,8 @@ Rồi: `Ctrl+Shift+P` → **Gen-Stage: Mở sân khấu**. Chatroom: biểu tư�
 | `genStage.pnpm` | `pnpm` | **scope `machine`**. Chỉ nhận **tên lệnh** (tìm trong các thư mục *tuyệt đối* của PATH — bỏ qua `.`/mục rỗng) hoặc **đường dẫn tuyệt đối**; đường dẫn tương đối bị từ chối. Đặt đường dẫn tuyệt đối nếu PATH của VS Code không thấy nvm/corepack |
 | `genStage.nao` | `tat` | **scope `machine`** (V1). `local` = `pnpm nao-local`, `agy` = `pnpm nao`, `tat` = không bật. Giá trị lạ = `tat`. Driver nối bridge `genStage.bridgePort` qua `GEN_STAGE_PORT` |
 | `genStage.sttPort` | 8790 | **scope `machine`** (V2). Cổng `POST /stt` của bridge → `tai-nghe --stt-port` |
+| `genStage.giacQuan.batTat` | `true` | **scope `window`** (V3). Tắt = không gửi notice nào |
+| `genStage.giacQuan.save` / `.diag` / `.test` / `.git` | `true` | **scope `window`** (V3). Tắt từng loại; `.test` tắt cả task lẫn test. Đọc lại mỗi lần gửi (tắt giữa lúc đang gộp → mẻ đó bỏ) |
 | `genStage.taiNghe.nguon` | `""` | **scope `machine`**, có trong `restrictedConfigurations` (V2). Nguồn thu → `--nguon` (vd tên nguồn trong `pactl list short sources`). Trống = tai-nghe tự dò. Bắt đầu bằng `-`, có ký tự điều khiển hoặc > 200 ký tự → bỏ qua (tự dò) + ghi log |
 
 ### Workspace trust
@@ -102,6 +130,7 @@ Chọn `limited` (không phải `false`) vì ở Restricted Mode extension vẫn
 với bridge/vite Sếp đã tự bật. Thứ nguy hiểm duy nhất — **tự spawn tiến trình** — bị khoá khi
 `!vscode.workspace.isTrusted` (panel hiện lý do; driver não cũng vậy); tin cậy workspace xong thì tự dò lại. `genStage.pnpm`/`root`/`nao`
 khai `scope: "machine"` nên một repo lạ không thể cài `.vscode/settings.json` trỏ `pnpm` tới script của nó.
+Giác quan IDE (V3) kiểm `isTrusted` **mỗi lần gửi**: Restricted Mode thì không gửi notice nào (setting `genStage.giacQuan.*` là scope `window`, vô hại — chỉ tắt bớt được).
 
 ### Sổ PID + log
 
@@ -189,7 +218,20 @@ node <repo>/node_modules/typescript/bin/tsc -p /tmp/tv/tsconfig.json
     source-outputs` không còn ffmpeg nào đang giữ mic.
 14. **V2-tin cậy thấp** Nói lí nhí/xa mic → nếu tin cậy < 60 % thì ô sửa hiện câu; sửa chữ → Gửi → câu đã sửa tới đúng người đang chọn lúc nói.
 
+15. **V3-lưu** Sửa + lưu 2 file `.ts` trong 5 s → chatroom một dòng "👁 Lưu 2 file: src/a.ts, src/b.ts" (đường tương đối, KHÔNG
+    `/home/...`); Gen không phản ứng, não không chạy (nhật ký driver không có dòng `IDE:`). Lưu `settings.json` của User → không có dòng 👁.
+16. **V3-lỗi** Gõ sai một dòng TS → ~3 s sau "👁 Có 1 lỗi biên dịch", Gen emote suy nghĩ (nếu rảnh); sửa lại → "👁 Hết lỗi biên dịch".
+    Gõ liên tục không được ra nhiều dòng.
+17. **V3-test** Tạo task `npm test`/`pnpm test` (nhóm test) làm hỏng một test rồi chạy (*Tasks: Run Test Task*) → "👁 Test … fail (mã 1)",
+    Gen bối rối; bật `genStage.nao` → Gen nói một câu có ngữ cảnh (nhật ký driver: `IDE: «Sếp vừa chạy test — hỏng: …»`). Sửa, chạy
+    lại trong vòng 60 s → 👁 vẫn hiện nhưng não KHÔNG chạy lượt nữa (ghi "chưa đủ 60 s").
+18. **V3-git** Commit từ Source Control → "👁 Commit abc1234: <dòng đầu>"; checkout nhánh khác → KHÔNG có dòng commit.
+19. **V3-tắt/trust** Đặt `genStage.giacQuan.batTat=false` → lưu/test không ra 👁. Mở một thư mục ở Restricted Mode → không ra 👁.
+
 ## Giới hạn đã biết
+
+- V3 **chưa kiểm trên VS Code thật** (checklist 15–19): `onDidEndTaskProcess` chỉ bắn cho task có tiến trình (shell/process) —
+  test chạy bằng Test Explorer/terminal tay KHÔNG được thấy; pull/merge commit nhiều cha chỉ tính khi cha có HEAD cũ.
 
 - **Webview không có mic** (vscode#250568/#323602) → V2 thu bằng tiến trình `scripts/tai-nghe.mjs` ngoài webview (mục "Giọng nói").
 - V2 **chưa kiểm trên VS Code thật** (checklist 8–14): độ trễ khởi động `pnpm exec node` + ffmpeg trước khi thu, phím `Ctrl+Alt+Space`

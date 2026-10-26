@@ -259,8 +259,10 @@ export function gonDescribe(st, { suKien = [] } = {}) {
  * Một lượt = **một dòng** (send-keys gặp `\n` là Enter → submit giữa câu).
  * Mọi xuống dòng trong lời Sếp bị đổi thành dấu cách.
  */
-export function dungDongNhac({ cau, describe }) {
+export function dungDongNhac({ cau, describe, ide = false }) {
   const mot = (x) => String(x).replace(/\s+/g, ' ').trim();
+  // V3: lượt do giác quan IDE kích — Sếp KHÔNG nói gì, não chỉ góp MỘT câu ngắn có ngữ cảnh
+  if (ide) return `VIỆC THẬT TRONG IDE CỦA SẾP «${mot(cau)}» (Sếp không nói gì — nói MỘT câu ngắn hợp ngữ cảnh, không hỏi lại) | SÂN KHẤU ${JSON.stringify(describe)}`;
   return `SẾP NÓI «${mot(cau)}» | SÂN KHẤU ${JSON.stringify(describe)}`;
 }
 
@@ -464,8 +466,8 @@ export function taoLuot({
   ghi = console.log,
   moc = () => Date.now(),
 }) {
-  return async function luot(cau, { t0 = moc() } = {}) {
-    ghi(`[nao] ${gio()} SẾP: «${cau}»`);
+  return async function luot(cau, { t0 = moc(), ide = false } = {}) {
+    ghi(`[nao] ${gio()} ${ide ? 'IDE' : 'SẾP'}: «${cau}»`);
     let dangNoi = false;
     const thoiSay = san.khiGenNoi(() => {
       if (dangNoi) return;
@@ -473,8 +475,9 @@ export function taoLuot({
       ghi(`[nao] ${gio()} Gen BẮT ĐẦU NÓI sau ${moc() - t0} ms (từ lúc Sếp gõ)`);
     });
 
+    // lượt IDE: Sếp không hỏi gì → không "xin chờ", không câu dự phòng, lỗi chỉ ghi log
     const henXinCho = setTimeout(() => {
-      if (!dangNoi) {
+      if (!dangNoi && !ide) {
         void san.goi('actor.say', {
           actor: 'gen',
           text: 'Em đang nghĩ, Sếp chờ chút ạ',
@@ -488,9 +491,9 @@ export function taoLuot({
     const dDescribe = gonDescribe(mt.result, { suKien: san.suKienCuoi() });
     const kq =
       cheDo === 'tmux'
-        ? await nghi(dungDongNhac({ cau, describe: dDescribe }))
+        ? await nghi(dungDongNhac({ cau, describe: dDescribe, ide }))
         : await nghi(
-            `${promptDau({ skill, tenMcp })}\n\n${dungDongNhac({ cau, describe: dDescribe })}`,
+            `${promptDau({ skill, tenMcp })}\n\n${dungDongNhac({ cau, describe: dDescribe, ide })}`,
           );
 
     clearTimeout(henXinCho);
@@ -499,6 +502,7 @@ export function taoLuot({
     if (!kq.ok) {
       const vi = lyDoNgan(kq.loi || kq.ra);
       ghi(`[nao] ${gio()} NÃO LỖI sau ${kq.msGiay} ms: ${String(kq.loi || kq.ra).slice(0, 300)}`);
+      if (ide) return { ok: false, msGiay: moc() - t0, daNoi: false };
       await san.goi('actor.say', {
         actor: 'gen',
         text: `Em bị lỗi não: ${vi}`,
@@ -512,7 +516,7 @@ export function taoLuot({
       `[nao] ${gio()} não xong sau ${kq.msGiay} ms · trọn lượt ${moc() - t0} ms · ` +
         `${dangNoi ? 'đã nói' : 'KHÔNG thấy actor.sayStart'}`,
     );
-    if (!dangNoi) {
+    if (!dangNoi && !ide) {
       // não nghĩ xong mà không mở miệng: Sếp vẫn phải nghe một câu
       await san.goi('actor.say', {
         actor: 'gen',
@@ -558,6 +562,81 @@ export function gannNgheCau({ san, msGop = MS_GOP_MAC_DINH, themLuot }) {
     }
     gop.nhan(data.text);
   });
+  return { dangGop: () => gop.dangCho() > 0 };
+}
+
+/* ================================================ 7c. V3 — giác quan IDE */
+
+/** V3 — tối thiểu bấy nhiêu ms giữa hai lượt não do sự kiện IDE kích (lưu file không bao giờ kích). */
+export const MS_GIUA_LUOT_IDE = 60_000;
+/** V3 — loại `ide.event` đáng gọi não (save/diag KHÔNG: quá ồn, phản xạ trong trình duyệt lo). */
+export const LOAI_IDE_CHO_NAO = Object.freeze(['test', 'task', 'git']);
+
+/**
+ * `ide.event` nào đáng một lượt não: `test`/`task`/`git` với level `good`/`bad`
+ * và có `summary`. `save`, `diag`, mọi `info` → không (lưu file mà gọi LLM là
+ * tốn quota cho mỗi Ctrl+S).
+ */
+export function laSuKienIdeChoNao(event, data = {}) {
+  if (event !== 'ide.event') return false;
+  if (!LOAI_IDE_CHO_NAO.includes(String(data.kind))) return false;
+  if (data.level !== 'good' && data.level !== 'bad') return false;
+  return typeof data.summary === 'string' && data.summary.trim().length > 0;
+}
+
+/** Câu đưa vào nhắc cho một sự kiện IDE: "Sếp vừa chạy test — hỏng: <summary>". */
+export function cauTuSuKienIde(data = {}) {
+  const viec = { test: 'chạy test', task: 'chạy task', git: 'commit' }[String(data.kind)] ?? String(data.kind);
+  const ket = data.level === 'good' ? 'ổn' : 'hỏng';
+  return `Sếp vừa ${viec} — ${ket}: ${String(data.summary).replace(/\s+/g, ' ').trim()}`;
+}
+
+/**
+ * Gắn giác quan IDE cho driver não (dùng chung agy + local):
+ * lọc (`laSuKienIdeChoNao`) → giới hạn tần suất (`msGiua`, mặc định 60 s) →
+ * gộp 800 ms (`taoGop` sẵn có, test+commit sát nhau thành MỘT lượt) →
+ * `themLuot({ cau, t0, ide: true })`.
+ *
+ * **Câu Sếp luôn thắng**: `sepBan()` = có câu của Sếp đang gộp/xếp hàng/đang
+ * chạy (hoặc lượt nào đang chạy) → bỏ sự kiện IDE, kiểm cả lúc nhận lẫn lúc
+ * cửa sổ gộp đóng. Không phản xạ turnTo/suy-nghi ở đây — phản xạ IDE là việc
+ * của trình duyệt (`phan-xa.ts`). Trả hàm gỡ không có (sống theo `san`).
+ */
+export function gannNgheIde({ san, msGop = MS_GOP_MAC_DINH, msGiua = MS_GIUA_LUOT_IDE, sepBan, themLuot, now = () => Date.now(), ghi = console.log, hen = setTimeout, huy = clearTimeout }) {
+  let lanCuoi = null;
+  let tDau = null;
+  const gop = taoGop({
+    msGop,
+    hen,
+    huy,
+    xong: (cau) => {
+      const t0 = tDau ?? now();
+      tDau = null;
+      if (sepBan()) {
+        ghi(`[nao] ${gio()} bỏ lượt IDE «${cau}» — câu của Sếp được ưu tiên.`);
+        return;
+      }
+      themLuot({ cau, t0, ide: true });
+    },
+  });
+  san.khiSuKien((event, data) => {
+    if (!laSuKienIdeChoNao(event, data)) return;
+    const t = now();
+    if (gop.dangCho() === 0) {
+      if (lanCuoi !== null && t - lanCuoi < msGiua) {
+        ghi(`[nao] ${gio()} bỏ sự kiện IDE (${data.kind}) — chưa đủ ${Math.round(msGiua / 1000)} s từ lượt IDE trước.`);
+        return;
+      }
+      if (sepBan()) {
+        ghi(`[nao] ${gio()} bỏ sự kiện IDE (${data.kind}) — Sếp đang nói/não đang bận.`);
+        return;
+      }
+      lanCuoi = t;
+      tDau = t;
+    }
+    gop.nhan(cauTuSuKienIde(data));
+  });
+  return { dangGop: () => gop.dangCho() > 0 };
 }
 
 /* ============================================================ 8. nối bridge */
@@ -847,10 +926,17 @@ export async function chay() {
   }
 
   const luot = taoLuot({ san, skill, tenMcp, nghi, cheDo: naoTmux ? 'tmux' : 'print' });
-  const hangDoi = taoHangDoi({ chay: (x) => luot(x.cau, { t0: x.t0 }) });
-  gannNgheCau({ san, msGop, themLuot: (x) => hangDoi.them(x) });
+  const hangDoi = taoHangDoi({ chay: (x) => luot(x.cau, { t0: x.t0, ide: x.ide === true }) });
+  const tai = gannNgheCau({ san, msGop, themLuot: (x) => hangDoi.them(x) });
+  // V3 — giác quan IDE: test/task/git good|bad → một lượt "Sếp vừa …", ≥ 60 s giữa hai lượt, câu Sếp thắng
+  gannNgheIde({
+    san,
+    msGop,
+    sepBan: () => tai.dangGop() || hangDoi.dangChay() || hangDoi.doDai() > 0,
+    themLuot: (x) => hangDoi.them(x),
+  });
 
-  console.log(`[nao] ${gio()} đang nghe user.text/user.speech — Sếp gõ trong Firefox là em nghe.`);
+  console.log(`[nao] ${gio()} đang nghe user.text/user.speech + ide.event (test/task/git) — Sếp gõ trong Firefox là em nghe.`);
   for (const tin of ['SIGINT', 'SIGTERM']) {
     process.on(tin, () => {
       console.log(`[nao] ${gio()} tắt driver.`);

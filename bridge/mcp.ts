@@ -183,9 +183,10 @@ export const HUONG_DAN_AGENT =
 /**
  * Lệnh CHỈ dành cho Boss/ngoại vi (sidecar STT, extension VS Code gọi qua ws bridge).
  * Tool vẫn liệt kê (giữ bất biến "số tool = số lệnh + 1") nhưng MCP của não gọi là bị từ chối:
- * `stage.hear` chạy `actor.say` lên owner → não giả Boss nói rồi tự nghe lại chính mình.
+ * `stage.hear` chạy `actor.say` lên owner → não giả Boss nói rồi tự nghe lại chính mình;
+ * `stage.notice` (V3) bắn `ide.event` → não giả "giác quan IDE" (Sếp chưa hề lưu/test/commit) rồi tự phản ứng.
  */
-export const LENH_CHI_CHO_BOSS: ReadonlySet<string> = new Set(['stage.hear']);
+export const LENH_CHI_CHO_BOSS: ReadonlySet<string> = new Set(['stage.hear', 'stage.notice']);
 
 /**
  * Lý do não KHÔNG được chạy lệnh này (hoặc `null` nếu được). Một chỗ duy nhất cho mọi rào của não:
@@ -211,7 +212,7 @@ export function lyDoCamNao(
     return 'Não không được điều khiển actor "owner" (nhân vật của Sếp). Chỉ điều khiển "gen".';
   }
   if (LENH_CHI_CHO_BOSS.has(cmd)) {
-    return `Lệnh "${cmd}" chỉ dành cho Boss/ngoại vi (STT, extension) qua ws bridge — não không được gọi (sẽ tự nghe lại chính mình).`;
+    return `Lệnh "${cmd}" chỉ dành cho Boss/ngoại vi (STT, extension) qua ws bridge — não không được gọi (sẽ tự nghe lại chính mình / giả giác quan của Sếp).`;
   }
   if (cmd === 'script.run') {
     let tho: unknown = args.steps;

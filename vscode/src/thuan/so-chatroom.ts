@@ -161,6 +161,11 @@ export class SoChatroom {
     this.dong = themDong(this.dong, { t, loai: 'he-thong', ai: '', text }, this.dongToiDa);
   }
 
+  /** V3 — notice IDE đã gửi tới sân khấu: dòng nhỏ "👁 …" (webview vẽ bằng textContent). */
+  ghiGiacQuan(summary: string, t = Date.now()): void {
+    this.dong = themDong(this.dong, { t, loai: 'giac-quan', ai: '', text: `👁 ${summary}` }, this.dongToiDa);
+  }
+
   private daVe: string | null = null;
 
   /**

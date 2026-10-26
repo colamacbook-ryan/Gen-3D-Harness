@@ -23,6 +23,7 @@ declare module 'vscode' {
 
   export class Uri {
     static joinPath(base: Uri, ...pathSegments: string[]): Uri;
+    readonly scheme: string;
     readonly fsPath: string;
     toString(skipEncoding?: boolean): string;
   }
@@ -140,6 +141,65 @@ declare module 'vscode' {
     affectsConfiguration(section: string): boolean;
   }
 
+  // V3 — giác quan IDE (chữ ký chép từ @types/vscode@1.106.1, chỉ phần dùng tới)
+  export interface TextDocument {
+    readonly uri: Uri;
+  }
+
+  export enum DiagnosticSeverity {
+    Error = 0,
+    Warning = 1,
+    Information = 2,
+    Hint = 3,
+  }
+
+  export class Diagnostic {
+    severity: DiagnosticSeverity;
+  }
+
+  export interface DiagnosticChangeEvent {
+    readonly uris: readonly Uri[];
+  }
+
+  export class TaskGroup {
+    readonly id: string;
+  }
+
+  export class Task {
+    name: string;
+    source: string;
+    group?: TaskGroup;
+  }
+
+  export interface TaskExecution {
+    task: Task;
+  }
+
+  export interface TaskProcessEndEvent {
+    readonly execution: TaskExecution;
+    readonly exitCode: number | undefined;
+  }
+
+  export interface Extension<T> {
+    readonly id: string;
+    readonly isActive: boolean;
+    readonly exports: T;
+    activate(): Thenable<T>;
+  }
+
+  export namespace languages {
+    export const onDidChangeDiagnostics: Event<DiagnosticChangeEvent>;
+    export function getDiagnostics(): [Uri, Diagnostic[]][];
+  }
+
+  export namespace tasks {
+    export const onDidEndTaskProcess: Event<TaskProcessEndEvent>;
+  }
+
+  export namespace extensions {
+    export function getExtension<T = any>(extensionId: string): Extension<T> | undefined;
+  }
+
   export namespace window {
     export function createOutputChannel(name: string, languageId?: string): OutputChannel;
     export function createWebviewPanel(
@@ -169,5 +229,8 @@ declare module 'vscode' {
     export const onDidChangeConfiguration: Event<ConfigurationChangeEvent>;
     export const isTrusted: boolean;
     export const onDidGrantWorkspaceTrust: Event<void>;
+    export const onDidSaveTextDocument: Event<TextDocument>;
+    export function getWorkspaceFolder(uri: Uri): WorkspaceFolder | undefined;
+    export function asRelativePath(pathOrUri: string | Uri, includeWorkspaceFolder?: boolean): string;
   }
 }

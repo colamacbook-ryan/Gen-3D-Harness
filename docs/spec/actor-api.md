@@ -74,6 +74,7 @@ Kết luận thiết kế: khi A xong, "gắn não" = viết 1 skill cho agent C
 | `stage.describe` | — | Trạng thái hiện tại: mỗi actor đang ở đâu, làm gì, biểu cảm gì; props ở đâu |
 | `stage.reset` | — | Về trạng thái ban đầu |
 | `stage.hear` | `text`, `to?`, `confidence?` (0..1, mặc định 1), `durationMs?` (mặc định 0) | **Cửa giọng nói từ ngoài trình duyệt** (extension VS Code, sidecar STT — qua ws bridge). Đánh dấu câu là NÓI (phiếu giọng) rồi chạy `actor.say` lên actor `controlledBy:"owner"` kèm `to` ⇒ bắn `user.text` + `user.speech` mỗi loại đúng một lần; `user.text` vẫn chỉ có một nguồn là `actor.say` owner. Chữ đi qua sổ từ nhà (`chuanHoaCauNoi`: "ghen ơi" → "Gen ơi"), `actor.say` chạy với `interrupt:true` như ô chat. **Chỉ dành cho Boss/ngoại vi qua ws bridge — MCP của não gọi `stage_hear` bị từ chối** (tool vẫn liệt kê). Không có owner ⇒ `ok:false`. (Thêm 26/10 — CNS-005, Gen-3D-Harness) |
+| `stage.notice` | `kind` (`save`\|`diag`\|`test`\|`task`\|`git`), `summary` (≤ 200 ký tự), `level?` (`info` mặc định \| `good` \| `bad`), `data?` (object phẳng: số, boolean, chuỗi ≤ 120, mảng ≤ 20 phần tử như thế; ≤ 12 khoá) | **V3 — giác quan IDE.** Ngoại vi (extension VS Code) báo một việc thật vừa xảy ra trong IDE của Sếp → bắn sự kiện `ide.event {kind, level, summary, data}`. Không chiếm actor, không đổi trạng thái sân khấu. Chỉ tóm tắt + số đếm/tên ngắn — KHÔNG nội dung file, đường dẫn tuyệt đối, message lỗi. **Chỉ dành cho Boss/ngoại vi qua ws bridge — MCP của não gọi `stage_notice` bị từ chối** (não không được giả giác quan). (Thêm 26/10 — V3, Gen-3D-Harness) |
 
 ### 3.2 Nhân vật
 | Lệnh | Args | Ghi chú |
@@ -339,6 +340,11 @@ Ví dụ kịch bản Boss dán vào ô kịch bản (hoặc agent gửi):
 
 ### 3.5 Sự kiện sân khấu → agent
 `actor.arrived`, `actor.steerDone`, `actor.clipDone`, `actor.sayDone`, `actor.emoteDone`, `script.done`, `user.speech` (Boss nói, đã chuyển thành chữ; `data` có `to` cùng giá trị với `user.text` — `to === id` người nói thì coi như `camera`), `user.click` (Boss bấm vào actor/prop), `user.text` (Boss gõ).
+
+**Sửa spec (26/10, V3 — giác quan IDE):** thêm `ide.event { kind, level, summary, data }`
+do `stage.notice` bắn. Phản xạ trong trình duyệt (3.2d) emote nhẹ cho `test`/`task`/`git`/`diag`
+mức `good`/`bad` (Gen rảnh, ≥ 20 s giữa hai lần); driver não chỉ nghĩ cho `test`/`task`/`git`
+`good`/`bad` (≥ 60 s giữa hai lượt, câu Sếp luôn ưu tiên) — lưu file không bao giờ gọi não.
 
 **Sửa spec (26/10, C0 — Issue #28):** thêm `bridge.brain { count, connected }` —
 bridge báo số client MCP đang nối, đi **xuống** sân khấu (hướng ngược với mọi
