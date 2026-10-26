@@ -270,6 +270,7 @@ describe('stage.bootstrap là sách hướng dẫn tự sinh', () => {
     };
 
     const boQua = new Set([
+      'stage.hear', // cần actor controlledBy owner — sân khấu của test này không có; cns005-stage-hear.test.ts lo
       'actor.spawn', // id 'minh' trùng nếu chạy hai lần
       'actor.remove',
       'stage.reset',

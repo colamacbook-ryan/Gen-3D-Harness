@@ -487,8 +487,9 @@ export function batHieuLenh(
   /**
    * Chống nghe một câu hai lần.
    *
-   * Cùng một câu của Sếp có thể tới bằng HAI sự kiện: `user.speech` (mic của
-   * C1) rồi `user.text` (chính câu đó được `actor.say` lên nhân vật owner).
+   * Cùng một câu của Sếp có thể tới bằng HAI sự kiện: `user.text` (từ
+   * `actor.say` lên nhân vật owner) rồi `user.speech` (câu đó là NÓI — phiếu
+   * giọng của mic C1 hoặc lệnh `stage.hear`, cùng do `actor.say` phát ngay sau).
    * Không chặn thì lệnh chạy hai lần. Cửa sổ 2 s: Sếp lặp đúng từng chữ trong
    * 2 s là chuyện gần như không có, còn hai sự kiện của **một** câu thì luôn
    * cách nhau vài chục mili giây.

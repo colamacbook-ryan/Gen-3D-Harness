@@ -6,9 +6,12 @@
  */
 import type { CommandSpec } from '../types';
 import { moTaLenh } from '../registry';
-import { ngay } from './tien-ich';
+import { ngay, pSo } from './tien-ich';
 // C2 (#32) — câu giọng gần nhất + lệnh đã hiểu (spec mục 3.6).
 import { lenhCuoi } from '../../behavior/hieu-lenh';
+// CNS-005 — phiếu giọng + cách tính `goiGen` y hệt đường mic (bridge/stt.ts)
+import { boPhieuGiong, datPhieuGiong } from '../../audio/so-giong';
+import { chuanHoaCauNoi } from '../../../bridge/so-tu';
 
 export const PHIEN_BAN_API = '0.1';
 
@@ -80,6 +83,60 @@ export const LENH_STAGE: CommandSpec[] = [
         ...(st as unknown as Record<string, unknown>),
         ...(cuoi ? { lastCommand: cuoi } : {}),
       });
+    },
+  },
+
+  {
+    cmd: 'stage.hear',
+    group: 'stage',
+    events: ['user.text', 'user.speech', 'actor.sayStart', 'actor.sayDone', 'cmd.queued'],
+    desc:
+      'Đánh dấu một câu là Boss NÓI (không phải gõ) từ nguồn ngoài trình duyệt (extension, ' +
+      'sidecar STT, agent): bắn đúng một user.text + một user.speech (confidence, goiGen). ' +
+      'Chạy actor.say lên nhân vật controlledBy "owner" nên user.text vẫn chỉ có một nguồn',
+    params: [
+      { name: 'text', type: 'text', desc: 'Câu đã nhận dạng', required: true },
+      {
+        name: 'to',
+        type: 'target',
+        desc: 'Nói VỚI AI (như actor.say): "camera" (mặc định) hoặc id một actor',
+        goiY: 'targets',
+        tuDo: true,
+      },
+      pSo('confidence', 'Độ tin cậy nhận dạng 0..1', { default: 1, min: 0, max: 1 }),
+      pSo('durationMs', 'Thời gian nhận dạng (ms)', { default: 0, min: 0 }),
+    ],
+    example: { cmd: 'stage.hear', args: { text: 'Gen ơi, dựng connector Baserow', confidence: 0.9 } },
+    async handler(a, ctx) {
+      const owner = ctx.world.describe().actors.find((x) => x.controlledBy === 'owner');
+      if (!owner) throw new Error('Không có actor controlledBy "owner" để nghe câu này');
+      const text = String(a.text);
+      const conf = a.confidence === undefined ? 1 : Number(a.confidence);
+      const dur = a.durationMs === undefined ? 0 : Number(a.durationMs);
+      datPhieuGiong({
+        text,
+        confidence: Math.min(1, Math.max(0, conf)),
+        durationMs: Math.max(0, dur),
+        goiGen: chuanHoaCauNoi(text).goiGen,
+      });
+      let kq;
+      try {
+        // qua dispatcher: `user.text` giữ đúng MỘT nguồn (actor.say lên owner)
+        kq = await ctx.run('actor.say', {
+          actor: owner.id,
+          text,
+          ...(a.to === undefined ? {} : { to: String(a.to) }),
+        });
+      } catch (e) {
+        boPhieuGiong();
+        throw e;
+      }
+      if (!kq.ok) {
+        // actor.say từ chối → không để phiếu treo sang câu gõ tay sau
+        boPhieuGiong();
+        throw new Error(kq.error);
+      }
+      return ngay({ heard: true, actor: owner.id, text });
     },
   },
 

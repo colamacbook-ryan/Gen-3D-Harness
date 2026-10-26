@@ -198,7 +198,7 @@ biết registry, **giao diện** không gọi thẳng vào sân khấu.
   điều khiển), `stage.describe` thêm **`controlledBy`**, và chibi hoá xương raw
   (Issue #17 — tỉ lệ đầu/người đo thật ~1/2,5–1/2,8).
 
-- **B3 (xong, #21)**: `bridge/mcp.ts` — **số tool = số lệnh + 1** (đếm từ registry 26/10: 42 lệnh → 43 tool; test b3-mcp giữ công thức, đừng viết cứng số),
+- **B3 (xong, #21)**: `bridge/mcp.ts` — **số tool = số lệnh + 1** (đếm từ registry 26/10: 43 lệnh → 44 tool; test b3-mcp giữ công thức, đừng viết cứng số),
   sinh thẳng từ registry nên thêm lệnh là có tool mới; `stage_bootstrap` qua MCP
   trả thêm `huongDanAgent` (vai diễn của Gen); `actor.say` lên nhân vật
   `controlledBy: "owner"` bắn **`user.text`** → vòng hội thoại Owner ⇄ Gen;
@@ -497,6 +497,15 @@ Số đo đầy đủ và lý do loại từng lựa chọn: **`docs/c1/so-sanh.
   hay gõ đều ra một `actor.say` lên nhân vật `owner` → cùng `user.text`.
   `user.speech` thêm vào nhờ **phiếu dùng một lần** trong `src/audio/so-giong.ts`,
   nên không phải thêm tham số lạ vào `actor.say` mà mọi agent phải học.
+- **`stage.hear` (CNS-005) — nguồn giọng NGOÀI trình duyệt** (extension VS Code,
+  sidecar STT, agent qua MCP): phiếu giọng chỉ đặt được trong trình duyệt nên
+  các nguồn này không đánh dấu được "câu này là nói". `stage.hear {text, to?,
+  confidence?, durationMs?}` đặt phiếu bằng đúng `datPhieuGiong` (`goiGen` tính
+  bằng `chuanHoaCauNoi` của bridge, như đường mic) rồi **chạy `actor.say` lên
+  owner qua dispatcher** — KHÔNG tự bắn `user.text`, để `user.text` vẫn có đúng
+  một nguồn (spec 3.5) và `to`/dedup/`handled` của lớp hiểu lệnh chạy y hệt câu
+  gõ. `actor.say` lỗi thì phiếu bị xoá, không rò sang câu gõ sau. Không có owner
+  → `ok:false`. Test: `cns005-stage-hear.test.ts`.
 - **Cắt im lặng phải chừa lề.** Đo thật: cắt 200 ms đầu làm mất phụ âm đầu —
   "dừng lại" → "đừng lại", "mở màn hình" → "ở màn hình". VAD chừa 120 ms mỗi đầu.
 - **Cạm bẫy Chrome**: `--use-file-for-fake-audio-capture` với đường có **khoảng
