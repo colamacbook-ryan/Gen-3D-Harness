@@ -90,6 +90,8 @@ export class SanKhauGia implements StageWorld {
   mayViTri: Vec3 = [0, 1.6, 7];
   /** C0 (#28) — giả bộ "có não nối" cho test phản xạ. */
   coNao = false;
+  /** V1 (INT-06) — chế độ vẽ giả (test gán thẳng). */
+  cheDoVe: 'full' | 'nen' = 'full';
   /** C0 (#28) — sự kiện giả trả trong `lastEvents` (phản xạ đọc câu Owner nói). */
   suKienGia: StageEvent[] = [];
 
@@ -642,6 +644,7 @@ export class SanKhauGia implements StageWorld {
       scene: { light: this.den },
       camera: { preset: this.may, pos: this.mayViTri },
       brainConnected: this.coNao,
+      renderMode: this.cheDoVe,
     };
   }
 

@@ -1,0 +1,226 @@
+{
+  "batDau": "2026-10-26T06:47:40.460Z",
+  "cong": {
+    "dev": 5213
+  },
+  "khung": {
+    "width": 320,
+    "height": 200
+  },
+  "cuaSoDoMs": 6000,
+  "buoc": [
+    "bật vite riêng 127.0.0.1:5213",
+    "C. cổng bỏ khung (nenVeKhung) trên rAF thật của Chromium, không vẽ",
+    "cổng rAF: [{\"mode\":\"full\",\"rafHz\":60.2,\"fpsVe\":60.2},{\"mode\":\"nen\",\"rafHz\":59.8,\"fpsVe\":15.2}]",
+    "A. mở app top-level",
+    "A0-ham-may: moveTo cua hứa 8235 ms, thật 8592 ms, lệch 4.3 % (ĐẠT) · mode=full",
+    "A1-thuong: 1.99 fps (12 khung / 6023 ms) · mode=full · describe=full · bloom=true · pr=2",
+    "A1-thuong: moveTo cua-so hứa 8069 ms, thật 8457 ms, lệch 4.8 % (ĐẠT) · mode=full",
+    "A2. nền qua visibilitychange giả (document.hidden = true)",
+    "A2-nen-visibility: 1.83 fps (11 khung / 6010 ms) · mode=nen · describe=nen · bloom=false · pr=1",
+    "A2-nen-visibility: moveTo cua hứa 8069 ms, thật 8503 ms, lệch 5.4 % (ĐẠT) · mode=nen",
+    "A3. hiện lại (visibilitychange) → phải về full, bloom về đúng như trước nền",
+    "A3-thuong-lai: 3.16 fps (19 khung / 6006 ms) · mode=full · describe=full · bloom=true · pr=2",
+    "A4. nền qua blur của cửa sổ",
+    "A4-nen-blur: 1.5 fps (9 khung / 6008 ms) · mode=nen · describe=nen · bloom=false · pr=1",
+    "A4-nen-blur: moveTo cua-so hứa 8069 ms, thật 8182 ms, lệch 1.4 % (ĐẠT) · mode=nen",
+    "B. vỏ panel VS Code thật (taoHtmlSanKhau) cùng origin với app",
+    "B1-vscode-active: 4.33 fps (26 khung / 6008 ms) · mode=full · describe=full · bloom=true · pr=2",
+    "B2. host báo panel mất active → vỏ postMessage xuống iframe",
+    "B2-vscode-khong-active: 2 fps (12 khung / 6008 ms) · mode=nen · describe=nen · bloom=false · pr=1",
+    "B2-vscode-khong-active: moveTo cua hứa 8235 ms, thật 8316 ms, lệch 1.0 % (ĐẠT) · mode=nen",
+    "B3. tin giả từ CHÍNH iframe (không phải cửa sổ cha) phải bị bỏ qua",
+    "tin giả bị bỏ: true",
+    "B4. host báo active lại → full",
+    "B4-vscode-active-lai: 3.5 fps (21 khung / 6007 ms) · mode=full · describe=full · bloom=true · pr=2",
+    "B5. \"Tải lại\" iframe khi panel đang KHÔNG active → app mới nạp phải vào nền ngay (vỏ gửi lại tin cuối khi load)",
+    "sau tải lại: {\"renderMode\":\"nen\",\"soKhung\":1,\"bloom\":false,\"pixelRatio\":1}"
+  ],
+  "do": {
+    "A1-thuong": {
+      "fps": 1.99,
+      "soKhung": 12,
+      "ms": 6023,
+      "renderMode": "full",
+      "describeRenderMode": "full",
+      "bloom": true,
+      "pixelRatio": 2
+    },
+    "A2-nen-visibility": {
+      "fps": 1.83,
+      "soKhung": 11,
+      "ms": 6010,
+      "renderMode": "nen",
+      "describeRenderMode": "nen",
+      "bloom": false,
+      "pixelRatio": 1
+    },
+    "A3-thuong-lai": {
+      "fps": 3.16,
+      "soKhung": 19,
+      "ms": 6006,
+      "renderMode": "full",
+      "describeRenderMode": "full",
+      "bloom": true,
+      "pixelRatio": 2
+    },
+    "A4-nen-blur": {
+      "fps": 1.5,
+      "soKhung": 9,
+      "ms": 6008,
+      "renderMode": "nen",
+      "describeRenderMode": "nen",
+      "bloom": false,
+      "pixelRatio": 1
+    },
+    "B1-vscode-active": {
+      "fps": 4.33,
+      "soKhung": 26,
+      "ms": 6008,
+      "renderMode": "full",
+      "describeRenderMode": "full",
+      "bloom": true,
+      "pixelRatio": 2
+    },
+    "B2-vscode-khong-active": {
+      "fps": 2,
+      "soKhung": 12,
+      "ms": 6008,
+      "renderMode": "nen",
+      "describeRenderMode": "nen",
+      "bloom": false,
+      "pixelRatio": 1
+    },
+    "B4-vscode-active-lai": {
+      "fps": 3.5,
+      "soKhung": 21,
+      "ms": 6007,
+      "renderMode": "full",
+      "describeRenderMode": "full",
+      "bloom": true,
+      "pixelRatio": 2
+    }
+  },
+  "diChuyen": {
+    "A0-ham-may": {
+      "durationMs": 8235,
+      "thucMs": 8592,
+      "renderMode": "full",
+      "lech": 0.043,
+      "dat": true
+    },
+    "A1-thuong": {
+      "durationMs": 8069,
+      "thucMs": 8457,
+      "renderMode": "full",
+      "lech": 0.048,
+      "dat": true
+    },
+    "A2-nen-visibility": {
+      "durationMs": 8069,
+      "thucMs": 8503,
+      "renderMode": "nen",
+      "lech": 0.054,
+      "dat": true
+    },
+    "A4-nen-blur": {
+      "durationMs": 8069,
+      "thucMs": 8182,
+      "renderMode": "nen",
+      "lech": 0.014,
+      "dat": true
+    },
+    "B2-vscode-khong-active": {
+      "durationMs": 8235,
+      "thucMs": 8316,
+      "renderMode": "nen",
+      "lech": 0.01,
+      "dat": true
+    }
+  },
+  "loiConsole": [
+    "[trang] Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "[vỏ] Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "[vỏ] Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  ],
+  "pgidDaDon": [
+    7045
+  ],
+  "pgidVite": 7045,
+  "congRaf": [
+    {
+      "mode": "full",
+      "rafHz": 60.2,
+      "fpsVe": 60.2
+    },
+    {
+      "mode": "nen",
+      "rafHz": 59.8,
+      "fpsVe": 15.2
+    }
+  ],
+  "suKienRenderModeA": [
+    {
+      "mode": "nen",
+      "bloom": false,
+      "pixelRatio": 1,
+      "reason": "tab-an"
+    },
+    {
+      "mode": "full",
+      "bloom": false,
+      "pixelRatio": 2,
+      "reason": "focus"
+    },
+    {
+      "mode": "nen",
+      "bloom": false,
+      "pixelRatio": 1,
+      "reason": "mat-focus"
+    },
+    {
+      "mode": "full",
+      "bloom": true,
+      "pixelRatio": 2,
+      "reason": "focus"
+    }
+  ],
+  "tinVoGuiHost": [
+    {
+      "loai": "sanSang"
+    }
+  ],
+  "tinGiaBiBo": true,
+  "taiLaiKhiNen": {
+    "renderMode": "nen",
+    "soKhung": 1,
+    "bloom": false,
+    "pixelRatio": 1
+  },
+  "ketLuan": {
+    "fpsThuong": [
+      1.99,
+      3.16,
+      4.33,
+      3.5
+    ],
+    "fpsNen": [
+      1.83,
+      1.5,
+      2
+    ],
+    "nenToiDa15Fps": true,
+    "nenTatBloom": true,
+    "nenPixelRatio1": true,
+    "describeDung": true,
+    "modeDung": true,
+    "bloomKhoiPhucDung": true,
+    "thoiLuongNenDung10": true,
+    "tinGiaBiBo": true,
+    "taiLaiKhiNenVaoNen": true,
+    "congRafNenToiDa15": true,
+    "pixelRatioKhoiPhuc": true,
+    "loiConsoleLa": 0
+  },
+  "xong": "2026-10-26T06:50:18.485Z"
+}

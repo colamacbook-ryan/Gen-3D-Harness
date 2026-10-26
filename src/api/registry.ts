@@ -34,6 +34,8 @@ export const SU_KIEN_HE_THONG = [
   'bridge.disconnected',
   /** A3 — `window.stage.feed(screen, chunk)` đẩy mẩu khi `screen.stream` source:"agent". */
   'screen.fed',
+  /** V1 (INT-06) — sân khấu đổi chế độ vẽ `full`/`nen` (focus/ẩn/vỏ VS Code). */
+  'stage.renderMode',
 ] as const;
 
 export class Registry implements RegistryLike {

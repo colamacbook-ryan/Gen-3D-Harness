@@ -25,6 +25,8 @@ import { ganNutTieng } from './audio/nut-tieng';
 // C1 (#31) — giữ phím V (hoặc nút 🎤) để nói; chữ nhận được đổ vào ô chat.
 import { batMic, type Mic } from './audio/mic';
 import { urlStt } from './bridge-client';
+// V1 (INT-06) — chế độ nền: focus/ẩn của cửa sổ + tin vỏ panel VS Code.
+import { theoDoiCheDoNen, type RenderMode } from './stage/che-do-nen';
 import type { Command, Result, StageEvent } from './api/types';
 
 /** Cửa duy nhất cho test / bridge / agent. */
@@ -72,6 +74,11 @@ export interface CuaStage {
   micKet(): Promise<void>;
   /** C1 — số đo lượt mic gần nhất: RMS, byte gửi, chữ, độ tin, trễ. */
   micDo(): Record<string, unknown>;
+  /**
+   * V1 (INT-06) — số đo chế độ vẽ: `{ renderMode, soKhung, bloom, pixelRatio }`.
+   * `soKhung` đếm khung VẼ thật (bằng chứng fps của `scripts/kiem-nen.mjs`).
+   */
+  doVe(): { renderMode: RenderMode; soKhung: number; bloom: boolean; pixelRatio: number };
 }
 
 declare global {
@@ -101,6 +108,16 @@ try {
   document.querySelector('#loading .spin')?.remove();
   throw e;
 }
+/**
+ * V1 (INT-06) — CHẾ ĐỘ NỀN, nối ngay sau khi có sân khấu (trước cả khi nạp
+ * cảnh) để tin `hienAn` đầu tiên của vỏ VS Code không bị rơi. Không qua
+ * dispatcher: không phải lệnh, não không chỉnh được fps (CNS-020).
+ */
+theoDoiCheDoNen(window, document, (mode, tin) => {
+  const lyDo = tin.an ? 'tab-an' : tin.vs ? (mode === 'nen' ? 'vscode-khong-active' : 'vscode-active') : tin.coFocus ? 'focus' : 'mat-focus';
+  world.datCheDoVe(mode, lyDo);
+});
+
 const registry = taoRegistry();
 const dispatcher = new Dispatcher({ registry, world, bus, nhatKy });
 /**
@@ -148,6 +165,7 @@ window.stage = {
   micBat: () => mic?.batGhi() ?? Promise.resolve(),
   micKet: () => mic?.ketGhi() ?? Promise.resolve(),
   micDo: () => ({ ...(mic?.thongKe() ?? {}), dung: mic?.dung() ?? false }),
+  doVe: () => world.doVe(),
   feed: (screen, chunk) => {
     world.screenAppend(screen, chunk);
     bus.emit('screen.fed', { screen, chunk });

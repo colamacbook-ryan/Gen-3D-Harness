@@ -66,7 +66,10 @@ export interface ThamSoHtmlSanKhau {
  * Giao thức host → vỏ:
  *  - `{lenh:"napLai", url?}`             gán lại `src` (cũng là "Tải lại")
  *  - `{lenh:"trangThai", chu, loi}`      dòng trạng thái (loi=true thì tô đỏ, che iframe)
- *  - `{lenh:"hienAn", visible, active}`  INT-06: chuyển tiếp xuống iframe
+ *  - `{lenh:"hienAn", visible, active}`  INT-06: chuyển tiếp xuống iframe dưới dạng
+ *    `{nguon:"gen-stage-vscode", loai:"nen", visible, active}` (app nghe ở
+ *    `src/stage/che-do-nen.ts`: kiểm `source` là cửa sổ cha + đúng khoá). Vỏ nhớ
+ *    tin cuối và GỬI LẠI mỗi lần iframe nạp xong — app mới nạp không lỡ trạng thái.
  * Vỏ → host: `{loai:"taiLai"}` khi bấm nút, `{loai:"sanSang"}` khi script chạy.
  */
 export function taoHtmlSanKhau(t: ThamSoHtmlSanKhau): string {
@@ -118,9 +121,24 @@ export function taoHtmlSanKhau(t: ThamSoHtmlSanKhau): string {
     che.textContent = loi ? chu : '';
     che.classList.toggle('hien', !!loi);
   }
+  let nenCuoi = null;
+  // iframe đã nạp xong trang app chưa (đang nạp thì contentWindow còn là about:blank
+  // khác origin → postMessage bị trình duyệt từ chối; đợi 'load' rồi gửi)
+  let daNap = false;
+  function guiNen() {
+    if (!nenCuoi || !daNap || !khung.contentWindow || !khung.src || khung.src === 'about:blank') return;
+    khung.contentWindow.postMessage(
+      { nguon: 'gen-stage-vscode', loai: 'nen', visible: nenCuoi.visible, active: nenCuoi.active }, ORIGIN);
+  }
+  // iframe nạp xong (kể cả "Tải lại") → báo lại trạng thái panel cho app mới
+  khung.addEventListener('load', function () {
+    daNap = !!khung.src && khung.src !== 'about:blank';
+    guiNen();
+  });
   function napLai(url) {
     const u = url || khung.dataset.url;
     khung.dataset.url = u;
+    daNap = false;
     // gán lại src kể cả khi trùng — đó chính là "tải lại"
     khung.src = 'about:blank';
     khung.src = u;
@@ -137,12 +155,10 @@ export function taoHtmlSanKhau(t: ThamSoHtmlSanKhau): string {
     if (m.lenh === 'napLai') napLai(m.url);
     else if (m.lenh === 'trangThai') trangThai(String(m.chu || ''), m.loi);
     else if (m.lenh === 'hienAn') {
-      // INT-06 — chuyển tiếp xuống app. TODO(V1): app sân khấu chưa nghe tin
-      // này (src/ không sửa ở V0); khi có, app hạ fps/tắt bloom lúc !active.
-      if (khung.contentWindow && khung.src && khung.src !== 'about:blank') {
-        khung.contentWindow.postMessage(
-          { nguon: 'gen-stage-vscode', loai: 'nen', visible: !!m.visible, active: !!m.active }, ORIGIN);
-      }
+      // INT-06 (V1) — chuyển tiếp xuống app: !active hoặc !visible → app chạy nền
+      // (≤ 15 fps, tắt bloom, pixelRatio 1). targetOrigin = ORIGIN: không lọt ra app khác.
+      nenCuoi = { visible: !!m.visible, active: !!m.active };
+      guiNen();
     }
   });
   vs.postMessage({ loai: 'sanSang' });
@@ -174,6 +190,7 @@ export function taoHtmlChatroom(t: ThamSoHtmlChatroom): string {
 <header id="trang-thai" aria-live="polite">
   <span class="den" id="den-bridge"></span><span id="chu-bridge">Bridge: chưa nối</span>
   <span class="den" id="den-san-khau"></span><span id="chu-san-khau">Sân khấu: chưa nối</span>
+  <span class="den" id="den-nao"></span><span id="chu-nao">Não: ?</span>
 </header>
 <div id="canh-bao" hidden></div>
 <section id="nhan-vat" aria-label="Nhân vật">

@@ -220,6 +220,15 @@ Khi `brainConnected` là `false`, Gen trả lời bằng **não rule-based tối
 trong app** (chào / hỏi tên / còn lại → *"Em chưa có não, Sếp bật agy nhé"*) —
 để Gen **không bao giờ im lặng**, kể cả lúc Boss chưa bật `agy`.
 
+#### V1 (INT-06) — `renderMode` (chế độ nền)
+
+`stage.describe` thêm `"renderMode": "full" | "nen"`. `nen` = Sếp đang ở app/tab
+khác (cửa sổ mất focus, tab ẩn, hoặc panel VS Code không active): sân khấu vẽ
+≤ 15 khung/giây, tắt bloom, pixel ratio 1. **Hành động vẫn đúng `durationMs`**
+(nội suy theo đồng hồ thật + hẹn giờ huỷ được). Đổi chế độ bắn sự kiện hệ thống
+`stage.renderMode { mode, bloom, pixelRatio, reason? }`. **Không có lệnh** đổi
+trường này — não/MCP không chỉnh được fps; chỉ người ngồi trước máy quyết định.
+
 #### Ai là "người nghe" (Sửa spec 26/10 — C0 vòng 2)
 
 Boss xem lại và chốt thêm: **với nhân vật trong sân khấu, Sếp = người xem qua

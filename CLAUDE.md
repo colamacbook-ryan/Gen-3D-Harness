@@ -53,6 +53,7 @@ node scripts/kiem-nao-local.mjs  # bằng chứng V1: bridge thật + Ollama GI�
 node scripts/kiem-mo-phong-loi-cu.mjs  # mô phỏng nguyên nhân gốc #37 (naoHttpDen hết hạn, ws không hề rớt) vào docs/nao/mo-phong-loi-cu.*
 node scripts/kiem-reconnect.mjs        # bằng chứng heartbeat + backoff + watchdog (#37): driver sống 10 phút, giết bridge giữa chừng, vào docs/nao/reconnect.* (CHẠY MỘT LẦN)
 node scripts/kiem-c0.mjs      # bằng chứng C0: phản xạ xã hội + nhân vật nam anime, vào docs/c0/ (CHẠY MỘT LẦN)
+node scripts/kiem-nen.mjs     # bằng chứng V1 chế độ nền (INT-06): fps thường/nền + durationMs ở nền, vào docs/v1/ (cần `pnpm -C vscode build`)
 node scripts/kiem-c1.mjs      # bằng chứng C1: giữ V nói → bridge nhận chữ → user.speech → Gen phản ứng, vào docs/c1/ (CHẠY MỘT LẦN)
 bash scripts/fetch-anim.sh    # tải bộ chuyển động CC0 (Quaternius) về public/anim/ — chạy 1 lần sau khi clone
 bash scripts/fetch-stt.sh     # C1: venv + model PhoWhisper-small ct2 vào .cache/stt/ — chạy 1 lần (chay.sh gọi sẵn)
@@ -127,6 +128,7 @@ biết registry, **giao diện** không gọi thẳng vào sân khấu.
 | `src/stage/man-hinh.ts` | Màn hình hologram A3: CanvasTexture + scan-line, stream chữ chạy dần |
 | `src/fx/*.ts` | A3: hiệu ứng kết tinh module (`hat-ket-tinh.ts`) + `fx.play` (`hieu-ung.ts`) |
 | `src/stage/noi-dung.ts` | Dữ liệu cảnh v0.1: places (gồm `ban-dieu-khien` A3), clips, biểu cảm, emote, preset đèn/máy quay (gồm `truoc-mat` A2) |
+| `src/stage/che-do-nen.ts` | **V1 (INT-06)** — CHẾ ĐỘ NỀN, thuần (không three): ngưỡng có tên (`FPS_NEN` 15, `TY_LE_PIXEL_NEN` 1), `quyetCheDo` (ẩn/focus/tin vỏ VS Code), `docTinVo` (lọc `postMessage`), `nenVeKhung` (bỏ khung theo mốc rAF), `theoDoiCheDoNen` (nối DOM, `main.ts` gọi) |
 | `src/stage/hanh-dong.ts` | Tiện ích `Action` (hành động có `durationMs` + `done` + `cancel`) |
 | `src/ui/panel.ts` | Bảng lệnh **tự sinh** từ `stage.bootstrap` — không viết tay nút nào |
 | `src/ui/script-box.ts` | Ô kịch bản: JSON hoặc dạng ngắn `gen moveTo ban-2` |
@@ -716,3 +718,46 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
   `khoa-nao.test.mjs` và `node scripts/kiem-nao-local.mjs` (bridge
   THẬT 8863–8866, Ollama giả 8867, 8868 tắt; đổi bằng `GEN_STAGE_KIEM_CONG`) → `docs/v1/nhat-ky-kiem-nao-local.json`.
   **Chưa đo với Ollama + model thật.**
+
+## Quyết định V1 — chế độ nền (26/10, INT-06 · CNS-003 · CNS-020)
+
+- **Áp cho MỌI mặt, không riêng VS Code.** Trình duyệt thường: `visibilitychange`
+  + `blur`/`focus` của chính cửa sổ. Trong vỏ panel VS Code: tin `postMessage`
+  `{nguon:"gen-stage-vscode", loai:"nen", visible, active}` từ cửa sổ cha
+  (`vscode/src/thuan/html.ts` chuyển tiếp `onDidChangeViewState`). Chỉ nhận khi
+  `ev.source === window.parent` (và trang thật sự nằm trong khung), origin
+  `vscode-webview://…` hoặc cùng origin app, đúng khoá, `visible`/`active` boolean.
+- **Không phải lệnh** (CNS-020): `main.ts` nối `theoDoiCheDoNen` thẳng vào
+  `World.datCheDoVe`, không qua registry/dispatcher → não/MCP không chỉnh được fps.
+  Sân khấu chỉ khai ra: `stage.describe().renderMode: "full"|"nen"` + sự kiện hệ
+  thống `stage.renderMode {mode, bloom, pixelRatio, reason}`.
+- **Có tin vỏ thì vỏ là nguồn sự thật, bỏ qua `blur` của iframe**: iframe mất focus
+  cả khi Sếp gõ ở chatroom cạnh đó — khi ấy panel vẫn đang được xem. Chưa có tin
+  vỏ (trình duyệt thường) thì mất focus = nền. Mở trang khi chưa có focus → nền
+  ngay. Vỏ nhớ tin cuối và **gửi lại khi iframe `load`** (Tải lại không lỡ trạng thái).
+- **Bỏ khung theo đồng hồ thật, không đếm khung**: `setAnimationLoop((t) => …)`
+  chỉ vẽ khi `t − lanVeCuoi ≥ 1000/15 − 1 ms` (dung sai rung vsync; trần thực tế
+  ≈ 15,2 fps ở mọi tần số màn hình). Khung bỏ không gọi `dongHo.update()` nên
+  `dt` khung kế là thời gian thật; `dt` kẹp 0,1 s khi nền (1/20 s khi thường) để
+  lerp trang trí không chậm 25 %. Hành động có thời lượng vẫn nội suy theo đồng
+  hồ + hẹn giờ huỷ được → `durationMs` không đổi.
+- **Khôi phục đúng cấu hình cũ**: vào nền nhớ `bloomTruocNen` (có thể đang tắt vì
+  FPS thấp) rồi tắt bloom; ra nền trả đúng giá trị đó, reset bộ đếm FPS thấp.
+  `theoDoiFps` **không chạy khi nền** (15 fps là cố ý, không phải máy yếu).
+  Pixel ratio đi qua một chỗ `tyLePixel()` + `apKichThuoc()` cho renderer và CẢ
+  HAI composer (`setPixelRatio` + `setSize`), resize cũng dùng chỗ đó.
+- **Số đo (`docs/v1/nhat-ky-kiem-nen.json`, Chromium swiftshader, 320×200 @2x)**:
+  cổng bỏ khung trên rAF thật (trang trống): 60,2 Hz → **15,2 fps** vẽ. Sân khấu
+  thật: thường 2,0–4,3 fps, nền 1,5–2,0 fps — renderer phần mềm của máy kiểm
+  không bao giờ vượt 15 fps nên ở đây chỉ chứng minh được *bloom tắt, pixelRatio
+  2→1→2, mode/describe đúng, bloom khôi phục đúng*; trần 15 fps chứng minh ở cổng
+  rAF. `actor.moveTo` ở nền: lệch **+1,0 % … +5,4 %** so với `durationMs` (đạt
+  ±10 %; trễ dương là khung swiftshader dài chặn hẹn giờ, chế độ thường cũng lệch
+  +4–5 %). Cú đi ĐẦU TIÊN của phiên lệch tới ~17 % ở chế độ thường (dựng clip +
+  biên dịch shader) — script hâm một cú trước khi đo.
+- **Cạm bẫy đo: `theoDoiFps` cũ đo sai khi máy chậm** — `dt` đã kẹp 1/20 s nên
+  `1/dt ≥ 20`, ở 2–4 fps thật bộ đếm chỉ cộng 50 ms mỗi khung → cần ~40 khung
+  (10–20 s) mới tự tắt bloom. Có từ A3, ngoài phạm vi V1, chưa sửa.
+- Driver não trong extension (`genStage.nao`): xem `vscode/README.md` (dùng chung
+  sổ PID/nhóm tiến trình; một driver cho một bridge, nhận diện driver ngoài bằng
+  argv `nao-(agy|local).mjs` + `GEN_STAGE_PORT`).

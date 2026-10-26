@@ -13,6 +13,18 @@ export interface CauHinh {
   tuBat: boolean;
   /** Lệnh pnpm (PATH của extension host có thể không thấy nvm/corepack). */
   pnpm: string;
+  /**
+   * V1 — driver não extension tự bật: `local` = `pnpm nao-local` (Ollama),
+   * `agy` = `pnpm nao` (agy CLI), `tat` = không bật gì. Scope machine.
+   */
+  nao: CheDoNao;
+}
+
+export type CheDoNao = 'local' | 'agy' | 'tat';
+
+/** Đọc setting `genStage.nao`; giá trị lạ = `tat` (không bao giờ đoán bật). */
+export function chuanNao(x: unknown): CheDoNao {
+  return x === 'local' || x === 'agy' ? x : 'tat';
 }
 
 export const MAC_DINH: Omit<CauHinh, 'root'> = {
@@ -21,6 +33,7 @@ export const MAC_DINH: Omit<CauHinh, 'root'> = {
   devPort: 5173,
   tuBat: true,
   pnpm: 'pnpm',
+  nao: 'tat',
 };
 
 /** Chỉ nói chuyện với máy này — bridge và vite đều bị ép nghe 127.0.0.1. */

@@ -245,6 +245,13 @@ export interface StageState {
    * trong app (spec mục 3.2d) thay vì đứng im chờ một cái não không tồn tại.
    */
   brainConnected: boolean;
+  /**
+   * V1 (INT-06) — **chế độ vẽ**: `full` = vẽ đủ; `nen` = Sếp đang ở app/tab
+   * khác (mất focus, tab ẩn, hoặc panel VS Code không active) → ≤ 15 fps, tắt
+   * bloom, pixel ratio 1. Hành động vẫn đúng `durationMs` (đồng hồ thật). Không
+   * lệnh nào đổi được trường này — chỉ người ngồi trước máy quyết định.
+   */
+  renderMode: 'full' | 'nen';
 }
 
 /* --------------------------------------------------------------- sân khấu */

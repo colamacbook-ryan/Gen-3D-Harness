@@ -17,10 +17,11 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "Restricted Mode: xem sân khấu + chatroom với bridge/vite có sẵn; KHÔNG tự bật tiến trình nào. genStage.pnpm/genStage.root không đọc từ workspace.",
+      "description": "Restricted Mode: xem sân khấu + chatroom với bridge/vite có sẵn; KHÔNG tự bật tiến trình nào (kể cả driver não). genStage.pnpm/genStage.root/genStage.nao không đọc từ workspace.",
       "restrictedConfigurations": [
         "genStage.pnpm",
-        "genStage.root"
+        "genStage.root",
+        "genStage.nao"
       ]
     }
   },
@@ -98,6 +99,18 @@
           "type": "string",
           "default": "pnpm",
           "description": "Lệnh pnpm: tên lệnh tìm trong PATH (chỉ các thư mục tuyệt đối) hoặc đường dẫn tuyệt đối — đường dẫn tương đối bị từ chối. Chỉ đặt được ở User settings (scope machine).",
+          "scope": "machine"
+        },
+        "genStage.nao": {
+          "type": "string",
+          "enum": ["tat", "local", "agy"],
+          "enumDescriptions": [
+            "Không bật driver não nào (mặc định).",
+            "`pnpm nao-local` — não LLM local (Ollama), chạy offline.",
+            "`pnpm nao` — driver agy CLI (giữ agy ấm trong tmux)."
+          ],
+          "default": "tat",
+          "description": "Driver não extension tự bật (chỉ trong workspace đã tin cậy, cần genStage.root hoặc root đã được xác nhận). Chỉ MỘT driver cho một bridge: đã có driver khác nối cùng cổng thì không bật thêm; đổi setting thì tắt driver cũ do VS Code bật. Chỉ đặt được ở User settings (scope machine).",
           "scope": "machine"
         }
       }

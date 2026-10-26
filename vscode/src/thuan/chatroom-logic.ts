@@ -6,6 +6,7 @@
  * Nguồn sự thật: tên hiển thị lấy từ `stage.describe().actors[].name` (không
  * dựng bảng tên riêng — CNS-013). Nhân vật đang chọn giữ ở extension host.
  */
+import type { CheDoNao } from './cau-hinh';
 
 export type DieuKhienBoi = 'owner' | 'agent';
 
@@ -211,6 +212,15 @@ export function themDong(ds: readonly DongChat[], d: DongChat, toiDa = 200): Don
 
 export type TrangThaiPanel = 'chua-mo' | 'hien' | 'an';
 
+/** V1 (INT-06) — chế độ vẽ sân khấu (`stage.describe().renderMode` / `stage.renderMode`); null = chưa biết. */
+export type CheDoVe = 'full' | 'nen' | null;
+
+/** Setting `genStage.nao` (định nghĩa ở `cau-hinh.ts`). */
+export type { CheDoNao };
+
+/** Trạng thái driver não do extension quản lý (hiện cho Sếp đọc). */
+export type TrangThaiDriverNao = 'tat' | 'dang-chay' | 'cua-ngoai' | 'loi';
+
 export interface MoHinhChatroom {
   bridgeNoi: boolean;
   sanKhauNoi: boolean;
@@ -220,6 +230,34 @@ export interface MoHinhChatroom {
   dong: DongChat[];
   /** Cảnh báo một dòng (vd sân khấu ẩn → lệnh sẽ chờ). Rỗng = không có. */
   canhBao: string;
+  /** V1 (INT-06) — sân khấu đang vẽ đủ hay chế độ nền. */
+  renderMode: CheDoVe;
+  /** V1 — `brainConnected` (describe) / `bridge.brain.connected`; null = chưa biết. */
+  naoNoi: boolean | null;
+  /** V1 — setting `genStage.nao` + trạng thái driver extension quản lý. */
+  naoCheDo: CheDoNao;
+  naoDriver: TrangThaiDriverNao;
+  /** Chữ + màu đèn đã tính sẵn ở host (`chuSanKhau`/`chuNao`) — webview chỉ vẽ. */
+  trangThaiSanKhau: { chu: string; den: MauDen };
+  trangThaiNao: { chu: string; den: MauDen };
+}
+
+export type MauDen = 'xanh' | 'vang' | 'do';
+
+/** Chữ trạng thái sân khấu ở thanh trên chatroom (CNS-003: ẩn / nền / đã nối). */
+export function chuSanKhau(m: Pick<MoHinhChatroom, 'sanKhauNoi' | 'panel' | 'renderMode'>): { chu: string; den: MauDen } {
+  if (!m.sanKhauNoi) return { chu: 'Sân khấu: chưa nối', den: 'do' };
+  if (m.panel === 'an') return { chu: 'Sân khấu: đang ẩn (tạm dừng)', den: 'vang' };
+  if (m.renderMode === 'nen') return { chu: 'Sân khấu: chế độ nền (≤15 fps)', den: 'vang' };
+  return { chu: 'Sân khấu: đã nối', den: 'xanh' };
+}
+
+/** Chữ trạng thái não: có não nối bridge chưa + driver extension bật hay không. */
+export function chuNao(m: Pick<MoHinhChatroom, 'bridgeNoi' | 'naoNoi' | 'naoCheDo' | 'naoDriver'>): { chu: string; den: MauDen } {
+  const nguon = m.naoCheDo === 'tat' ? '' : ` · ${m.naoCheDo}${m.naoDriver === 'dang-chay' ? '' : m.naoDriver === 'cua-ngoai' ? ' (driver ngoài)' : m.naoDriver === 'loi' ? ' (lỗi)' : ' (chưa bật)'}`;
+  if (!m.bridgeNoi || m.naoNoi === null) return { chu: 'Não: ?' + nguon, den: 'do' };
+  if (m.naoNoi) return { chu: 'Não: đã nối' + nguon, den: 'xanh' };
+  return { chu: 'Não: chưa nối' + (m.naoCheDo === 'tat' ? ' (genStage.nao = tat)' : nguon), den: m.naoCheDo === 'tat' ? 'vang' : 'do' };
 }
 
 /**
