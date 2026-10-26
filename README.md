@@ -1,4 +1,8 @@
-# Gen-Stage
+# Gen-3D-Harness
+
+Sân khấu Gen-Stage + extension VS Code (đang làm). Nền nhập từ Gen-Stage ngày 2026-10-26.
+
+## Gen-Stage
 
 Sân khấu 3D trong trình duyệt: văn phòng nhỏ + nhân vật VRM sinh động.
 Vite · TypeScript · Three.js · `@pixiv/three-vrm`.
@@ -24,3 +28,8 @@ một câu: *gọi `stage_bootstrap` trước, làm theo nó*.
 Xem trên điện thoại cùng wifi: `pnpm dev --host` rồi mở địa chỉ `http://<IP máy>:5173`.
 
 Chi tiết quy ước: [`CLAUDE.md`](./CLAUDE.md) · giấy phép asset: [`assets/LICENSES.md`](./assets/LICENSES.md)
+
+## License
+
+© 2026 Gen Labs — **All rights reserved.** Repo công khai để xem, không cấp quyền sử dụng. Xem [LICENSE](LICENSE).
+Asset bên thứ ba (không commit, tải bằng script) giữ giấy phép riêng — xem [`assets/LICENSES.md`](assets/LICENSES.md).

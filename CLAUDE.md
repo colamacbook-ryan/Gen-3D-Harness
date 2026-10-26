@@ -1,4 +1,17 @@
-# Gen-Stage
+# Gen-3D-Harness (nền: Gen-Stage)
+
+> Bộ não (SSOT) của Ryan × Gen nằm ở repo **colamacbook-ryan/Second-Brain**. Nếu phiên này chưa có Second-Brain:
+> gắn thêm repo đó vào phiên, đọc `CLAUDE.md` + `claude/START-HERE.md` của nó trước khi làm việc.
+> Ghi nhớ, quyết định, journal luôn viết vào Second-Brain (dự án `01-projects/gen-stage-vscode/`: INTENT, kiến trúc, audit CNS);
+> repo này chỉ chứa code + tài liệu của chính nó.
+>
+> **Nguồn gốc:** nhập toàn bộ từ `Genesis-ryan-84-0567536339/gen-stage` (giữ lịch sử) ngày 2026-10-26 theo lệnh Ryan
+> ("clone hết về repo Gen-3D-Harness để làm thành dự án độc lập trọn bộ"). Từ đây Gen-3D-Harness là dự án độc lập;
+> đồng bộ thêm từ repo cũ chỉ khi Ryan yêu cầu (`git fetch genstage main` rồi merge).
+> **License:** © 2026 Gen Labs — All rights reserved (xem `LICENSE`).
+> **Thư mục `vscode/`** (đang làm): extension VS Code — sân khấu trong tab editor + chatroom cột phải + não LLM local.
+
+## Gen-Stage (lõi sân khấu)
 
 Sân khấu 3D chạy trong trình duyệt, điều khiển bằng **một bộ lệnh cố định**
 (Actor API v0.1 — `docs/spec/actor-api.md`). Mọi đường vào (nút trên giao diện,
