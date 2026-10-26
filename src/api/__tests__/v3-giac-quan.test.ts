@@ -5,6 +5,7 @@
  * Chạy trên sân khấu giả, đồng hồ tiêm được — không sleep theo số giây thật.
  */
 import { beforeEach, describe, expect, it } from 'vitest';
+import { boKyTuLa } from '../commands/stage';
 import { Dispatcher } from '../dispatcher';
 import { taoRegistry } from '../commands/index';
 import { TOI_DA_SUMMARY } from '../commands/stage';
@@ -222,3 +223,10 @@ describe('phản xạ giác quan IDE', () => {
     m.may.dung();
   });
 });
+
+describe('review bảo mật 26/10 — chữ từ IDE', () => {
+  it('boKyTuLa bỏ ký tự điều khiển + bidi', () => {
+    expect(boKyTuLa('a\u0007b\u202Ec\u2066d\u0085e')).toBe('a b c d e');
+  });
+});
+

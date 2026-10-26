@@ -454,7 +454,7 @@ describe('nao-local — V3 giác quan IDE', () => {
     await driver.hangDoi.choHet();
     await ngu(30);
     expect(ollama.yeuCau).toHaveLength(1);
-    expect(ollama.yeuCau[0].messages[1].content).toMatch(/^VIỆC THẬT TRONG IDE CỦA SẾP «Sếp vừa chạy test — hỏng: Test "unit" fail \(mã 1\)»/);
+    expect(ollama.yeuCau[0].messages[1].content).toMatch(/^VIỆC THẬT TRONG IDE CỦA SẾP «Sếp vừa chạy test — hỏng»/);
     expect(bridge.lenh.some((l) => l.cmd === 'actor.turnTo')).toBe(false);
     // driver nói hộ câu của model, KHÔNG cắt ngang (ưu tiên thấp)
     expect(lenhSay()).toEqual([{ cmd: 'actor.say', args: { actor: 'gen', text: 'Test đỏ rồi Sếp, để em xem cùng', interrupt: false } }]);

@@ -28,6 +28,15 @@ export const TOI_DA_MANG_DATA = 20;
  * Kiểm `data` của `stage.notice`: object phẳng, giá trị là số hữu hạn, boolean,
  * chuỗi ngắn hoặc mảng ngắn các số/chuỗi ngắn. Sai thì ném lỗi (không cắt lặng).
  */
+/**
+ * Bỏ ký tự điều khiển C0/C1 và ký tự định dạng/đảo chiều bidi (U+200B–U+200F, U+202A–U+202E,
+ * U+2066–U+2069, U+FEFF) khỏi chữ đến từ IDE — chữ này hiện cho Sếp và có thể tới tay agent
+ * (review bảo mật 26/10).
+ */
+export function boKyTuLa(s: string): string {
+  return s.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, ' ');
+}
+
 export function kiemDataNotice(x: unknown): Record<string, unknown> {
   if (!x || typeof x !== 'object' || Array.isArray(x)) throw new Error('data phải là object phẳng');
   const ra: Record<string, unknown> = {};
@@ -40,9 +49,10 @@ export function kiemDataNotice(x: unknown): Record<string, unknown> {
   for (const k of khoa) {
     if (k.length > 40) throw new Error(`data: tên khoá quá dài "${k.slice(0, 20)}…"`);
     const v = (x as Record<string, unknown>)[k];
-    if (giaTriDon(v)) ra[k] = v;
+    const sach = (p: unknown): unknown => (typeof p === 'string' ? boKyTuLa(p) : p);
+    if (giaTriDon(v)) ra[k] = sach(v);
     else if (Array.isArray(v) && v.length <= TOI_DA_MANG_DATA && v.every((p) => typeof p !== 'boolean' && giaTriDon(p))) {
-      ra[k] = [...v];
+      ra[k] = v.map(sach);
     } else {
       throw new Error(
         `data.${k}: chỉ nhận số, boolean, chuỗi ≤ ${TOI_DA_CHUOI_DATA} ký tự hoặc mảng ≤ ${TOI_DA_MANG_DATA} phần tử như thế`,
@@ -204,7 +214,8 @@ export const LENH_STAGE: CommandSpec[] = [
     ],
     example: { cmd: 'stage.notice', args: { kind: 'test', level: 'bad', summary: 'Test "unit" fail (mã 1)' } },
     handler(a, ctx) {
-      const summary = String(a.summary).replace(/\s+/g, ' ').trim();
+      // bỏ ký tự điều khiển C0/C1 + định dạng/đảo chiều bidi trước khi gộp khoảng trắng — review bảo mật 26/10
+      const summary = boKyTuLa(String(a.summary)).replace(/\s+/g, ' ').trim();
       if (!summary) throw new Error('summary rỗng');
       if (summary.length > TOI_DA_SUMMARY) {
         throw new Error(`summary dài ${summary.length} ký tự (tối đa ${TOI_DA_SUMMARY})`);

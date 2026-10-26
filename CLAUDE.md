@@ -883,6 +883,10 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
   **và commit mới có cha = HEAD cũ** (*lệch đề*: đề chỉ nói "HEAD.commit đổi" — thêm điều kiện cha để checkout/reset/pull không
   thành "Sếp vừa commit"). Setting `genStage.giacQuan.batTat` + `save/diag/test/git` (scope window, đọc lại mỗi lần gửi);
   `isTrusted` kiểm mỗi lần gửi. Chatroom dòng "👁 …" chỉ cho notice gửi thành công.
+- **Prompt não KHÔNG chứa chữ tự do từ IDE (review bảo mật 26/10)**: `cauTuSuKienIde` chỉ dựng "Sếp vừa <việc> — <ổn|hỏng>"
+  (+ `mã thoát N` nếu `data.exitCode` là số nguyên) — commit message, tên task/file, `summary` đều là dữ liệu ngoài, có thể
+  chứa chỉ dẫn độc (prompt injection) mà não agy có quyền chạy công cụ. `summary`/chuỗi trong `data` vẫn hiện ở chatroom, đã qua
+  `boKyTuLa` (bỏ C0/C1 + bidi) trong handler `stage.notice`.
 - **Riêng tư**: chỉ `asRelativePath(uri,false)` của file `file:` trong workspace folder; `locDuong` bỏ tuyệt đối / `..` / `.git/`
   / `node_modules/` / ký tự điều khiển. Diagnostics chỉ đếm. Đường repo git chỉ làm khoá nội bộ.
 - `vscode/types/vscode.d.ts` thêm `TextDocument`, `Uri.scheme`, `DiagnosticSeverity`, `Diagnostic`, `DiagnosticChangeEvent`,

@@ -588,7 +588,12 @@ export function laSuKienIdeChoNao(event, data = {}) {
 export function cauTuSuKienIde(data = {}) {
   const viec = { test: 'chạy test', task: 'chạy task', git: 'commit' }[String(data.kind)] ?? String(data.kind);
   const ket = data.level === 'good' ? 'ổn' : 'hỏng';
-  return `Sếp vừa ${viec} — ${ket}: ${String(data.summary).replace(/\s+/g, ' ').trim()}`;
+  // CHỈ loại việc + kết quả (+ con số). KHÔNG đưa chữ tự do (commit message, tên task/file,
+  // summary) vào prompt não: đó là dữ liệu ngoài, có thể chứa chỉ dẫn độc (prompt injection),
+  // mà não agy có quyền chạy công cụ — review bảo mật 26/10.
+  const ma = data.data?.exitCode;
+  const so = typeof ma === 'number' && Number.isInteger(ma) ? ` (mã thoát ${ma})` : '';
+  return `Sếp vừa ${viec} — ${ket}${so}`;
 }
 
 /**
