@@ -7,13 +7,11 @@
  *    chi phối (giả thuyết lõi V0, kiểm bằng `scripts/kiem-vscode.mjs`).
  *  - Chatroom: không cần `connect-src` vì ws nằm ở extension host.
  */
+import { randomBytes } from 'node:crypto';
 
-/** 32 ký tự [A-Za-z0-9] — nonce cho `<script>`/`<style>`. */
-export function taoNonce(ngauNhien: () => number = Math.random): string {
-  const bang = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let s = '';
-  for (let i = 0; i < 32; i++) s += bang.charAt(Math.floor(ngauNhien() * bang.length));
-  return s;
+/** Nonce cho `<script>`/`<style>`: 128 bit từ CSPRNG, base64url (22 ký tự). */
+export function taoNonce(): string {
+  return randomBytes(16).toString('base64url');
 }
 
 /** Thoát chuỗi trước khi nhét vào thuộc tính/nội dung HTML. */
@@ -42,6 +40,14 @@ export function taoCspChatroom(cspSource: string, nonce: string): string {
     `script-src 'nonce-${nonce}' ${cspSource}`,
   ].join('; ');
 }
+
+/**
+ * sandbox của iframe sân khấu: scripts + same-origin (WebGL, Web Audio, ws, fetch,
+ * localStorage của app) + forms (ô chat là `<form>`, thiếu cờ này Enter không gửi)
+ * + downloads (nút "Xuất JSON" nhật ký). Không có top-navigation/popups/modals.
+ * iframe khác origin với vỏ (`vscode-webview://`) nên same-origin không cho nó chạm vào vỏ.
+ */
+export const SANDBOX_IFRAME = 'allow-scripts allow-same-origin allow-forms allow-downloads';
 
 export interface ThamSoHtmlSanKhau {
   /** URL iframe (đã kèm `?bridge=1`…). */
@@ -96,7 +102,7 @@ export function taoHtmlSanKhau(t: ThamSoHtmlSanKhau): string {
   <span id="trang-thai">Đang chờ sân khấu…</span>
 </div>
 <div id="khung">
-  <iframe id="san-khau" title="Sân khấu Gen-Stage" allow="autoplay" data-url="${thoatHtml(t.url)}"></iframe>
+  <iframe id="san-khau" title="Sân khấu Gen-Stage" allow="autoplay; clipboard-write" sandbox="${SANDBOX_IFRAME}" data-url="${thoatHtml(t.url)}"></iframe>
   <div id="che"></div>
 </div>
 <script nonce="${n}">
@@ -125,6 +131,8 @@ export function taoHtmlSanKhau(t: ThamSoHtmlSanKhau): string {
     vs.postMessage({ loai: 'taiLai' });
   });
   window.addEventListener('message', function (ev) {
+    // tin từ chính iframe sân khấu không phải lệnh của host — bỏ qua
+    if (ev.source === khung.contentWindow) return;
     const m = ev.data || {};
     if (m.lenh === 'napLai') napLai(m.url);
     else if (m.lenh === 'trangThai') trangThai(String(m.chu || ''), m.loi);

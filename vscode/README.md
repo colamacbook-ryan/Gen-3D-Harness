@@ -12,9 +12,9 @@ License: © 2026 Gen Labs — All rights reserved (`LICENSE`). Không thêm ph�
 
 | Phần | Làm gì |
 | --- | --- |
-| Lệnh **Gen-Stage: Mở sân khấu** | WebviewPanel `ViewColumn.Beside`, `retainContextWhenHidden`, `portMapping`, CSP `default-src 'none'; frame-src http://127.0.0.1:<devPort>`; iframe `http://127.0.0.1:5173/?bridge=1` (+`bridgePort`/`ttsPort` khi khác mặc định). Nút **Tải lại**; vite chưa chạy thì hiện hướng dẫn rõ thay vì khung trắng. Chỉ một panel — gọi lại thì `reveal()`. |
+| Lệnh **Gen-Stage: Mở sân khấu** | WebviewPanel `ViewColumn.Beside`, `retainContextWhenHidden`, `portMapping`, CSP `default-src 'none'; frame-src http://127.0.0.1:<devPort>` (đổi cổng khi tab đang mở → dựng lại vỏ + CSP); iframe `sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"`, vỏ bỏ qua mọi `postMessage` đến từ iframe; iframe `http://127.0.0.1:5173/?bridge=1` (+`bridgePort`/`ttsPort` khi khác mặc định). Nút **Tải lại**; vite chưa chạy thì hiện hướng dẫn rõ thay vì khung trắng. Chỉ một panel — gọi lại thì `reveal()`. |
 | **Chatroom** (cột phải) | Extension host giữ **một** ws client tới bridge (vai client, *không* `role=nao`). Danh sách nhân vật lấy từ `stage.describe` (tên hiển thị `name`), làm mới khi `actor.spawned/removed`, `bridge.stageOnline`, `stage.reset`. Bấm để chọn **người nghe** (lưu ở `workspaceState`). Log: `user.text`, `user.speech` (gộp với `user.text` cùng câu, gắn nhãn "nói"), `actor.sayStart`, `user.command` đã khớp. Ô gõ gửi `actor.say {actor:<owner>, text, to:<đang chọn>, interrupt:true}` — y như ô chat trong app; lớp hiểu lệnh trong sân khấu quyết người nhận cuối (tên gọi trong câu thắng, không gọi tên thì dùng `to`). |
-| Quản lý tiến trình | Dò cổng trước (bridge: TCP; sân khấu: `GET /` có `<title>` chứa "Gen-Stage"). Có sẵn thì **dùng lại, không bao giờ tắt**. Thiếu (và `genStage.tuBat`) thì bật `pnpm bridge` + `pnpm exec vite --host 127.0.0.1 --port <devPort> --strictPort`, `detached`, log vào OutputChannel "Gen-Stage". Tắt = SIGTERM **cả nhóm** (PID âm), chỉ cái mình bật. PID ghi ở `<repo>/.cache/vscode/tien-trinh.json` để lần kích hoạt sau nhận lại quyền nếu extension host chết ngang (CNS-012). |
+| Quản lý tiến trình | Dò cổng trước (bridge: TCP; sân khấu: `GET /` có `<title>` chứa "Gen-Stage"). Có sẵn thì **dùng lại, không bao giờ tắt**. Thiếu (và `genStage.tuBat`, workspace đã tin cậy, root đã xác nhận) thì bật `pnpm bridge` + `pnpm exec vite --host 127.0.0.1 --port <devPort> --strictPort`, `detached`. Gọi chồng nhau (mở tab + bấm lệnh cùng lúc) thì dùng chung một lượt — không bật đôi. Tiến trình chết ngay (sai lệnh, thiếu interpreter) thì báo ngay, không chờ 30 s. Tắt = SIGTERM **cả nhóm** (PID âm), chỉ cái mình bật, và chỉ khi nhóm đó vẫn đúng là nó (pgid = pid, starttime khớp). Xem "Sổ PID + log" bên dưới. |
 | Chế độ nền (INT-06) | `onDidChangeViewState` → vỏ panel chuyển tiếp `postMessage({nguon:"gen-stage-vscode", loai:"nen", visible, active})` xuống iframe (đúng origin). **App sân khấu chưa nghe tin này** (TODO V1, V0 không sửa `src/`). Chatroom hiện cảnh báo "Tab sân khấu đang ẩn — lệnh sẽ chờ" (CNS-003). |
 
 ## Cài thử
@@ -42,12 +42,36 @@ Rồi: `Ctrl+Shift+P` → **Gen-Stage: Mở sân khấu**. Chatroom: biểu tư�
 
 | Khoá | Mặc định | Ghi chú |
 | --- | --- | --- |
-| `genStage.root` | `""` | Repo Gen-Stage. Trống = workspace folder có `bridge/server.ts`, rồi thư mục cha của extension. |
+| `genStage.root` | `""` | Repo Gen-Stage. **scope `machine`** — chỉ đặt ở User settings, workspace không ghi đè được. Trống = workspace folder có `bridge/server.ts`, rồi thư mục cha của extension; root **tự dò** phải được xác nhận (hộp thoại modal) một lần, nhớ theo workspace (`workspaceState`), trước khi tự bật tiến trình. |
 | `genStage.bridgePort` | 8787 | ws bridge (truyền cho bridge qua `GEN_STAGE_PORT` khi tự bật) |
 | `genStage.ttsPort` | 8788 | TTS (`GEN_STAGE_TTS_PORT`) |
 | `genStage.devPort` | 5173 | vite |
 | `genStage.tuBat` | `true` | Cổng trống thì tự bật bridge/vite |
-| `genStage.pnpm` | `pnpm` | Đặt đường dẫn tuyệt đối nếu PATH của VS Code không thấy nvm/corepack |
+| `genStage.pnpm` | `pnpm` | **scope `machine`**. Chỉ nhận **tên lệnh** (tìm trong các thư mục *tuyệt đối* của PATH — bỏ qua `.`/mục rỗng) hoặc **đường dẫn tuyệt đối**; đường dẫn tương đối bị từ chối. Đặt đường dẫn tuyệt đối nếu PATH của VS Code không thấy nvm/corepack |
+
+### Workspace trust
+
+`capabilities.untrustedWorkspaces = { supported: "limited", restrictedConfigurations: ["genStage.pnpm", "genStage.root"] }`.
+Chọn `limited` (không phải `false`) vì ở Restricted Mode extension vẫn có ích và vô hại: xem sân khấu + chatroom
+với bridge/vite Sếp đã tự bật. Thứ nguy hiểm duy nhất — **tự spawn tiến trình** — bị khoá khi
+`!vscode.workspace.isTrusted` (panel hiện lý do); tin cậy workspace xong thì tự dò lại. `genStage.pnpm`/`root`
+khai `scope: "machine"` nên một repo lạ không thể cài `.vscode/settings.json` trỏ `pnpm` tới script của nó.
+
+### Sổ PID + log
+
+- Nằm trong **`globalStorageUri`** của extension (Linux: `~/.config/Code/User/globalStorage/gen-labs.gen-stage-vscode/`),
+  **không** ghi gì vào repo: `tien-trinh.json` (quyền 600) và `logs/<bridge|vite>-<cổng>.log`. Đường dẫn sổ in ở dòng
+  `[khởi động] sổ tiến trình: …` trong "Gen-Stage: Xem nhật ký".
+- stdout/stderr con ghi **thẳng vào file log qua fd** (không pipe): extension host chết thì con không chết theo vì
+  EPIPE. Host tail file đó ra OutputChannel.
+- Mỗi mục sổ: `pid`, `starttime` (field 22 `/proc/<pid>/stat`), `boot_id`, `root`, và **chủ sở hữu** = PID +
+  starttime của extension host đã bật. Nhận lại quyền (CNS-012) chỉ khi **tất cả** đúng: pid > 1 và không phải chính
+  mình, cùng `boot_id`, starttime khớp (chống PID tái sử dụng), là trưởng nhóm, `/proc/<pid>/cwd` = root, argv khớp
+  chữ ký tính **từ mã** (`<pnpm> bridge` / `<pnpm> exec vite --host 127.0.0.1 --port <devPort> --strictPort` — không
+  tin chuỗi nào trong file), **và cửa sổ chủ cũ đã chết**.
+- **Nhiều cửa sổ VS Code**: sổ dùng chung (globalStorage). Cửa sổ không phải chủ chỉ **dùng lại** dịch vụ, không bao
+  giờ tắt; nếu chủ đang bật dở (cổng chưa lên) thì cửa sổ kia chờ chứ không bật đôi. Chủ đóng/chết → cửa sổ kế tiếp
+  dò cổng sẽ nhận lại quyền.
 
 ## Cột phải (Secondary Side Bar) — đã kiểm nguồn
 
@@ -63,10 +87,13 @@ Nếu VS Code của Sếp cũ hơn 1.106 thì extension không cài được (en
 
 ```bash
 pnpm -C vscode check     # tsc --noEmit, strict, cả host lẫn webview
-pnpm -C vscode test      # build + node:test (28 test: CSP/HTML, sự kiện→dòng chat, chọn người nghe,
-                         #   dò cổng với server thật, bật/nhận lại/tắt NHÓM tiến trình bằng pnpm giả, ws client với bridge giả)
-node scripts/kiem-vscode.mjs   # V0-3/V0-4: bridge + vite THẬT ở cổng riêng 8827-8830/5193, vỏ panel + chatroom trong
-                               # Chromium với acquireVsCodeApi giả → ảnh + nhật ký vào docs/vscode-v0/
+pnpm -C vscode test      # build + node:test (37 test: CSP/HTML/nonce, vỏ bỏ qua tin từ iframe, sự kiện→dòng chat,
+                         #   chọn người nghe, dò cổng với server thật, bật/nhận lại/tắt NHÓM tiến trình bằng pnpm giả,
+                         #   sổ PID độc (0/-1/1/chính mình/PID tái sử dụng/dauHieu rỗng), race batNeuCan, nhiều cửa sổ,
+                         #   bật hỏng thoát sớm, ws client với bridge giả + nhịp tim treo)
+node scripts/kiem-vscode.mjs   # V0-3/V0-4: bridge + vite THẬT ở cổng riêng 8850-8854/5203, vỏ panel + chatroom trong
+                               # Chromium với acquireVsCodeApi giả → ảnh + nhật ký vào docs/vscode-v0/; kiểm iframe
+                               # sandbox vẫn chạy WebGL/Web Audio/localStorage/fetch/ws/form ô chat
 ```
 
 Kiểu `vscode`: repo không thêm `@types/vscode`; `types/vscode.d.ts` khai báo tối thiểu phần extension dùng, chép từ

@@ -18,6 +18,8 @@ interface TinTuVo {
 export class SanKhauPanel {
   private panel: vscode.WebviewPanel | undefined;
   private dangDo = false;
+  /** Có yêu cầu dò trong lúc đang dò (vd. vỏ vừa dựng lại) → dò thêm một lượt khi xong. */
+  private canDoLai = false;
 
   constructor(
     private readonly ctx: vscode.ExtensionContext,
@@ -38,21 +40,13 @@ export class SanKhauPanel {
       'Sân khấu',
       { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
       {
-        enableScripts: true,
         retainContextWhenHidden: true,
-        localResourceRoots: [vscode.Uri.joinPath(this.ctx.extensionUri, 'media')],
-        // cùng cổng hai đầu — cách d.ts khuyên; chạy local thì là ánh xạ đồng nhất
-        portMapping: [{ webviewPort: cfg.devPort, extensionHostPort: cfg.devPort }],
+        ...this.tuyChonWebview(cfg),
       },
     );
     this.panel = panel;
     panel.iconPath = vscode.Uri.joinPath(this.ctx.extensionUri, 'media', 'icon.svg');
-    panel.webview.html = taoHtmlSanKhau({
-      url: urlSanKhau(cfg),
-      origin: originSanKhau(cfg),
-      cspSource: panel.webview.cspSource,
-      nonce: taoNonce(),
-    });
+    this.dungVo(panel, cfg);
 
     panel.webview.onDidReceiveMessage(
       (m: TinTuVo) => {
@@ -87,15 +81,51 @@ export class SanKhauPanel {
     this.khiDoiHienAn('hien');
   }
 
+  private tuyChonWebview(cfg: CauHinh): vscode.WebviewOptions {
+    return {
+      enableScripts: true,
+      localResourceRoots: [vscode.Uri.joinPath(this.ctx.extensionUri, 'media')],
+      // cùng cổng hai đầu — cách d.ts khuyên; chạy local thì là ánh xạ đồng nhất
+      portMapping: [{ webviewPort: cfg.devPort, extensionHostPort: cfg.devPort }],
+    };
+  }
+
+  /** Dựng vỏ (CSP `frame-src` gắn với devPort). Vỏ nạp xong tự gửi `sanSang` → kiemVaNap. */
+  private dungVo(panel: vscode.WebviewPanel, cfg: CauHinh): void {
+    panel.webview.html = taoHtmlSanKhau({
+      url: urlSanKhau(cfg),
+      origin: originSanKhau(cfg),
+      cspSource: panel.webview.cspSource,
+      nonce: taoNonce(),
+    });
+  }
+
+  /**
+   * Cấu hình đổi khi tab đang mở: cổng sân khấu/bridge/tts nằm trong CSP,
+   * `portMapping` và URL iframe → dựng lại vỏ, không thì CSP cũ chặn iframe mới.
+   */
+  doiCauHinh(cu: CauHinh, moi: CauHinh): void {
+    const panel = this.panel;
+    if (!panel) return;
+    if (cu.devPort === moi.devPort && cu.bridgePort === moi.bridgePort && cu.ttsPort === moi.ttsPort) return;
+    this.ghi(`[sân khấu] cổng đổi (${cu.devPort} → ${moi.devPort}) — dựng lại vỏ`);
+    panel.webview.options = this.tuyChonWebview(moi);
+    this.dungVo(panel, moi);
+  }
+
   /** Dò (và tự bật nếu được phép) rồi nạp iframe, hoặc nói rõ vì sao chưa nạp. */
   async kiemVaNap(): Promise<void> {
     const panel = this.panel;
-    if (!panel || this.dangDo) return;
+    if (!panel) return;
+    if (this.dangDo) {
+      this.canDoLai = true;
+      return;
+    }
     this.dangDo = true;
     try {
-      const cfg = this.layCfg();
       void panel.webview.postMessage({ lenh: 'trangThai', chu: 'Đang dò bridge + vite…', loi: false });
       const { tt, canhBao } = await this.tienTrinh.batNeuCan();
+      const cfg = this.layCfg();
       if (tt.sanKhau === 'gen-stage') {
         void panel.webview.postMessage({ lenh: 'napLai', url: urlSanKhau(cfg) });
         if (!tt.bridge) {
@@ -119,6 +149,10 @@ export class SanKhauPanel {
       void panel.webview.postMessage({ lenh: 'trangThai', chu, loi: true });
     } finally {
       this.dangDo = false;
+      if (this.canDoLai) {
+        this.canDoLai = false;
+        void this.kiemVaNap();
+      }
     }
   }
 

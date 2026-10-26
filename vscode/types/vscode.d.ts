@@ -37,6 +37,12 @@ declare module 'vscode' {
     readonly workspaceState: Memento;
     readonly extensionUri: Uri;
     readonly extensionPath: string;
+    readonly globalStorageUri: Uri;
+  }
+
+  export interface MessageOptions {
+    modal?: boolean;
+    detail?: string;
   }
 
   export enum ViewColumn {
@@ -149,6 +155,7 @@ declare module 'vscode' {
     ): Disposable;
     export function showInformationMessage<T extends string>(message: string, ...items: T[]): Thenable<T | undefined>;
     export function showWarningMessage<T extends string>(message: string, ...items: T[]): Thenable<T | undefined>;
+    export function showWarningMessage<T extends string>(message: string, options: MessageOptions, ...items: T[]): Thenable<T | undefined>;
   }
 
   export namespace commands {
@@ -159,5 +166,7 @@ declare module 'vscode' {
     export const workspaceFolders: readonly WorkspaceFolder[] | undefined;
     export function getConfiguration(section?: string): WorkspaceConfiguration;
     export const onDidChangeConfiguration: Event<ConfigurationChangeEvent>;
+    export const isTrusted: boolean;
+    export const onDidGrantWorkspaceTrust: Event<void>;
   }
 }

@@ -15,6 +15,9 @@ import { SoChatroom } from './thuan/so-chatroom';
 import { QuanLyTienTrinh } from './thuan/tien-trinh';
 
 const KHOA_CHON = 'genStage.dangChon';
+/** Root TỰ DÒ mà Sếp đã cho phép chạy tiến trình trong đó (theo workspace). */
+const KHOA_ROOT_DUYET = 'genStage.rootDaDuyet';
+const NUT_CHO_PHEP = 'Cho phép';
 
 let tienTrinh: QuanLyTienTrinh | undefined;
 let cauNoi: CauNoi | undefined;
@@ -23,20 +26,28 @@ function laRepoGenStage(thuMuc: string): boolean {
   return fs.existsSync(path.join(thuMuc, 'bridge', 'server.ts'));
 }
 
-/** genStage.root → workspace folder có bridge/server.ts → thư mục cha của extension (chạy F5 từ repo). */
-function timRoot(cauHinhRoot: string, extensionPath: string): string {
-  if (cauHinhRoot) return cauHinhRoot;
+/**
+ * genStage.root (scope machine — chỉ Sếp đặt được) → workspace folder có
+ * bridge/server.ts → thư mục cha của extension (chạy F5 từ repo).
+ * `tuDo = true` khi root KHÔNG do Sếp đặt: phải hỏi xác nhận trước khi chạy gì trong đó.
+ */
+function timRoot(cauHinhRoot: string, extensionPath: string): { root: string; tuDo: boolean } {
+  if (cauHinhRoot) return { root: path.resolve(cauHinhRoot), tuDo: false };
   for (const f of vscode.workspace.workspaceFolders ?? []) {
-    if (laRepoGenStage(f.uri.fsPath)) return f.uri.fsPath;
+    if (laRepoGenStage(f.uri.fsPath)) return { root: f.uri.fsPath, tuDo: true };
   }
   const cha = path.resolve(extensionPath, '..');
-  return laRepoGenStage(cha) ? cha : '';
+  return { root: laRepoGenStage(cha) ? cha : '', tuDo: true };
 }
+
+let rootTuDo = true;
 
 function docCauHinh(extensionPath: string): CauHinh {
   const c = vscode.workspace.getConfiguration('genStage');
+  const r = timRoot(String(c.get<string>('root') ?? '').trim(), extensionPath);
+  rootTuDo = r.tuDo;
   return {
-    root: timRoot(String(c.get<string>('root') ?? '').trim(), extensionPath),
+    root: r.root,
     bridgePort: chuanCong(c.get('bridgePort'), MAC_DINH.bridgePort),
     ttsPort: chuanCong(c.get('ttsPort'), MAC_DINH.ttsPort),
     devPort: chuanCong(c.get('devPort'), MAC_DINH.devPort),
@@ -52,9 +63,43 @@ export function activate(ctx: vscode.ExtensionContext): void {
 
   let cfg = docCauHinh(ctx.extensionPath);
   // V0 — bằng chứng runtime cho nhận định "extension host có WebSocket toàn cục"
-  ghi(`[khởi động] node ${process.versions.node} · WebSocket: ${chonNhaMayWs().nguon} · root: ${cfg.root || '(chưa thấy)'}`);
+  ghi(
+    `[khởi động] node ${process.versions.node} · WebSocket: ${chonNhaMayWs().nguon} · root: ${cfg.root || '(chưa thấy)'}` +
+      `${rootTuDo ? ' (tự dò)' : ''} · workspace tin cậy: ${vscode.workspace.isTrusted ? 'có' : 'KHÔNG'}`,
+  );
 
-  tienTrinh = new QuanLyTienTrinh(cfg, ghi);
+  // Root tự dò mà Sếp bấm "không" trong phiên này → không hỏi lại mỗi lần mở tab
+  // (lệnh "Bật bridge + sân khấu" thì hỏi lại).
+  let tuChoiPhien: string | null = null;
+  const choPhepBat = async (): Promise<string | null> => {
+    if (!vscode.workspace.isTrusted) {
+      return 'Workspace chưa được tin cậy (Restricted Mode) — Gen-Stage không tự bật tiến trình. Tin cậy workspace, hoặc tự chạy `pnpm bridge` + `pnpm dev`.';
+    }
+    if (!rootTuDo) return null; // genStage.root do chính Sếp đặt (scope machine)
+    if (ctx.workspaceState.get<string>(KHOA_ROOT_DUYET) === cfg.root) return null;
+    const tuChoi = `Chưa được phép chạy tiến trình trong ${cfg.root} — chạy lệnh "Gen-Stage: Bật bridge + sân khấu" để được hỏi lại, hoặc đặt genStage.root.`;
+    if (tuChoiPhien === cfg.root) return tuChoi;
+    const chon = await vscode.window.showWarningMessage(
+      'Gen-Stage muốn tự chạy `pnpm bridge` và vite trong thư mục tự dò được.',
+      {
+        modal: true,
+        detail: `${cfg.root}\n\nChỉ cho phép nếu đây đúng là repo Gen-Stage Sếp tin. Lựa chọn được nhớ cho workspace này.`,
+      },
+      NUT_CHO_PHEP,
+    );
+    if (chon === NUT_CHO_PHEP) {
+      await ctx.workspaceState.update(KHOA_ROOT_DUYET, cfg.root);
+      ghi(`[tiến trình] Sếp cho phép chạy trong ${cfg.root}`);
+      return null;
+    }
+    tuChoiPhien = cfg.root;
+    return tuChoi;
+  };
+
+  // Sổ PID + log tiến trình con nằm trong globalStorage (dùng chung mọi cửa sổ,
+  // để biết cửa sổ nào là chủ) — không ghi gì vào repo.
+  tienTrinh = new QuanLyTienTrinh(cfg, ghi, { thuMuc: ctx.globalStorageUri.fsPath, choPhepBat });
+  ghi(`[khởi động] sổ tiến trình: ${tienTrinh.fileSo()}`);
   tienTrinh.nhanLai();
 
   const so = new SoChatroom(ctx.workspaceState.get<string>(KHOA_CHON) ?? null, (id) => {
@@ -103,6 +148,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
   ctx.subscriptions.push(
     vscode.commands.registerCommand('genStage.moSanKhau', () => sanKhau.mo()),
     vscode.commands.registerCommand('genStage.batDichVu', async () => {
+      tuChoiPhien = null;
       const kq = await tienTrinh!.batNeuCan();
       const chu = `Bridge ${cfg.bridgePort}: ${kq.tt.bridge ? 'đang chạy' : 'CHƯA chạy'} · Sân khấu ${cfg.devPort}: ${kq.tt.sanKhau}`;
       ghi(`[lệnh] ${chu}`);
@@ -122,8 +168,13 @@ export function activate(ctx: vscode.ExtensionContext): void {
       const cu = cfg;
       cfg = docCauHinh(ctx.extensionPath);
       tienTrinh?.datCauHinh(cfg);
-      ghi('[cấu hình] đã đổi — cổng sân khấu mới áp dụng khi mở lại tab Sân khấu');
+      ghi('[cấu hình] đã đổi');
       if (cu.bridgePort !== cfg.bridgePort) cauNoi?.doiUrl(urlBridge(cfg));
+      sanKhau.doiCauHinh(cu, cfg);
+    }),
+    vscode.workspace.onDidGrantWorkspaceTrust(() => {
+      ghi('[khởi động] workspace vừa được tin cậy — được phép tự bật tiến trình');
+      void sanKhau.kiemVaNap();
     }),
   );
 
