@@ -609,6 +609,8 @@ export function batMcpHttp(ts: ThamSoHttp): HttpServer {
     await transport.handleRequest(req, res, than);
   }
 
+  // cổng MCP bận không được kéo sập cả bridge (ws + giọng vẫn dùng được)
+  sv.on('error', (e) => console.error(`[mcp ] không nghe được ${host}:${cong} — ${(e as Error).message}; MCP HTTP tắt`));
   sv.listen(cong, host, () => {
     console.log(`[mcp ] đang nghe http://${host}:${cong}/mcp  (POST, streamable)`);
     console.log(

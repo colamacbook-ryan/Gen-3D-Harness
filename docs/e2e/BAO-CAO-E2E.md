@@ -52,7 +52,7 @@ Log kênh Gen-Stage: `[khởi động] node 24.21.0 · WebSocket: toan-cuc`. Log
 FAIL: **sân khấu không hiện trong panel** (ảnh `vscode-that-loi-bo-loc.png`) — bug B1. Soi webview qua CDP: vỏ nhận đủ `napLai`/`hienAn`/`trangThai` từ host nhưng `ev.source` **không phải** `window.parent` (cũng không phải `null`/`window.top`/chính nó) → bị bộ lọc vứt hết, iframe không bao giờ có `src`.
 Mô phỏng bản sửa (gán `src` như `napLai` sẽ làm) + cờ GL `--ignore-gpu-blocklist --use-angle=swiftshader --enable-unsafe-swiftshader`: app nạp, WebGL2 có, sân khấu nối bridge sau 31 s, `actor.say` qua bridge chạy, chatroom "Sân khấu: đã nối" (ảnh `vscode-mo-phong-sua-bo-loc.png`). `stage.describe().renderMode` = `"nen"` dù panel đang active — vì tin `hienAn` cũng bị cùng bộ lọc vứt (INT-06 hỏng theo B1). Không có cờ GL thì Electron trong xvfb không tạo được WebGL (llvmpipe nằm trong danh sách chặn) — đó là chuyện môi trường cloud, không phải bug.
 
-## Bug sản phẩm tìm thấy (chưa sửa — báo Gen)
+## Bug sản phẩm tìm thấy (đã sửa — xem mục "Sau khi sửa")
 
 | # | Mức | Chỗ | Mô tả · tái hiện |
 | --- | --- | --- | --- |
@@ -65,6 +65,26 @@ Mô phỏng bản sửa (gán `src` như `napLai` sẽ làm) + cờ GL `--ignore
 | B7 | Thấp, chưa kiểm hậu quả | `vscode/src/thuan/tien-trinh.ts:49` (`lenhBridge`) | Không có cấu hình cổng MCP: bridge do extension bật luôn nghe 8789 dù `bridgePort` khác — hai bridge cùng máy sẽ tranh 8789. E2E này lách bằng env `GEN_STAGE_MCP_PORT` |
 
 Môi trường (không phải bug): TTS Edge trả 502 (`Unexpected server response: 200`) qua proxy cloud; Electron trong xvfb cần cờ swiftshader mới có WebGL.
+
+## Sau khi sửa (26/10, cùng ngày)
+
+| # | Sửa ở đâu | Cách sửa |
+| --- | --- | --- |
+| B1 | `vscode/src/thuan/html.ts` | Vỏ nhận tin host khi `ev.source === window.parent` **hoặc** `ev.origin === location.origin` (origin `vscode-webview://…` của chính webview); tin từ `khung.contentWindow` luôn bị bỏ. Iframe sân khấu (`http://127.0.0.1:…`) khác origin nên không giả được host. Test `thuan.test.mjs` thêm ca "source lạ nhưng cùng origin webview" và "origin lạ". |
+| B2 | `src/api/commands/actor.ts` | `actor.moveTo` kiểm `hd.cancelled()` trước khi bắn `actor.arrived` (như `emote`). Test tái hiện của tester thành `src/api/__tests__/e2e-b2-arrived.test.ts`. |
+| B3 | `scripts/nao-agy.mjs` `phanXa` | Bỏ `interrupt: true` ở `actor.turnTo`: Gen đang bận việc C2 thì quay người xếp hàng chạy sau, không cắt cú đi. |
+| B4 | `src/behavior/ngu-phap.ts` `tenDep` | Tên đọc theo nghĩa D1: bàn làm việc, phòng khách, kệ sách, cửa sổ, sofa, bàn ăn, bếp, ghế ăn, ghế làm việc. |
+| B5 | `scripts/nao-local.mjs` `sachNoiDung` | Chữ có dấu vết lệnh/JSON: rút đúng `"text"` của lời nói nếu có, không thì bỏ (driver dùng câu dự phòng). Không bao giờ đọc JSON thành tiếng. |
+| B6 | `vscode/src/thuan/cau-hinh.ts` `urlSanKhau` | Truyền `sttPort` khi khác mặc định. |
+| B7 | `vscode/src/thuan/tien-trinh.ts` + `bridge/mcp.ts` | Bridge do extension bật ở cổng khác mặc định thì MCP dời theo (`bridgePort + 2`); MCP không nghe được cổng thì log và tắt riêng MCP, không kéo sập bridge. |
+
+**Chạy lại VS Code 1.143.1 thật SAU khi sửa** (`vscode-that.json`, KHÔNG mô phỏng, cờ GL swiftshader của môi trường cloud):
+**13/13 OK** — sân khấu trong webview nối bridge (stage.describe có actor), `actor.say` qua bridge chạy, `renderMode: "full"` khi panel
+đang active (INT-06 sống lại cùng B1). Không cờ GL thì iframe vẫn được gán `src` đúng (B1 hết) nhưng Electron trong xvfb không có WebGL —
+chuyện môi trường. Log trước khi sửa giữ ở `vscode-that-truoc-sua-b1.json`.
+
+Chưa xử lý (ghi lại): model ≤ 1.5B không đủ gọi tool — cần đo model ≥ 7B trên máy Ryan; "Gen" → "trên" với giọng Piper cần đo giọng thật
+trước khi thêm vào sổ từ nhà; cảnh báo VS Code "webview without a content security policy" chưa rõ nguồn.
 
 ## Cách chạy lại
 

@@ -320,7 +320,8 @@ describe('taoLuot — phản xạ, đo giờ, và đường lỗi', () => {
     const goi = [];
     phanXa({ goi: (c, a) => goi.push([c, a]) });
     expect(goi.map((x) => x[0])).toEqual(['actor.turnTo', 'actor.emote']);
-    expect(goi[0][1]).toMatchObject({ actor: 'gen', target: 'owner', interrupt: true });
+    expect(goi[0][1]).toMatchObject({ actor: 'gen', target: 'owner' });
+    expect(goi[0][1].interrupt).toBeUndefined();
     expect(goi[1][1]).toMatchObject({ emote: 'suy-nghi' });
   });
 

@@ -175,13 +175,29 @@ export function dungNhacHeThong({ persona, actor }) {
   ].join('\n');
 }
 
-/** Bỏ `<think>…</think>` của model suy luận, gọn khoảng trắng, cắt ≤ 300 ký tự. */
+/**
+ * Bỏ `<think>…</think>` của model suy luận, gọn khoảng trắng, cắt ≤ 300 ký tự.
+ * Model nhỏ hay VIẾT lệnh thành chữ (`actor_say {"actor":"gen","text":"…"}`) hoặc chép lại
+ * trạng thái sân khấu (E2E 26/10, B5): rút đúng `"text"` của lời nói nếu có; còn dấu vết
+ * lệnh/JSON thì bỏ hẳn (rỗng ⇒ driver dùng câu dự phòng) — không đọc JSON thành tiếng.
+ */
 export function sachNoiDung(s) {
-  return String(s ?? '')
+  const goc = String(s ?? '')
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
     .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 300);
+    .trim();
+  if (/[{}\[\]]|\b[a-z]+_[a-zA-Z]+\s*[({]|"[a-zA-Z]+"\s*:/.test(goc)) {
+    const m = goc.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    if (!m) return '';
+    let t = m[1];
+    try {
+      t = JSON.parse(`"${t}"`);
+    } catch {
+      /* giữ nguyên */
+    }
+    return /[{}\[\]]/.test(t) ? '' : t.replace(/\s+/g, ' ').trim().slice(0, 300);
+  }
+  return goc.slice(0, 300);
 }
 
 /* ============================================================== 4. Ollama */

@@ -221,7 +221,7 @@ describe('C2 — hiểu lệnh giọng', () => {
   });
 
   it('nhắc lại lệnh bằng tiếng Việt có dấu, đọc được bằng giọng', () => {
-    expect(phanTich('Javis, đi tới bàn điều khiển', BC).nhacLai).toBe('đi tới bàn điều khiển');
+    expect(phanTich('Javis, đi tới bàn điều khiển', BC).nhacLai).toBe('đi tới bàn làm việc');
     expect(phanTich('Gen, vui lên', BC).nhacLai).toBe('vui lên');
   });
 

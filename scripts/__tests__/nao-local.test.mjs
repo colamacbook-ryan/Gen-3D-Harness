@@ -157,6 +157,13 @@ describe('nao-local — phần thuần', () => {
     expect(chonNguoiTraLoi('Javis ơi hát đi', ACTORS)).toBeNull();
   });
 
+  it('sachNoiDung không đọc lệnh giả / JSON thành tiếng (E2E B5)', () => {
+    expect(sachNoiDung('actor_say {"actor":"gen","text":"Dạ, em chào Sếp","interrupt":true}')).toBe('Dạ, em chào Sếp');
+    expect(sachNoiDung('{"gen":{"state":"idle","at":"cua-so"},"screens":[]}')).toBe('');
+    expect(sachNoiDung('screen_show(screen="main")')).toBe('');
+    expect(sachNoiDung('Dạ, hôm nay mình làm kệ sách nhé Sếp.')).toBe('Dạ, hôm nay mình làm kệ sách nhé Sếp.');
+  });
+
   it('sachNoiDung bỏ <think> và gọn khoảng trắng', () => {
     expect(sachNoiDung('<think>abc\nxyz</think>\n Dạ  Sếp ')).toBe('Dạ Sếp');
   });

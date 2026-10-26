@@ -31,7 +31,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { MAY, type CauHinh, type CheDoNao } from './cau-hinh';
+import { MAC_DINH, MAY, type CauHinh, type CheDoNao } from './cau-hinh';
 import { coNgheTcp, doSanKhau, doiToi, type KetQuaDoSanKhau } from './do-cong';
 
 /** Dịch vụ nền (cổng nghe) — `batNeuCan`/`nhanLai` chỉ lo hai cái này. */
@@ -49,6 +49,9 @@ export function lenhBridge(c: Pick<CauHinh, 'pnpm' | 'bridgePort' | 'ttsPort'> &
   const env: Record<string, string> = { GEN_STAGE_PORT: String(c.bridgePort), GEN_STAGE_TTS_PORT: String(c.ttsPort) };
   // V2 — bridge tự bật nghe /stt đúng cổng tai-nghe sẽ gọi (`genStage.sttPort`)
   if (c.sttPort !== undefined) env.GEN_STAGE_STT_PORT = String(c.sttPort);
+  // MCP HTTP không có setting riêng: bridge ở cổng khác mặc định thì MCP dời theo (+2, như 8787 → 8789),
+  // để không giành 8789 với bridge của Sếp đang chạy (E2E 26/10, B7)
+  if (c.bridgePort !== MAC_DINH.bridgePort) env.GEN_STAGE_MCP_PORT = String(c.bridgePort + 2);
   return { cmd: c.pnpm, args: ['bridge'], env };
 }
 

@@ -149,8 +149,11 @@ export function taoHtmlSanKhau(t: ThamSoHtmlSanKhau): string {
     vs.postMessage({ loai: 'taiLai' });
   });
   window.addEventListener('message', function (ev) {
-    // chỉ nhận tin từ host VS Code (window.parent); iframe sân khấu, iframe lồng… đều bỏ
-    if (ev.source !== window.parent) return;
+    // chỉ nhận tin từ host VS Code. VS Code thật (1.143, E2E 26/10) chuyển tin host xuống với
+    // ev.source KHÔNG phải window.parent ⇒ nhận theo origin của chính webview (vscode-webview://…);
+    // iframe sân khấu (http://127.0.0.1:…) và iframe lồng của nó khác origin nên vẫn bị bỏ.
+    if (ev.source === khung.contentWindow) return;
+    if (ev.source !== window.parent && ev.origin !== window.location.origin) return;
     const m = ev.data || {};
     if (m.lenh === 'napLai') napLai(m.url);
     else if (m.lenh === 'trangThai') trangThai(String(m.chu || ''), m.loi);

@@ -151,13 +151,15 @@ export const LENH_ACTOR: CommandSpec[] = [
         a.to as string | Vec3,
         a.speed as number | undefined,
       );
-      void hd.done.then(() =>
+      void hd.done.then(() => {
+        // bị cắt ngang thì KHÔNG tới nơi — đừng bắn arrived (E2E 26/10: agent tưởng đã tới)
+        if (hd.cancelled?.()) return;
         ctx.bus.emit('actor.arrived', {
           actor: s(a.actor),
           to: a.to,
           pos: timActor(ctx, s(a.actor))?.pos ?? null,
-        }),
-      );
+        });
+      });
       return tuHanhDong(hd, { actor: s(a.actor), to: a.to });
     },
   },

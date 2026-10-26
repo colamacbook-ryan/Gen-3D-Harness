@@ -83,7 +83,7 @@ test('taoNonce: 128 bit CSPRNG, base64url 22 ký tự (hợp lệ cho CSP nonce)
   assert.notEqual(n, html.taoNonce());
 });
 
-test('vỏ panel: chỉ nhận tin từ window.parent (host); iframe sân khấu/lồng/null bị bỏ', () => {
+test('vỏ panel: chỉ nhận tin host (window.parent hoặc cùng origin webview); iframe sân khấu/lồng/null bị bỏ', () => {
   const h = html.taoHtmlSanKhau({ url: 'http://127.0.0.1:5173/?bridge=1', origin: 'http://127.0.0.1:5173', cspSource: 'c', nonce: 'n' });
   const js = h.split('<script nonce="n">')[1].split('</script>')[0];
   // chạy script vỏ trong DOM giả tối thiểu
@@ -98,7 +98,7 @@ test('vỏ panel: chỉ nhận tin từ window.parent (host); iframe sân khấu
   };
   const el = () => ({ textContent: '', classList: { toggle: () => undefined }, addEventListener: () => undefined });
   const phan = { 'san-khau': khung, 'trang-thai': el(), che: el(), 'tai-lai': el() };
-  const win = { addEventListener: (_t, f) => nghe.push(f), parent: { ten: 'host' } };
+  const win = { addEventListener: (_t, f) => nghe.push(f), parent: { ten: 'host' }, location: { origin: 'vscode-webview://abc' } };
   const doc = { getElementById: (id) => phan[id] };
   new Function('window', 'document', 'acquireVsCodeApi', js)(win, doc, () => ({ postMessage: () => undefined }));
   assert.equal(nghe.length, 1);
@@ -107,8 +107,14 @@ test('vỏ panel: chỉ nhận tin từ window.parent (host); iframe sân khấu
   nghe[0]({ source: null, data: { lenh: 'napLai', url: 'http://evil/' } });
   nghe[0]({ source: { iframeLong: true }, data: { lenh: 'napLai', url: 'http://evil/' } });
   assert.equal(khung.src, '', 'tin từ nguồn khác window.parent (null, iframe lồng) bị bỏ');
+  nghe[0]({ source: { khac: true }, origin: 'http://127.0.0.1:5173', data: { lenh: 'napLai', url: 'http://evil/' } });
+  nghe[0]({ source: khung.contentWindow, origin: 'vscode-webview://abc', data: { lenh: 'napLai', url: 'http://evil/' } });
+  assert.equal(khung.src, '', 'origin lạ, hoặc chính iframe sân khấu, đều bị bỏ');
   nghe[0]({ source: win.parent, data: { lenh: 'napLai', url: 'http://127.0.0.1:5173/?bridge=1' } });
   assert.equal(khung.src, 'http://127.0.0.1:5173/?bridge=1', 'tin từ host (window.parent) vẫn chạy');
+  // VS Code thật 1.143 (E2E 26/10, B1): source không phải window.parent nhưng cùng origin webview → nhận
+  nghe[0]({ source: { vsCodeHost: true }, origin: 'vscode-webview://abc', data: { lenh: 'napLai', url: 'http://127.0.0.1:5173/?b=2' } });
+  assert.equal(khung.src, 'http://127.0.0.1:5173/?b=2', 'tin host VS Code thật (cùng origin webview) được nhận');
   // V1 (INT-06) — hienAn trước khi iframe nạp xong: chưa gửi; 'load' → gửi tin cuối đúng khoá + origin
   nghe[0]({ source: win.parent, data: { lenh: 'hienAn', visible: true, active: false } });
   assert.equal(guiXuong.length, 0, 'iframe chưa nạp xong thì chưa gửi');

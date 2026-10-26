@@ -76,10 +76,13 @@ export function originSanKhau(c: Pick<CauHinh, 'devPort'>): string {
  * tự đọc `bridgePort`/`ttsPort` (`src/bridge-client.ts`), giữ URL gọn khi
  * không cần.
  */
-export function urlSanKhau(c: Pick<CauHinh, 'devPort' | 'bridgePort' | 'ttsPort'>): string {
+export function urlSanKhau(
+  c: Pick<CauHinh, 'devPort' | 'bridgePort' | 'ttsPort'> & Partial<Pick<CauHinh, 'sttPort'>>,
+): string {
   const q = new URLSearchParams({ bridge: '1' });
   if (c.bridgePort !== MAC_DINH.bridgePort) q.set('bridgePort', String(c.bridgePort));
   if (c.ttsPort !== MAC_DINH.ttsPort) q.set('ttsPort', String(c.ttsPort));
+  if (c.sttPort !== undefined && c.sttPort !== MAC_DINH.sttPort) q.set('sttPort', String(c.sttPort));
   return `${originSanKhau(c)}/?${q.toString()}`;
 }
 

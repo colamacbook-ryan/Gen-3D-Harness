@@ -534,7 +534,9 @@ export function taoLuot({
  * `actor` = nhân vật sẽ trả lời (mặc định `gen`; não local V1 truyền người nhận câu).
  */
 export function phanXa(san, actor = 'gen') {
-  void san.goi('actor.turnTo', { actor, target: 'owner', interrupt: true });
+  // KHÔNG interrupt: lớp hiểu lệnh (C2) có thể vừa cho Gen đi đâu đó — cắt ngang là Gen không bao giờ tới
+  // nơi (E2E 26/10, B3). Đang bận thì quay người xếp hàng chạy sau việc dở.
+  void san.goi('actor.turnTo', { actor, target: 'owner' });
   void san.goi('actor.emote', { actor, emote: 'suy-nghi' });
 }
 
