@@ -68,7 +68,7 @@ import { cuaBossTuDescribe, lyDoCamNao, toolTuLenh } from '../bridge/mcp.ts';
 import { taoRegistry } from '../src/api/commands/index.ts';
 import { danhSachThamSo } from '../src/api/registry.ts';
 import { tachNguoiNhan } from '../src/behavior/hieu-lenh.ts';
-import { tach } from '../src/behavior/ngu-phap.ts';
+import { tach, tenDep } from '../src/behavior/ngu-phap.ts';
 
 const GOC = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -132,6 +132,61 @@ export function sinhToolLocal({ registry = taoRegistry(), trang = DANH_SACH_TRAN
   }
   if (thieu.length) ghi(`[nao-local] ${gio()} registry KHÔNG có tool: ${thieu.join(', ')} — bỏ khỏi danh sách trắng.`);
   return { tools, banDo, thieu };
+}
+
+/** Trần số giá trị liệt kê trong một tham số — giữ prompt gọn cho model nhỏ. */
+export const GIA_TRI_TOI_DA = 30;
+
+/**
+ * Điền giá trị HỢP LỆ đang có trên sân khấu vào schema tool (từ `stage.bootstrap`).
+ * Model nhỏ không có `stage_describe` để tra, nên tên place/clip/màn hình phải nằm ngay
+ * trong schema — E2E 26/10: model đoán `screen:"main"` (không tồn tại).
+ * Tham số không tự do → `enum`; tự do (`to` nhận cả toạ độ) → thêm vào mô tả.
+ * Bỏ qua `actor`: driver tự điền người trả lời, không gợi tên Javis cho model.
+ * Thuần: trả bản sao, không sửa `tools`.
+ */
+export function boSungGiaTri(tools, banDo, bootstrap, { ten = tenDep } = {}) {
+  const lenh = new Map(((bootstrap && bootstrap.commands) || []).map((c) => [c.cmd, c]));
+  return tools.map((t) => {
+    const ra = structuredClone(t);
+    const mt = lenh.get(banDo.get(t.function.name)?.cmd);
+    if (!mt) return ra;
+    for (const p of mt.params || []) {
+      const prop = ra.function.parameters.properties?.[p.name];
+      if (!prop || p.name === 'actor' || prop.enum || !Array.isArray(p.values) || !p.values.length) continue;
+      const vals = p.values.filter((v) => typeof v === 'string').slice(0, GIA_TRI_TOI_DA);
+      if (!vals.length) continue;
+      // id giữ từ thời lab mà nghĩa đã đổi (ban-dieu-khien = bàn làm việc) ⇒ kèm tên tiếng Việt
+      const nhan = (v) => {
+        const d = ten(v);
+        return d && d !== v.replace(/-/g, ' ') ? `${v} (${d})` : v;
+      };
+      if (p.tuDo) prop.description = `${prop.description ?? ''} Có trên sân khấu: ${vals.map(nhan).join(', ')}.`.trim();
+      else prop.enum = vals;
+    }
+    return ra;
+  });
+}
+
+/**
+ * Tool "sống": lần đầu (và sau mỗi lần sân khấu nối lại) hỏi `stage.bootstrap` rồi điền giá trị.
+ * Hỏi hỏng ⇒ dùng tool gốc, lượt sau hỏi lại — không bao giờ chặn lượt não.
+ */
+export function taoToolSong({ san, tools, banDo, ghi = console.log }) {
+  let cache = null;
+  san.khiSuKien?.((event) => {
+    if (event === 'bridge.stageOnline') cache = null;
+  });
+  return async function layTools() {
+    if (cache) return cache;
+    const kq = await san.goi('stage.bootstrap', {}).catch((e) => ({ ok: false, error: String(e) }));
+    if (!kq?.ok) {
+      ghi(`[nao-local] ${gio()} không đọc được stage.bootstrap (${kq?.error ?? '?'}) — dùng tool chưa điền giá trị.`);
+      return tools;
+    }
+    cache = boSungGiaTri(tools, banDo, kq.result);
+    return cache;
+  };
 }
 
 /* ===================================================== 2. người trả lời */
@@ -389,6 +444,7 @@ export function taoLuotLocal({
   doNao,
   tools,
   banDo,
+  layTools = async () => tools,
   layPersona = docPersona,
   capNhatActors = () => {},
   ghi = console.log,
@@ -446,8 +502,9 @@ export function taoLuotLocal({
         { role: 'user', content: dungDongNhac({ cau, ide, describe: gonDescribe(mt.result, { suKien: san.suKienCuoi() }) }) },
       ];
 
+      const toolLuot = await layTools();
       for (let v = 0; v < vongToiDa; v++) {
-        const msg = await ollama.chat({ model, messages, tools, signal: ac.signal });
+        const msg = await ollama.chat({ model, messages, tools: toolLuot, signal: ac.signal });
         nhat.vong++;
         const nd = sachNoiDung(msg.content);
         if (nd) noiDung = nd;
@@ -578,7 +635,8 @@ export async function batDriver({
       return kq.ok;
     },
   });
-  const luot = taoLuotLocal({ san, ollama, doNao, tools, banDo, capNhatActors, ghi, msHan, msXinCho, layPersona });
+  const layTools = taoToolSong({ san, tools, banDo, ghi });
+  const luot = taoLuotLocal({ san, ollama, doNao, tools, banDo, layTools, capNhatActors, ghi, msHan, msXinCho, layPersona });
   const nhatKy = [];
   const hangDoi = taoHangDoi({
     chay: async (x) => {

@@ -15,7 +15,7 @@
  */
 import { spawn } from 'node:child_process';
 import { createServer, request } from 'node:http';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import WebSocket from 'ws';
@@ -25,9 +25,12 @@ const GOC = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OLLAMA = new URL(process.env.E2E_OLLAMA ?? 'http://127.0.0.1:9010');
 const MODEL = process.env.E2E_MODEL ?? '';
 const GIA = process.env.E2E_SAN_KHAU === 'gia';
+// E2E_BOOTSTRAP=mau: sân khấu giả trả `docs/e2e/bootstrap-mau.json` (sinh bằng scripts/e2e-bootstrap-mau.mts)
+// cho `stage.bootstrap` → driver điền place/clip/màn hình vào schema tool như với sân khấu thật.
+const BOOTSTRAP_MAU = process.env.E2E_BOOTSTRAP === 'mau' ? JSON.parse(readFileSync(resolve(GOC, 'docs/e2e/bootstrap-mau.json'), 'utf8')) : null;
 const C = { ws: 9000, tts: 9001, mcp: 9002, stt: 9003, vite: 9004, ghiOllama: 9011 };
 const KHOA = resolve(GOC, '.cache/nao-driver-e2e-9000.lock');
-const RA = resolve(GOC, `docs/e2e/nao-local-${(MODEL || 'tu-chon').replace(/[^a-z0-9.]+/gi, '_')}${process.env.E2E_SAN_KHAU === 'gia' ? '-san-khau-gia' : ''}.json`);
+const RA = resolve(GOC, `docs/e2e/nao-local-${(MODEL || 'tu-chon').replace(/[^a-z0-9.]+/gi, '_')}${process.env.E2E_SAN_KHAU === 'gia' ? '-san-khau-gia' : ''}${process.env.E2E_BOOTSTRAP === 'mau' ? '-dien-gia-tri' : ''}.json`);
 // 3 câu đề bài + 1 câu tự do (không khớp lớp hiểu lệnh C2) để chắc chắn đi vào model
 const CAU = (process.env.E2E_CAU ? JSON.parse(process.env.E2E_CAU) : ['Gen ơi, chào em', 'Gen ơi, ra cửa sổ đi', 'Gen ơi, mở màn hình cho anh', 'Gen ơi, hôm nay mình nên làm gì trước?']);
 const ngu = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -172,7 +175,9 @@ try {
       const a = g.args ?? {};
       const result = g.cmd === 'stage.describe'
         ? { actors: ACT, screens: [{ id: 'may-tinh', showing: null }, { id: 'tivi', showing: null }], modules: [], brainConnected: true, renderMode: 'full' }
-        : { durationMs: 1200 };
+        : g.cmd === 'stage.bootstrap' && BOOTSTRAP_MAU
+          ? BOOTSTRAP_MAU
+          : { durationMs: 1200 };
       st.send(JSON.stringify({ id: g.id, ok: true, result }));
       if (g.cmd === 'actor.say') {
         ev('actor.sayStart', { actor: a.actor, text: a.text });

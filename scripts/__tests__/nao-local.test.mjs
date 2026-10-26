@@ -16,6 +16,8 @@ import {
   docPersona,
   chonNguoiTraLoi,
   sachNoiDung,
+  boSungGiaTri,
+  taoToolSong,
   sinhToolLocal,
 } from '../nao-local.mjs';
 
@@ -155,6 +157,48 @@ describe('nao-local — phần thuần', () => {
     expect(chonNguoiTraLoi('hôm nay làm gì', ACTORS, 'owner')).toBeNull();
     expect(chonNguoiTraLoi('Gen ơi hôm nay làm gì', ACTORS, 'owner')).toBe('gen');
     expect(chonNguoiTraLoi('Javis ơi hát đi', ACTORS)).toBeNull();
+  });
+
+  it('boSungGiaTri: giá trị trên sân khấu vào schema — enum khi không tự do, mô tả kèm tên Việt khi tự do; bỏ qua actor; không sửa bản gốc', () => {
+    const { tools, banDo } = sinhToolLocal({ ghi: () => undefined });
+    const bs = {
+      commands: [
+        { cmd: 'actor.moveTo', params: [{ name: 'actor', values: ['owner', 'gen'] }, { name: 'to', values: ['cua-so', 'ban-dieu-khien'], tuDo: true }] },
+        { cmd: 'actor.play', params: [{ name: 'clip', values: ['wave', 'sit'] }] },
+      ],
+    };
+    const moi = boSungGiaTri(tools, banDo, bs);
+    const lay = (ds, ten) => ds.find((t) => t.function.name === ten).function.parameters.properties;
+    expect(lay(moi, 'actor_play').clip.enum).toEqual(['wave', 'sit']);
+    expect(lay(moi, 'actor_moveTo').to.enum).toBeUndefined();
+    expect(lay(moi, 'actor_moveTo').to.description).toMatch(/cua-so \(cửa sổ\), ban-dieu-khien \(bàn làm việc\)/);
+    expect(lay(moi, 'actor_moveTo').actor.enum).toBeUndefined();
+    expect(lay(tools, 'actor_play').clip.enum).toBeUndefined(); // bản gốc nguyên vẹn
+    expect(boSungGiaTri(tools, banDo, { durationMs: 1 })).toEqual(tools); // bootstrap lạ → y nguyên
+  });
+
+  it('taoToolSong: hỏi stage.bootstrap một lần, làm mới khi sân khấu nối lại, hỏng thì dùng tool gốc', async () => {
+    const { tools, banDo } = sinhToolLocal({ ghi: () => undefined });
+    let nghe = null;
+    let hoi = 0;
+    let hong = true;
+    const san = {
+      khiSuKien: (f) => (nghe = f),
+      goi: async (cmd) => {
+        hoi++;
+        return hong ? { ok: false, error: 'sân khấu chưa nối' } : { ok: true, result: { commands: [{ cmd: 'actor.play', params: [{ name: 'clip', values: ['wave'] }] }] } };
+      },
+    };
+    const lay = taoToolSong({ san, tools, banDo, ghi: () => undefined });
+    expect(await lay()).toBe(tools); // hỏng → tool gốc
+    hong = false;
+    const t1 = await lay();
+    expect(t1.find((t) => t.function.name === 'actor_play').function.parameters.properties.clip.enum).toEqual(['wave']);
+    expect(await lay()).toBe(t1); // có cache, không hỏi lại
+    expect(hoi).toBe(2);
+    nghe('bridge.stageOnline', {});
+    await lay();
+    expect(hoi).toBe(3);
   });
 
   it('sachNoiDung không đọc lệnh giả / JSON thành tiếng (E2E B5)', () => {
