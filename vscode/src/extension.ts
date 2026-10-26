@@ -82,7 +82,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
   // Root tự dò mà Sếp bấm "không" trong phiên này → không hỏi lại mỗi lần mở tab
   // (lệnh "Bật bridge + sân khấu" thì hỏi lại).
   let tuChoiPhien: string | null = null;
-  const choPhepBat = async (): Promise<string | null> => {
+  const choPhepBat = async (boiCanh?: 'giong'): Promise<string | null> => {
     if (!vscode.workspace.isTrusted) {
       return 'Workspace chưa được tin cậy (Restricted Mode) — Gen-Stage không tự bật tiến trình. Tin cậy workspace, hoặc tự chạy `pnpm bridge` + `pnpm dev`.';
     }
@@ -91,7 +91,9 @@ export function activate(ctx: vscode.ExtensionContext): void {
     const tuChoi = `Chưa được phép chạy tiến trình trong ${cfg.root} — chạy lệnh "Gen-Stage: Bật bridge + sân khấu" để được hỏi lại, hoặc đặt genStage.root.`;
     if (tuChoiPhien === cfg.root) return tuChoi;
     const chon = await vscode.window.showWarningMessage(
-      'Gen-Stage muốn tự chạy `pnpm bridge` và vite trong thư mục tự dò được.',
+      boiCanh === 'giong'
+        ? 'Gen-Stage muốn chạy tai-nghe (thu micro, để nghe giọng nói) và `pnpm bridge` + vite trong thư mục tự dò được.'
+        : 'Gen-Stage muốn tự chạy `pnpm bridge` và vite trong thư mục tự dò được.',
       {
         modal: true,
         detail: `${cfg.root}\n\nChỉ cho phép nếu đây đúng là repo Gen-Stage Sếp tin. Lựa chọn được nhớ cho workspace này.`,

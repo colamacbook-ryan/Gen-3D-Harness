@@ -4,6 +4,7 @@
  * dùng CHUNG hàm này, nên cái được kiểm trên cloud là đúng code chạy trong VS Code.
  */
 import type { KetQuaLenh } from './cau-noi';
+import { CHU_KHONG_RO } from './giong';
 import type { SoChatroom } from './so-chatroom';
 
 export interface TinTuChatroom {
@@ -16,6 +17,29 @@ export interface TinTuChatroom {
 export interface NutGiong {
   giu(): void;
   tha(): void;
+}
+
+/**
+ * Cửa sổ kiểm "Gen đã nhận câu này chưa" trước khi GỬI LẠI `stage.hear`: hạn `stage.hear` của
+ * tai-nghe 15 s + thời gian Sếp đọc ô xác nhận rồi bấm. (Câu đã vào Gen mà ô xác nhận vẫn hiện
+ * xảy ra khi tai-nghe nhận lỗi "không rõ kết cục" — hết hạn / ws rớt / bridge bị thay.)
+ */
+export const CUA_SO_DA_NHAN_MS = 30_000;
+
+/** Chuẩn hoá để so câu: trim, gộp khoảng trắng, bỏ dấu câu cuối (bridge cũng bỏ `.!…` cuối — `chuanHoaCauNoi`). */
+export const chuanSoCau = (t: string): string => t.trim().replace(/\s+/g, ' ').replace(/[.!…]+$/g, '');
+
+/** Sự kiện `user.text`/`user.speech` cùng `to|text` (chuẩn hoá) đã thấy trong `CUA_SO_DA_NHAN_MS` gần nhất? */
+export function daNhanRoi(so: SoChatroom, to: string, text: string, t = Date.now()): boolean {
+  const khoa = chuanSoCau(text);
+  return so.dong.some(
+    (d) =>
+      d.loai === 'sep' &&
+      t - d.t <= CUA_SO_DA_NHAN_MS &&
+      chuanSoCau(d.text) === khoa &&
+      // `to` vắng trong sự kiện thì coi là khớp (thà báo "đã nhận" còn hơn gửi đôi)
+      (d.toi === undefined || d.toi === to),
+  );
 }
 
 export interface GoiLenh {
@@ -58,6 +82,13 @@ export async function xuLyTinChatroom(
       so.datGiong({ chu: 'Câu rỗng — sửa lại hoặc bấm Bỏ.' });
       return true;
     }
+    // Trước khi gửi (lại): Gen đã nhận đúng câu này rồi thì KHÔNG gửi — lần gửi trước có thể đã
+    // tới nơi dù tai-nghe báo lỗi "không rõ kết cục".
+    if (daNhanRoi(so, cau.to, text)) {
+      ghi(`[giọng] bỏ gửi lại — đã thấy user.text cùng to|text trong ${CUA_SO_DA_NHAN_MS / 1000} s: ${text}`);
+      so.giongNghi('Gen đã nhận câu này rồi — không gửi lại.');
+      return true;
+    }
     // `to` = người nghe lúc BẮT ĐẦU thu (INT-02), không phải lựa chọn hiện tại
     const args = { text, to: cau.to, confidence: cau.confidence, durationMs: cau.durationMs };
     ghi(`[giọng] → stage.hear ${JSON.stringify(args)}`);
@@ -67,7 +98,11 @@ export async function xuLyTinChatroom(
     if (so.giong.cau?.id !== cau.id) return true;
     if (!kq.ok) {
       // giữ câu trong ô sửa để Sếp thử lại
-      so.datGiong({ chu: `Lỗi gửi: ${kq.error ?? 'không rõ'}`, dangGui: false });
+      const khongRo = /không trả lời|không rõ đã chạy/.test(kq.error ?? '');
+      so.datGiong({
+        chu: `Lỗi gửi: ${kq.error ?? 'không rõ'}` + (khongRo ? ` ${CHU_KHONG_RO}` : ''),
+        dangGui: false,
+      });
       return true;
     }
     so.giongNghi();

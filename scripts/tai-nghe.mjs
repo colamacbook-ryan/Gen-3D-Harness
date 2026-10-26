@@ -16,7 +16,7 @@
  *
  *   node scripts/tai-nghe.mjs --port <8787> --stt-port <8790> --to <actorId>
  *        [--nguon <thiết bị | đường dẫn .wav>] [--toi-da-ms 15000]
- *        [--im-lang-ms 1200] [--khong-gui]
+ *        [--im-lang-ms 1200] [--han-stt-ms 130000] [--han-hear-ms 15000] [--khong-gui]
  *   Token bridge: biến môi trường GEN_STAGE_TOKEN (ưu tiên). `--token <t>` vẫn nhận
  *   để tương thích nhưng lộ trong `ps` nên có cảnh báo stderr.
  *   stdin: `dung` = dừng thu rồi nhận dạng · `huy` = bỏ hẳn (không STT, không stage.hear).
@@ -26,6 +26,8 @@
  *     {"su":"ket-qua","text","confidence","durationMs","goiGen","daGui"}
  *     {"su":"bo-qua","lyDo":"gen-dang-noi"|"im-lang"|"rong"|"huy"}
  *     {"su":"loi","ma":"thiet-bi"|"stt"|"bridge"|"tham-so","chu":"…"}
+ *       (`stage.hear` hỏng ⇒ `loi bridge` thêm `"khongRo":true|false`: true = hết hạn / ws rớt /
+ *        "không rõ đã chạy" — Gen có thể đã nhận câu; false = chắc chắn chưa chạy)
  *   Mã thoát: 0 có kết quả / bỏ qua · 2 lỗi thiết bị · 4 lỗi STT/bridge · 64 sai tham số
  *   (130 = Ctrl+C lần HAI trong lúc chờ STT — thoát cứng, không kết quả).
  *
@@ -96,17 +98,31 @@ export const MA_THOAT = { ok: 0, thietBi: 2, sttBridge: 4, thamSo: 64 };
 
 /** Lỗi có mã hợp đồng (`ma` = khoá trong sự kiện `loi`). */
 export class LoiTaiNghe extends Error {
-  constructor(ma, chu) {
+  /**
+   * `khongRo`: lệnh đã/có thể đã tới bridge nhưng không biết kết cục (hết hạn, ws rớt sau khi
+   * gửi, bridge nói "không rõ đã chạy hay chưa"). `hear: true` đánh dấu lỗi của `stage.hear` —
+   * chỉ khi đó `loi bridge` mới mang trường `khongRo` ra stdout (hợp đồng V2).
+   */
+  constructor(ma, chu, { khongRo = false, hear = false } = {}) {
     super(chu);
     this.ma = ma;
+    this.khongRo = khongRo;
+    this.hear = hear;
   }
 }
+
+/** Hạn mặc định chờ STT / chờ `stage.hear` — host truyền lại bằng `--han-stt-ms` / `--han-hear-ms` để hạn cứng của nó khớp. */
+export const HAN_STT_MS = 130_000;
+export const HAN_HEAR_MS = 15_000;
+
+/** Lời bridge báo lệnh đang chờ bị thay/ngắt sân khấu: không biết đã chạy chưa (CNS-002). */
+export const laLoiKhongRo = (chu) => /không rõ đã chạy/.test(String(chu ?? ''));
 
 /* ------------------------------------------------------------ tham số */
 
 const HUONG_DAN =
   'Dùng: node scripts/tai-nghe.mjs --port <8787> --stt-port <8790> --to <actorId> ' +
-  '[--nguon <thiết bị|file.wav>] [--toi-da-ms 15000] [--im-lang-ms 1200] [--khong-gui] (token: env GEN_STAGE_TOKEN)';
+  '[--nguon <thiết bị|file.wav>] [--toi-da-ms 15000] [--im-lang-ms 1200] [--han-stt-ms 130000] [--han-hear-ms 15000] [--khong-gui] (token: env GEN_STAGE_TOKEN)';
 
 /** Đọc argv (không gồm `node script`). Sai → ném `LoiTaiNghe('tham-so')`. */
 export function docThamSo(argv, env = process.env) {
@@ -117,6 +133,8 @@ export function docThamSo(argv, env = process.env) {
     nguon: '',
     toiDaMs: 15_000,
     imLangMs: 1200,
+    hanSttMs: HAN_STT_MS,
+    hanHearMs: HAN_HEAR_MS,
     khongGui: false,
     token: '',
     tokenTuArgv: false,
@@ -148,6 +166,8 @@ export function docThamSo(argv, env = process.env) {
       case '--nguon': ts.nguon = chu(k, v()); break;
       case '--toi-da-ms': ts.toiDaMs = so(k, v(), 1); break;
       case '--im-lang-ms': ts.imLangMs = so(k, v(), 0); break;
+      case '--han-stt-ms': ts.hanSttMs = so(k, v(), 1); break;
+      case '--han-hear-ms': ts.hanHearMs = so(k, v(), 1); break;
       case '--khong-gui': ts.khongGui = true; break;
       case '--token': ts.token = chu(k, v()); ts.tokenTuArgv = true; break;
       default:
@@ -277,11 +297,11 @@ export function noiBridge({ port, token, hanMs = 5000, khiSuKien }) {
     ws.on('error', (e) => {
       clearTimeout(hen);
       tuChoi(new LoiTaiNghe('bridge', `Không nối được bridge ws 127.0.0.1:${port}: ${e.message} — \`pnpm bridge\` còn chạy không?`));
-      for (const c of dangCho.values()) c.loi(new LoiTaiNghe('bridge', `ws lỗi: ${e.message}`));
+      for (const c of dangCho.values()) c.loi(new LoiTaiNghe('bridge', `ws lỗi: ${e.message}`, { khongRo: true }));
       dangCho.clear();
     });
     ws.on('close', (ma) => {
-      for (const c of dangCho.values()) c.loi(new LoiTaiNghe('bridge', `bridge đóng kết nối (mã ${ma})`));
+      for (const c of dangCho.values()) c.loi(new LoiTaiNghe('bridge', `bridge đóng kết nối (mã ${ma})`, { khongRo: true }));
       dangCho.clear();
     });
     ws.on('message', (tho) => {
@@ -314,7 +334,7 @@ export function noiBridge({ port, token, hanMs = 5000, khiSuKien }) {
             const id = `tai-nghe-${++dem}`;
             const h = setTimeout(() => {
               dangCho.delete(id);
-              loi(new LoiTaiNghe('bridge', `${cmd}: bridge không trả lời trong ${han} ms`));
+              loi(new LoiTaiNghe('bridge', `${cmd}: bridge không trả lời trong ${han} ms`, { khongRo: true }));
             }, han);
             dangCho.set(id, {
               xong: (g) => (clearTimeout(h), xong(g)),
@@ -569,7 +589,7 @@ export async function chay(ts, { phat, ghi, dieuKhien = {} }) {
     if (dieuKhien.daHuy) huyStt.abort();
     let stt;
     try {
-      stt = await goiStt({ sttPort: ts.sttPort, wav: taoWav(cat.pcm), signal: huyStt.signal });
+      stt = await goiStt({ sttPort: ts.sttPort, wav: taoWav(cat.pcm), hanMs: ts.hanSttMs, signal: huyStt.signal });
     } catch (e) {
       if (!dieuKhien.daHuy) throw e;
     } finally {
@@ -597,17 +617,22 @@ export async function chay(ts, { phat, ghi, dieuKhien = {} }) {
       return MA_THOAT.ok;
     }
     const g = await br
-      .goi('stage.hear', { text: stt.text, to: ts.to, confidence: stt.confidence, durationMs: stt.durationMs })
-      .catch((e) => ({ ok: false, error: e.message }));
+      .goi('stage.hear', { text: stt.text, to: ts.to, confidence: stt.confidence, durationMs: stt.durationMs }, ts.hanHearMs)
+      .catch((e) => ({ ok: false, error: e.message, khongRo: e.khongRo === true }));
     if (!g.ok) {
       phat(ket); // vẫn trả chữ để extension hỏi Sếp gửi lại
-      throw new LoiTaiNghe('bridge', `stage.hear lỗi: ${g.error ?? '?'}`);
+      // `khongRo`: hết hạn / ws rớt sau khi gửi / bridge "không rõ đã chạy" ⇒ Gen CÓ THỂ đã nhận câu này.
+      // Lỗi chắc chắn chưa chạy (không gửi được, validate từ chối…) ⇒ false.
+      throw new LoiTaiNghe('bridge', `stage.hear lỗi: ${g.error ?? '?'}`, {
+        hear: true,
+        khongRo: g.khongRo === true || laLoiKhongRo(g.error),
+      });
     }
     phat({ ...ket, daGui: true });
     return MA_THOAT.ok;
   } catch (e) {
     const ma = e instanceof LoiTaiNghe ? e.ma : 'stt';
-    phat({ su: 'loi', ma, chu: e.message });
+    phat({ su: 'loi', ma, chu: e.message, ...(e instanceof LoiTaiNghe && e.hear ? { khongRo: e.khongRo } : {}) });
     ghi(`LỖI ${ma}: ${e.message}`);
     return ma === 'tham-so' ? MA_THOAT.thamSo : ma === 'thiet-bi' ? MA_THOAT.thietBi : MA_THOAT.sttBridge;
   } finally {

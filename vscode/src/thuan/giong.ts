@@ -23,8 +23,11 @@ export type CauHinhGiong = Pick<CauHinh, 'root' | 'pnpm' | 'bridgePort' | 'sttPo
 export interface TuyChonGiong {
   so: SoChatroom;
   layCfg: () => CauHinhGiong;
-  /** Cổng an toàn chung với bridge/vite/não: workspace trusted + root đã duyệt. null = được. */
-  choPhep: () => Promise<string | null>;
+  /**
+   * Cổng an toàn chung với bridge/vite/não: workspace trusted + root đã duyệt. null = được.
+   * `boiCanh` = vì sao xin (hộp thoại hỏi root nói "để nghe giọng nói", không phải chỉ "chạy bridge").
+   */
+  choPhep: (boiCanh?: 'giong') => Promise<string | null>;
   /** Vẽ lại chatroom (mô hình đổi). */
   ve: () => void;
   /** Mức âm 0..1 trong lúc nghe — chỉ cái vạch, không đổi mô hình. */
@@ -35,6 +38,11 @@ export interface TuyChonGiong {
   hanCungMs?: number;
   hanHuyMs?: number;
 }
+
+/** Chữ khi hạn cứng của host huỷ tai-nghe (không phải huỷ chủ động của Sếp). */
+export const CHU_QUA_HAN = 'Quá hạn — nhận dạng chậm (lần đầu PhoWhisper đang nạp?)';
+/** Chữ ở ô xác nhận khi `stage.hear` không rõ kết cục (hết hạn / ws rớt / bị thay) — tránh gửi hai lần. */
+export const CHU_KHONG_RO = 'Có thể Gen đã nhận câu này — xem chat trước khi gửi lại.';
 
 export class DieuKhienGiong {
   private tt: TienTrinhTaiNghe | null = null;
@@ -47,6 +55,8 @@ export class DieuKhienGiong {
   private phien = 0;
   /** Lần thu hiện tại đã có kết cục (ket-qua/bo-qua/loi) chưa. */
   private daKetCuc = false;
+  /** Hạn cứng của host đã chạm ở lần thu hiện tại → mọi tin muộn của tai-nghe bị bỏ. */
+  private quaHan = false;
   /** Tiến trình đã bị huỷ nhưng chưa đóng hẳn (đang chờ `huy` / SIGKILL dự phòng). */
   private dangDong = new Set<TienTrinhTaiNghe>();
 
@@ -149,12 +159,13 @@ export class DieuKhienGiong {
     this.dangKhoiDong = true;
     this.thaSom = false;
     this.daKetCuc = false;
+    this.quaHan = false;
     so.datGiong({ pha: 'khoi-dong', cheDo, toi: to, chu: 'Đang mở micro…', goiY: '', cau: null });
     this.o.ve();
 
     let lyDo: string | null;
     try {
-      lyDo = await this.o.choPhep();
+      lyDo = await this.o.choPhep('giong');
     } catch (e) {
       lyDo = (e as Error).message;
     }
@@ -166,7 +177,8 @@ export class DieuKhienGiong {
     }
     if (this.thaSom) {
       this.cheDo = null;
-      so.giongNghi('Thả nút trước khi micro kịp mở — chưa thu gì.');
+      // hộp thoại xin quyền (modal) lấy focus nên pointerup/phím nhả có thể rơi vào đó
+      so.giongNghi('Chưa thu gì — micro chưa kịp mở lúc thả nút (hộp thoại xin quyền lấy mất focus). Bấm giữ 🎤 lại sau khi xác nhận.');
       this.o.ve();
       return;
     }
@@ -187,6 +199,13 @@ export class DieuKhienGiong {
         khiXong: (k) => {
           if (phien === this.phien) this.ketThuc(k, cfg);
         },
+        khiQuaHan: () => {
+          if (phien !== this.phien) return;
+          this.quaHan = true;
+          this.daKetCuc = true;
+          this.o.ghi('[giọng] quá hạn cứng — nhận dạng chậm, huỷ tai-nghe');
+          this.loi(CHU_QUA_HAN, 'Lần nhận dạng đầu PhoWhisper phải nạp model (vài chục giây) — thử lại sau; xem "Gen-Stage: Xem nhật ký".');
+        },
         ghi: this.o.ghi,
         ...(this.o.hanCungMs !== undefined ? { hanCungMs: this.o.hanCungMs } : {}),
         ...(this.o.hanHuyMs !== undefined ? { hanHuyMs: this.o.hanHuyMs } : {}),
@@ -199,6 +218,7 @@ export class DieuKhienGiong {
   }
 
   private nhanSu(s: SuTaiNghe, to: string): void {
+    if (this.quaHan) return; // đã báo "quá hạn"; `bo-qua huy` do chính host gây ra không được đè lên
     const so = this.o.so;
     switch (s.su) {
       case 'bat-dau':
@@ -243,7 +263,12 @@ export class DieuKhienGiong {
         if (so.giong.pha === 'cho-xac-nhan' && so.giong.cau) {
           // hợp đồng: `stage.hear` hỏng ⇒ `ket-qua daGui:false` (giữ chữ) RỒI `loi bridge` —
           // giữ câu trong ô xác nhận để Sếp bấm Gửi lại qua ws của extension
-          so.datGiong({ chu: `Chưa gửi được (${l.chu}) — kiểm rồi bấm Gửi lại, hoặc Bỏ.`, goiY: l.goiY });
+          so.datGiong({
+            chu: s.khongRo
+              ? `Chưa rõ đã gửi được chưa (${l.chu}). ${CHU_KHONG_RO} Sửa rồi Gửi lại, hoặc Bỏ.`
+              : `Chưa gửi được (${l.chu}) — kiểm rồi bấm Gửi lại, hoặc Bỏ.`,
+            goiY: l.goiY,
+          });
         } else {
           so.datGiong({ pha: 'loi', chu: l.chu, goiY: l.goiY, cau: null });
         }
@@ -256,6 +281,10 @@ export class DieuKhienGiong {
   private ketThuc(k: KetThucTaiNghe, cfg: CauHinhGiong): void {
     this.tt = null;
     this.cheDo = null;
+    if (this.quaHan) {
+      this.o.ghi(`[giọng] tai-nghe thoát sau hạn cứng (mã ${k.ma ?? '-'}${k.tin ? ' · ' + k.tin : ''})`);
+      return;
+    }
     this.o.ghi(`[giọng] tai-nghe thoát (mã ${k.ma ?? '-'}${k.tin ? ' · ' + k.tin : ''})`);
     if (this.daKetCuc) return;
     // thoát mà không in kết cục nào → suy từ mã thoát / lỗi spawn

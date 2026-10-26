@@ -8,6 +8,7 @@
 //   thiet-bi loi thiet-bi, thoát 2
 //   chet2    thoát 2 không in gì (hỏng trước khi kịp báo)
 //   hear-loi ket-qua 0,9 nhưng stage.hear hỏng ⇒ ket-qua daGui:false RỒI loi bridge, thoát 4
+//   hear-khong-ro như hear-loi nhưng `loi bridge` có khongRo:true (hết hạn / bị thay)
 //   thoat130 bat-dau → `dung` → dang-nhan-dang → thoát cứng 130 (tín hiệu lần 2 lúc chờ STT)
 //   tham-so  loi tham-so (Node < 22.18) thoát 64
 //   treo     bat-dau, đẻ một con "ffmpeg" cùng nhóm, lờ `dung`/`huy` + SIGTERM (chỉ SIGKILL mới chết)
@@ -103,9 +104,9 @@ async function chay() {
   ra({ su: 'dang-nhan-dang' });
   await doi(80);
   if (kb === 'thoat130') process.exit(130);
-  if (kb === 'hear-loi') {
+  if (kb === 'hear-loi' || kb === 'hear-khong-ro') {
     ra({ su: 'ket-qua', text: 'Gen ơi, chào em', confidence: 0.9, durationMs: 400, goiGen: true, daGui: false });
-    ra({ su: 'loi', ma: 'bridge', chu: 'stage.hear: Chưa có sân khấu nào nối bridge' });
+    ra({ su: 'loi', ma: 'bridge', chu: 'stage.hear: Chưa có sân khấu nào nối bridge', ...(kb === 'hear-khong-ro' ? { khongRo: true } : {}) });
     process.exit(4);
   }
   const conf = kb === 'thap' ? 0.41 : 0.92;

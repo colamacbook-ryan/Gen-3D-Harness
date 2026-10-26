@@ -135,10 +135,10 @@ const coBan = (them = []) => ['--port', String(C_BRIDGE), '--stt-port', String(C
 /* ------------------------------------------------------------- hàm thuần */
 describe('tai-nghe — hàm thuần', () => {
   it('docThamSo: mặc định, đủ cờ, sai thì tham-so', () => {
-    expect(docThamSo(['--to', 'gen'], {})).toMatchObject({ port: 8787, sttPort: 8790, toiDaMs: 15000, imLangMs: 1200, khongGui: false });
+    expect(docThamSo(['--to', 'gen'], {})).toMatchObject({ port: 8787, sttPort: 8790, toiDaMs: 15000, imLangMs: 1200, hanSttMs: 130000, hanHearMs: 15000, khongGui: false });
     expect(
-      docThamSo(['--port', '1', '--stt-port', '2', '--to', 'x', '--nguon', 'a.wav', '--toi-da-ms', '5', '--im-lang-ms', '0', '--khong-gui', '--token', 't'], {}),
-    ).toEqual({ port: 1, sttPort: 2, to: 'x', nguon: 'a.wav', toiDaMs: 5, imLangMs: 0, khongGui: true, token: 't', tokenTuArgv: true });
+      docThamSo(['--port', '1', '--stt-port', '2', '--to', 'x', '--nguon', 'a.wav', '--toi-da-ms', '5', '--im-lang-ms', '0', '--han-stt-ms', '9', '--han-hear-ms', '8', '--khong-gui', '--token', 't'], {}),
+    ).toEqual({ port: 1, sttPort: 2, to: 'x', nguon: 'a.wav', toiDaMs: 5, imLangMs: 0, hanSttMs: 9, hanHearMs: 8, khongGui: true, token: 't', tokenTuArgv: true });
     expect(docThamSo(['--to', 'x', '--token', 't'], { GEN_STAGE_TOKEN: 'e' })).toMatchObject({ token: 'e', tokenTuArgv: false });
     for (const sai of [[], ['--to'], ['--to', 'g', '--port', 'abc'], ['--to', 'g', '--port', '70000'], ['--to', 'g', '--la'], ['--to', 'g', '--toi-da-ms', '0']])
       expect(() => docThamSo(sai)).toThrow(expect.objectContaining({ ma: 'tham-so' }));
@@ -275,6 +275,40 @@ describe('tai-nghe — CLI thật', { timeout: 20_000 }, () => {
     } finally {
       wss.close();
     }
+  });
+
+  it('(h) stage.hear hỏng: "không rõ đã chạy" / hết hạn ⇒ loi bridge khongRo:true; lỗi chắc chắn chưa chạy ⇒ khongRo:false', async () => {
+    const cong = CONG + 4;
+    let kieu = 'khong-ro';
+    const wss = new WebSocketServer({ host: '127.0.0.1', port: cong });
+    wss.on('connection', (ws) =>
+      ws.on('message', (tho) => {
+        const g = JSON.parse(String(tho));
+        if (g.cmd === 'stage.describe') return ws.send(JSON.stringify({ id: g.id, ok: true, result: { actors: ACTORS_RANH } }));
+        if (kieu === 'im') return; // không bao giờ trả lời → hết hạn
+        const error = kieu === 'khong-ro' ? 'sân khấu bị thay/ngắt — không rõ đã chạy hay chưa' : 'actor owner không tồn tại';
+        ws.send(JSON.stringify({ id: g.id, ok: false, error }));
+      }),
+    );
+    const chay = (them = []) => chayCli(['--port', String(cong), '--stt-port', String(C_STT), '--to', 'gen', '--nguon', WAV_NOI, '--im-lang-ms', '600', ...them]);
+    try {
+      for (const [k, mong, them] of [['khong-ro', true, []], ['chac-chan', false, []], ['im', true, ['--han-hear-ms', '700']]]) {
+        kieu = k;
+        const r = await chay(them);
+        expect(r.ma, k).toBe(4);
+        // vẫn giữ chữ: ket-qua daGui:false RỒI loi bridge
+        expect(r.su.at(-2), k).toMatchObject({ su: 'ket-qua', daGui: false });
+        expect(r.cuoi, k).toMatchObject({ su: 'loi', ma: 'bridge', khongRo: mong });
+      }
+    } finally {
+      wss.close();
+    }
+  });
+
+  it('(h2) lỗi bridge KHÔNG phải của stage.hear (không nối được) ⇒ loi bridge không có trường khongRo', async () => {
+    const r = await chayCli(['--port', String(CONG + 3), '--stt-port', String(C_STT), '--to', 'gen', '--nguon', WAV_NOI]);
+    expect(r.cuoi).toMatchObject({ su: 'loi', ma: 'bridge' });
+    expect(r.cuoi).not.toHaveProperty('khongRo');
   });
 
   it('(k) stdin "huy" lúc đang thu → bo-qua huy, không STT, không stage.hear, mã 0', async () => {

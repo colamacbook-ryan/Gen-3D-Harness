@@ -769,7 +769,7 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
 
 - **Một tiến trình một lượt, CLI là hợp đồng** với extension (`vscode/` spawn nó):
   `node scripts/tai-nghe.mjs --port --stt-port --to [--nguon] [--toi-da-ms 15000]
-  [--im-lang-ms 1200] [--khong-gui]`; **token đọc từ env `GEN_STAGE_TOKEN`** (ưu tiên;
+  [--im-lang-ms 1200] [--han-stt-ms 130000] [--han-hear-ms 15000] [--khong-gui]`; **token đọc từ env `GEN_STAGE_TOKEN`** (ưu tiên;
   `--token` vẫn nhận nhưng ghi cảnh báo stderr "token trên argv lộ trong ps"). stdout chỉ có JSON lines
   (`bat-dau` · `muc` ≤ 10 lần/s · `dang-nhan-dang` · `ket-qua {…, daGui}` ·
   `bo-qua {lyDo: gen-dang-noi|im-lang|rong|huy}` · `loi {ma: thiet-bi|stt|bridge|tham-so}`),
@@ -809,7 +809,27 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
   coi là 0 — điều kiện viết `!(conf >= TIN_DU)`, không fail-open (cùng `TIN_DU` của mic trình duyệt); extension
   hỏi Sếp rồi tự gửi `stage.hear`. `stage.hear` lỗi ⇒ vẫn phát `ket-qua daGui:false`
   (giữ chữ) rồi `loi bridge` mã 4.
+- **`khongRo` — chống gửi `stage.hear` hai lần (review V2)**: `loi bridge` của `stage.hear`
+  mang thêm `khongRo: true|false` (các `loi` khác không có trường này; vắng = coi như false).
+  `true` = lệnh có thể đã tới Gen mà không biết kết cục: hết hạn (`--han-hear-ms`, mặc định
+  15 s), ws rớt/lỗi sau khi đã gửi, hoặc bridge trả "…không rõ đã chạy hay chưa" (CNS-002 sân
+  khấu bị thay/ngắt). `false` = chắc chắn chưa chạy (không nối được ws, validate từ chối…).
+  Host (`giong.ts`): `khongRo` ⇒ ô xác nhận ghi "Có thể Gen đã nhận câu này — xem chat trước khi
+  gửi lại". Và MỌI lần Gửi lại (`xu-ly-chatroom.ts`, `daNhanRoi`): thấy `user.text`/`user.speech`
+  cùng `to|text` (chuẩn hoá trim + gộp khoảng trắng + bỏ `.!…` cuối; `to` vắng trong sự kiện =
+  khớp) trong `CUA_SO_DA_NHAN_MS` = **30 s** (15 s hạn hear + thời gian Sếp đọc rồi bấm; 15 s trơn
+  sẽ hụt khi Sếp bấm muộn) ⇒ KHÔNG gửi, báo "Gen đã nhận câu này rồi". Giới hạn: bridge còn sửa
+  câu bằng sổ từ nhà (`chuanHoaCauNoi`) nên câu bị sửa thì không khớp — khi đó vẫn gửi (đúng
+  hướng chọn thà gửi hơn nuốt câu).
+- **Hạn cứng của host = `toiDaMs` + hạn STT + hạn `stage.hear` + dư 10 s** (170 s): hằng
+  `HAN_STT_MS`/`HAN_HEAR_MS` khai MỘT chỗ ở `vscode/src/thuan/tai-nghe.ts` và truyền xuống bằng
+  CLI **`--han-stt-ms`** (mặc định 130000) / **`--han-hear-ms`** (mặc định 15000) của
+  tai-nghe.mjs, nên hai bên không lệch. Bản trước host huỷ ở 60 s trong khi STT được phép 130 s
+  (lần đầu PhoWhisper nạp model). Hạn cứng chạm ⇒ chatroom báo "Quá hạn — nhận dạng chậm (lần
+  đầu PhoWhisper đang nạp?)", không phải "bỏ qua (huỷ)".
+- Hộp thoại hỏi root khi bấm 🎤 lần đầu nói rõ "(thu micro, để nghe giọng nói)"; thả nút lúc modal
+  còn mở ⇒ chatroom nhắc "Bấm giữ 🎤 lại sau khi xác nhận".
 - Kiểm: `scripts/__tests__/tai-nghe.test.mjs` (CLI thật + ffmpeg thật, bridge giả
-  8920, STT giả 8921; đổi gốc bằng `GEN_STAGE_TEST_CONG_TAI`) và
+  8920, STT giả 8921; đổi gốc bằng `GEN_STAGE_TEST_CONG_TAI`; phía host: `vscode/test/giong.test.mjs`, gốc 8930, đổi bằng `GEN_STAGE_TEST_CONG`) và
   `node scripts/kiem-tai-nghe.mjs` (bridge THẬT có token). **Chưa đo với mic thật
   và PhoWhisper thật** (máy kiểm không có cả hai).

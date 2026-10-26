@@ -1,6 +1,6 @@
 // V2 — giọng nói trong extension: DieuKhienGiong + tai-nghe GIẢ (gia/scripts/tai-nghe.mjs,
 // chạy qua gia/pnpm-gia.sh `exec node …` y như `pnpm exec node scripts/tai-nghe.mjs`)
-// + bridge ws GIẢ. Cổng riêng V2: 8930 (bridge giả), 8931 (stt — chỉ truyền tham số).
+// + bridge ws GIẢ. Cổng riêng V2: 8930 (bridge giả), 8931 (stt — chỉ truyền tham số); đổi gốc bằng GEN_STAGE_TEST_CONG.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -22,8 +22,9 @@ const { xuLyTinChatroom } = require('../out/thuan/xu-ly-chatroom.js');
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const GIA = path.join(DIR, 'gia');
 const PNPM_GIA = path.join(GIA, 'pnpm-gia.sh');
-const CONG = 8930;
-const CONG_STT = 8931;
+const CONG_GOC = Number(process.env.GEN_STAGE_TEST_CONG ?? 8930);
+const CONG = CONG_GOC;
+const CONG_STT = CONG_GOC + 1;
 
 const doi = (ms) => new Promise((r) => setTimeout(r, ms));
 async function cho(dk, han = 6000) {
@@ -101,15 +102,20 @@ const giaTri = (argv, ten) => argv[argv.indexOf(ten) + 1];
 /* ------------------------------------------------------------------ thuần */
 
 test('lenhTaiNghe: MỘT chỗ cấu hình lệnh; giu = --im-lang-ms 0, bat-tat = 1200; nguon chỉ khi có; không --token trên argv', () => {
-  const c = { pnpm: 'pnpm', bridgePort: 8930, sttPort: 8931, taiNgheNguon: '' };
+  const c = { pnpm: 'pnpm', bridgePort: CONG, sttPort: CONG_STT, taiNgheNguon: '' };
   const l = tn.lenhTaiNghe(c, 'gen', 'giu');
   assert.equal(l.cmd, 'pnpm');
   assert.deepEqual(l.args.slice(0, tn.CHAY_TAI_NGHE.length), [...tn.CHAY_TAI_NGHE]);
-  assert.equal(giaTri(l.args, '--port'), '8930');
-  assert.equal(giaTri(l.args, '--stt-port'), '8931');
+  assert.equal(giaTri(l.args, '--port'), String(CONG));
+  assert.equal(giaTri(l.args, '--stt-port'), String(CONG_STT));
   assert.equal(giaTri(l.args, '--to'), 'gen');
   assert.equal(giaTri(l.args, '--im-lang-ms'), '0');
   assert.equal(giaTri(l.args, '--toi-da-ms'), '15000');
+  // hạn STT/stage.hear khai MỘT chỗ (host) rồi truyền xuống → hạn cứng khớp
+  assert.equal(giaTri(l.args, '--han-stt-ms'), String(tn.HAN_STT_MS));
+  assert.equal(giaTri(l.args, '--han-hear-ms'), String(tn.HAN_HEAR_MS));
+  assert.equal(tn.HAN_CUNG_MS, tn.TOI_DA_MS + tn.HAN_STT_MS + tn.HAN_HEAR_MS + tn.DU_HAN_MS);
+  assert.ok(tn.HAN_CUNG_MS > tn.TOI_DA_MS + tn.HAN_STT_MS, 'hạn cứng phải dài hơn hạn STT');
   assert.ok(!l.args.includes('--nguon') && !l.args.includes('--token') && !l.args.includes('--khong-gui'));
   assert.deepEqual(tn.lenhTaiNghe(c, 'gen', 'giu', undefined).env, {});
   assert.deepEqual(tn.lenhTaiNghe(c, 'gen', 'giu', 'bi-mat').env, { GEN_STAGE_TOKEN: 'bi-mat' }, 'token chỉ qua env');
@@ -121,7 +127,7 @@ test('lenhTaiNghe: MỘT chỗ cấu hình lệnh; giu = --im-lang-ms 0, bat-tat
 
 test('lenhBridge: có sttPort thì bridge tự bật nghe /stt đúng cổng đó (GEN_STAGE_STT_PORT)', () => {
   const tt = require('../out/thuan/tien-trinh.js');
-  assert.equal(tt.lenhBridge({ pnpm: 'pnpm', bridgePort: 8930, ttsPort: 8932, sttPort: 8931 }).env.GEN_STAGE_STT_PORT, '8931');
+  assert.equal(tt.lenhBridge({ pnpm: 'pnpm', bridgePort: CONG, ttsPort: CONG + 2, sttPort: CONG_STT }).env.GEN_STAGE_STT_PORT, String(CONG_STT));
 });
 
 test('chuanNguonTaiNghe + MAC_DINH: rỗng = tự dò; "-…"/ký tự điều khiển bị bỏ kèm lý do', () => {
@@ -143,7 +149,7 @@ test('docDongTaiNghe: đúng 6 sự kiện hợp đồng, kẹp số, dòng lạ
     su: 'ket-qua', text: 'a', confidence: 0.7, durationMs: 5, goiGen: true, daGui: true,
   });
   assert.deepEqual(tn.docDongTaiNghe('{"su":"bo-qua","lyDo":"im-lang"}'), { su: 'bo-qua', lyDo: 'im-lang' });
-  assert.deepEqual(tn.docDongTaiNghe('{"su":"loi","ma":"thiet-bi","chu":"x"}'), { su: 'loi', ma: 'thiet-bi', chu: 'x' });
+  assert.deepEqual(tn.docDongTaiNghe('{"su":"loi","ma":"thiet-bi","chu":"x"}'), { su: 'loi', ma: 'thiet-bi', chu: 'x', khongRo: false });
   for (const d of ['', 'xin chào', '[1]', 'null', '{"su":"la"}']) assert.equal(tn.docDongTaiNghe(d), null);
   assert.equal(lg.maLoiTuMaThoat(2), 'thiet-bi');
   assert.equal(lg.maLoiTuMaThoat(64), 'tham-so');
@@ -454,4 +460,95 @@ test('hợp đồng bổ sung: stage.hear hỏng (ket-qua daGui:false rồi loi 
   assert.ok(await cho(() => t3.so.giong.pha === 'loi' && !t3.g.dangThu));
   assert.match(t3.so.giong.chu, /cần Node ≥ 22\.18 \(đang v20/);
   assert.match(t3.so.giong.goiY, /Node ≥ 22\.18/);
+});
+
+test('loi bridge khongRo: tai-nghe báo "không rõ" → ô xác nhận ghi cảnh báo; khongRo:false thì chữ cũ', async () => {
+  assert.equal(tn.docDongTaiNghe('{"su":"loi","ma":"bridge","chu":"x","khongRo":true}').khongRo, true);
+  assert.equal(tn.docDongTaiNghe('{"su":"loi","ma":"bridge","chu":"x"}').khongRo, false);
+  const t = dung('hear-khong-ro');
+  t.g.giu();
+  assert.ok(await cho(() => t.so.giong.pha === 'nghe'));
+  t.theoDoiNhom();
+  t.g.tha();
+  assert.ok(await cho(() => !t.g.dangThu), t.log.join('\n'));
+  const g = t.so.moHinh().giong;
+  assert.equal(g.pha, 'cho-xac-nhan');
+  assert.match(g.chu, /Có thể Gen đã nhận câu này — xem chat trước khi gửi lại/);
+  // hear-loi (chắc chắn chưa chạy) KHÔNG có cảnh báo
+  const t2 = dung('hear-loi');
+  t2.g.giu();
+  assert.ok(await cho(() => t2.so.giong.pha === 'nghe'));
+  t2.theoDoiNhom();
+  t2.g.tha();
+  assert.ok(await cho(() => !t2.g.dangThu));
+  assert.doesNotMatch(t2.so.giong.chu, /Có thể Gen đã nhận/);
+});
+
+test('gửi lại: user.text cùng to|text (chuẩn hoá) trong cửa sổ ⇒ KHÔNG gửi, báo đã nhận; khác câu / quá cửa sổ / khác người ⇒ gửi', async () => {
+  const cau = { text: 'Gen ơi, chào em', to: 'gen', confidence: 0.9, durationMs: 400 };
+  const thu = async (mo) => {
+    const so = new SoChatroom(null);
+    so.nhanDescribe({ actors: ACTORS });
+    so.datGiong({ pha: 'cho-xac-nhan', toi: 'gen', chu: 'x', cau });
+    mo(so);
+    const goi = [];
+    await xuLyTinChatroom({ loai: 'giongGui', text: '  Gen ơi,   chào em. ' }, so, { goi: async (cmd, args) => (goi.push({ cmd, args }), { ok: true }) }, () => undefined);
+    return { so, goi };
+  };
+  const now = Date.now();
+  let r = await thu((so) => so.nhanSuKien('user.text', { actor: 'owner', to: 'gen', text: 'Gen ơi, chào em' }, now - 5000));
+  assert.deepEqual(r.goi, [], 'đã nhận rồi thì không gửi');
+  assert.equal(r.so.giong.pha, 'nghi');
+  assert.match(r.so.giong.chu, /đã nhận câu này rồi/);
+  // chỉ có user.speech (mic) cũng tính
+  r = await thu((so) => so.nhanSuKien('user.speech', { actor: 'owner', to: 'gen', text: 'Gen ơi, chào em' }, now - 1000));
+  assert.deepEqual(r.goi, []);
+  r = await thu((so) => so.nhanSuKien('user.text', { actor: 'owner', to: 'gen', text: 'Gen ơi, chào em' }, now - 120_000));
+  assert.equal(r.goi.length, 1, 'quá cửa sổ → gửi');
+  r = await thu((so) => so.nhanSuKien('user.text', { actor: 'owner', to: 'mai', text: 'Gen ơi, chào em' }, now - 1000));
+  assert.equal(r.goi.length, 1, 'người nhận khác → gửi');
+  r = await thu((so) => so.nhanSuKien('user.text', { actor: 'owner', to: 'gen', text: 'câu khác hẳn' }, now - 1000));
+  assert.equal(r.goi.length, 1, 'câu khác → gửi');
+});
+
+test('hạn cứng của host: chạm hạn → "Quá hạn — nhận dạng chậm", KHÔNG phải "bỏ qua (huỷ)"; tai-nghe bị huỷ thật', async () => {
+  const t = dung('giu');
+  // dựng lại với hanCungMs nhỏ
+  process.env.TAI_NGHE_KICH_BAN = 'giu';
+  const so = t.so;
+  const g = new DieuKhienGiong({
+    so,
+    layCfg: () => ({ root: GIA, pnpm: PNPM_GIA, bridgePort: CONG, sttPort: CONG_STT, taiNgheNguon: '' }),
+    choPhep: async () => null,
+    ve: () => undefined,
+    ghi: (d) => t.log.push(d),
+    hanCungMs: 600,
+  });
+  g.giu();
+  assert.ok(await cho(() => so.giong.pha === 'nghe'));
+  const pid = g.pidDangChay;
+  nhomPhaiDon.push(pid);
+  assert.ok(await cho(() => so.giong.pha === 'loi' && !g.conTienTrinh, 8000), JSON.stringify(so.giong) + t.log.join('\n'));
+  assert.match(so.giong.chu, /Quá hạn — nhận dạng chậm \(lần đầu PhoWhisper đang nạp\?\)/);
+  assert.doesNotMatch(so.giong.chu, /huỷ|Bỏ qua/);
+  assert.ok(await cho(() => !song(pid)), 'tiến trình đã chết');
+});
+
+test('choPhep nhận ngữ cảnh "giong" khi bấm 🎤; thả nút khi còn chờ modal → hướng dẫn bấm giữ lại', async () => {
+  let boiCanh;
+  let mo;
+  const t = dung('giu', {
+    choPhep: (b) => {
+      boiCanh = b;
+      return new Promise((r) => { mo = () => r(null); });
+    },
+  });
+  t.g.giu();
+  assert.ok(await cho(() => boiCanh !== undefined));
+  assert.equal(boiCanh, 'giong');
+  t.g.tha();
+  mo();
+  assert.ok(await cho(() => !t.g.dangThu));
+  assert.match(t.so.giong.chu, /Bấm giữ 🎤 lại sau khi xác nhận/);
+  assert.equal(t.docGhi().length, 0, 'không spawn');
 });

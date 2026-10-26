@@ -43,13 +43,16 @@ phải phím hệ thống GNOME mặc định — **chưa kiểm trên máy Sế
 - **Tin cậy < 0,6** (`daGui:false`): câu vào ô sửa với **Gửi / Bỏ** (Esc = Bỏ). Gửi = host gọi `stage.hear {text đã sửa, to (lúc thu),
   confidence, durationMs}` qua ws hiện có. tai-nghe gửi `stage.hear` hỏng (`ket-qua daGui:false` rồi `loi bridge`) → câu cũng
   nằm lại ô sửa để gửi lại.
+  Nếu `loi bridge` mang **`khongRo:true`** (hết hạn / ws rớt / sân khấu bị thay — Gen có thể đã nhận) ô sửa ghi "Có thể Gen đã nhận
+  câu này — xem chat trước khi gửi lại"; và **trước mọi lần Gửi lại** host kiểm `user.text`/`user.speech` cùng `to|text` trong
+  30 s gần nhất — có rồi thì **không gửi**, báo "Gen đã nhận câu này rồi".
 - **Dọn**: đóng chatroom, đóng tab sân khấu, đổi cấu hình (cổng/nguồn/root/pnpm), deactivate → **huỷ**: dòng `huy` vào stdin
   (không STT, không `stage.hear`), quá 2 s chưa thoát thì **SIGKILL cả nhóm** (spawn `detached` ⇒ pgid = pid; ffmpeg con chết theo).
   deactivate chờ tối đa 2,5 s rồi SIGKILL mọi nhóm còn lại. Chatroom bị *ẩn* giữa lúc **giữ nút** cũng huỷ (document webview
   bị huỷ nên `pointerup` không bao giờ tới); lần thu bằng phím thì không. Không dùng SIGTERM làm nút huỷ (SIGTERM = dừng thu
   nhưng vẫn nhận dạng + gửi).
 - **Không ghi sổ PID** cho tai-nghe (khác bridge/vite/não): nó sống ngắn có trần (`--toi-da-ms` 15 s + nhận dạng; host tự huỷ sau
-  60 s), stdout là pipe của host (host chết → lần ghi kế ăn EPIPE, muộn nhất tự dừng ở 15 s), nhận lại quyền qua cửa sổ khác là vô
+  `toiDaMs` + hạn STT 130 s + hạn stage.hear 15 s + dư 10 s = 170 s, truyền xuống bằng `--han-stt-ms`/`--han-hear-ms`; chạm hạn → "Quá hạn — nhận dạng chậm"), stdout là pipe của host (host chết → lần ghi kế ăn EPIPE, muộn nhất tự dừng ở 15 s), nhận lại quyền qua cửa sổ khác là vô
   nghĩa với một lần thu, còn sổ PID thêm rủi ro giết nhầm PID tái sử dụng. Vẫn không mồ côi: nhóm riêng + `huy`/SIGKILL nhóm, và khi
   trưởng nhóm thoát host quét nhóm thêm một lần.
 - **Lệnh chạy** khai ở MỘT chỗ: `CHAY_TAI_NGHE` trong `src/thuan/tai-nghe.ts` = `<genStage.pnpm> exec node scripts/tai-nghe.mjs`
@@ -130,8 +133,8 @@ Nếu VS Code của Sếp cũ hơn 1.106 thì extension không cài được (en
 
 ```bash
 pnpm -C vscode check     # tsc --noEmit, strict, cả host lẫn webview
-pnpm -C vscode test      # build + node:test (64 test; V2 thêm 16 trong test/giong.test.mjs: tai-nghe GIẢ test/gia/scripts/tai-nghe.mjs
-                         #   + bridge ws giả 8930 — giữ-thả gửi `dung`, phím bật/tắt VAD, --to = đang chọn, daGui:false → Gửi →
+pnpm -C vscode test      # build + node:test (68 test; V2 thêm 20 trong test/giong.test.mjs: tai-nghe GIẢ test/gia/scripts/tai-nghe.mjs
+                         #   + bridge ws giả 8930 (đổi gốc: `GEN_STAGE_TEST_CONG`) — giữ-thả gửi `dung`, phím bật/tắt VAD, --to = đang chọn, daGui:false → Gửi →
                          #   stage.hear text đã sửa/to lúc thu, bo-qua gen-dang-noi, lỗi thiết bị mã 2, nút tắt khi Gen nói, huỷ = `huy`
                          #   rồi SIGKILL cả nhóm sau 2 s, epTat, token qua env, mã 130, cổng an toàn trust/root.
                          #   Còn lại (V0/V1): CSP/HTML/nonce, vỏ bỏ qua tin từ iframe, sự kiện→dòng chat,

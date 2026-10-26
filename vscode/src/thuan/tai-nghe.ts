@@ -49,8 +49,17 @@ export const FILE_TAI_NGHE = 'scripts/tai-nghe.mjs';
 /** VAD: giữ-để-nói tắt hẳn (Sếp thả nút là dừng); bật/tắt thì im 1,2 s là dừng. */
 export const IM_LANG_MS: Record<CheDoGiong, number> = { giu: 0, 'bat-tat': 1200 };
 export const TOI_DA_MS = 15_000;
-/** Host tự huỷ nếu tai-nghe sống quá lâu (thu tối đa + nhận dạng chậm nhất + dư). */
-export const HAN_CUNG_MS = TOI_DA_MS + 45_000;
+/**
+ * Hạn chờ STT (lần đầu PhoWhisper nạp model có thể mất cả phút) và hạn chờ `stage.hear` —
+ * MỘT chỗ khai ở đây rồi truyền xuống tai-nghe bằng `--han-stt-ms` / `--han-hear-ms`
+ * (mặc định của tai-nghe.mjs trùng: 130000 / 15000), nên hạn cứng của host luôn khớp.
+ */
+export const HAN_STT_MS = 130_000;
+export const HAN_HEAR_MS = 15_000;
+/** Dư để tai-nghe kịp in kết cục sau hạn của nó trước khi host ra tay. */
+export const DU_HAN_MS = 10_000;
+/** Host tự huỷ nếu tai-nghe sống quá lâu: thu tối đa + chờ STT + chờ stage.hear + dư. */
+export const HAN_CUNG_MS = TOI_DA_MS + HAN_STT_MS + HAN_HEAR_MS + DU_HAN_MS;
 /** Sau dòng `huy`, chờ tai-nghe tự thoát bấy lâu rồi mới SIGKILL cả nhóm. */
 export const HAN_HUY_MS = 2_000;
 
@@ -69,6 +78,8 @@ export function lenhTaiNghe(
     '--to', to,
     '--toi-da-ms', String(TOI_DA_MS),
     '--im-lang-ms', String(IM_LANG_MS[cheDo]),
+    '--han-stt-ms', String(HAN_STT_MS),
+    '--han-hear-ms', String(HAN_HEAR_MS),
   ];
   if (c.taiNgheNguon) args.push('--nguon', c.taiNgheNguon);
   // token: chỉ qua env `GEN_STAGE_TOKEN` (tai-nghe đọc biến này), KHÔNG `--token` trên argv
@@ -87,7 +98,8 @@ export type SuTaiNghe =
   | { su: 'dang-nhan-dang' }
   | { su: 'ket-qua'; text: string; confidence: number; durationMs: number; goiGen: boolean; daGui: boolean }
   | { su: 'bo-qua'; lyDo: string }
-  | { su: 'loi'; ma: string; chu: string };
+  /** `khongRo` (chỉ `loi bridge` của stage.hear): không biết Gen đã nhận câu chưa. */
+  | { su: 'loi'; ma: string; chu: string; khongRo: boolean };
 
 const so = (x: unknown, md = 0): number => (typeof x === 'number' && Number.isFinite(x) ? x : md);
 const chuoi = (x: unknown): string => (typeof x === 'string' ? x : '');
@@ -121,7 +133,7 @@ export function docDongTaiNghe(dong: string): SuTaiNghe | null {
     case 'bo-qua':
       return { su: 'bo-qua', lyDo: chuoi(o.lyDo) };
     case 'loi':
-      return { su: 'loi', ma: chuoi(o.ma) || 'khac', chu: chuoi(o.chu) };
+      return { su: 'loi', ma: chuoi(o.ma) || 'khac', chu: chuoi(o.chu), khongRo: o.khongRo === true };
     default:
       return null;
   }
@@ -143,6 +155,8 @@ export interface TuyChonTienTrinhTaiNghe {
   /** Gọi ĐÚNG MỘT LẦN, sau khi stdout đã đọc hết (mọi `khiSu` đã chạy). */
   khiXong: (k: KetThucTaiNghe) => void;
   ghi: (dong: string) => void;
+  /** Gọi ngay khi hạn cứng chạm, TRƯỚC khi gửi `huy` — để host phân biệt "quá hạn" với huỷ chủ động. */
+  khiQuaHan?: () => void;
   hanCungMs?: number;
   hanHuyMs?: number;
 }
@@ -209,6 +223,7 @@ export class TienTrinhTaiNghe {
     this.con.on('close', (ma, tin) => this.ketThuc(ma, tin));
     this.henCung = setTimeout(() => {
       this.o.ghi(`[tai-nghe] sống quá ${this.o.hanCungMs ?? HAN_CUNG_MS} ms — huỷ`);
+      this.o.khiQuaHan?.();
       void this.huy();
     }, this.o.hanCungMs ?? HAN_CUNG_MS);
   }
