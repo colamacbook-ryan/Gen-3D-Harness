@@ -17,6 +17,8 @@
     "mcp": "tsx bridge/mcp.ts",
     "nao": "node scripts/nao-agy.mjs",
     "nao-demo": "node scripts/nao-demo.mjs",
+    "nao-local": "tsx scripts/nao-local.mjs",
+    "kiem-nao-local": "node scripts/kiem-nao-local.mjs",
     "kiem-a1": "node scripts/kiem-a1.mjs",
     "kiem-a3": "node scripts/kiem-a3.mjs",
     "kiem-lab2": "node scripts/kiem-lab2.mjs",

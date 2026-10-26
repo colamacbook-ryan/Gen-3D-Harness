@@ -35,6 +35,7 @@ pnpm test                 # vitest: dispatcher, hàng đợi, kịch bản, stag
 pnpm bridge               # bridge: ws lệnh (8787) + giọng Việt (8788) + MCP HTTP (8789) + nhận giọng (8790)
 pnpm mcp                  # MCP qua stdio cho agy CLI (`agy mcp add gen-stage …`)
 pnpm nao                  # DRIVER não: nghe user.text qua ws → nuôi agy đang ấm trong tmux
+pnpm nao-local            # V1 — DRIVER NÃO LOCAL: user.text qua ws → Ollama /v1 (tools) → Gen trả lời
 pnpm nao-demo             # não mẫu rule-based (không LLM) nối MCP stdio — vòng kín khi không có agy
 pnpm preview              # xem thử bản build
 
@@ -48,6 +49,7 @@ node scripts/kiem-a2.mjs --chi-anh  # bản NHANH lúc đang làm (chỉ ảnh +
 node scripts/kiem-b1.mjs      # bằng chứng B1: bố cục 3 vùng + steer mượt + owner/gen vào docs/b1/ (CHẠY MỘT LẦN)
 node scripts/kiem-b3.mjs      # bằng chứng B3: Owner gõ → MCP → Gen diễn + nói, vào docs/b3/ (CHẠY MỘT LẦN)
 node scripts/kiem-nao.mjs     # bằng chứng DRIVER: Sếp gõ → driver → agy thật → Gen nói, đo độ trễ, vào docs/nao/ (CHẠY MỘT LẦN)
+node scripts/kiem-nao-local.mjs  # bằng chứng V1: bridge thật + Ollama GIẢ + driver thật (cổng 8863–8868), vào docs/v1/nhat-ky-kiem-nao-local.json
 node scripts/kiem-mo-phong-loi-cu.mjs  # mô phỏng nguyên nhân gốc #37 (naoHttpDen hết hạn, ws không hề rớt) vào docs/nao/mo-phong-loi-cu.*
 node scripts/kiem-reconnect.mjs        # bằng chứng heartbeat + backoff + watchdog (#37): driver sống 10 phút, giết bridge giữa chừng, vào docs/nao/reconnect.* (CHẠY MỘT LẦN)
 node scripts/kiem-c0.mjs      # bằng chứng C0: phản xạ xã hội + nhân vật nam anime, vào docs/c0/ (CHẠY MỘT LẦN)
@@ -139,6 +141,7 @@ biết registry, **giao diện** không gọi thẳng vào sân khấu.
 | `src/ui/o-chat.ts` | **B3** — ô chat dưới màn hình: Enter = `actor.say` lên nhân vật `owner`, y như `Space` |
 | `skills/gen-stage-nao/SKILL.md` | **B3** — skill cho agy CLI: vòng `stage_events` → `stage_describe` → 1–3 lệnh → `actor_say` |
 | `scripts/nao-agy.mjs` | **DRIVER NÃO** — vòng lặp nằm ở đây, không ở agy: nghe `user.text` qua ws, phản xạ ≤300 ms, gộp câu 800 ms, hàng đợi 1 lượt, bơm một dòng vào agy đang ấm trong tmux |
+| `scripts/nao-local.mjs` | **V1 — DRIVER NÃO LOCAL** (Ollama): cùng khung `nao-agy.mjs` (import, không chép), 10 tool danh sách trắng sinh bằng `toolTuLenh`, mọi tool_call qua `lyDoCamNao`; persona `scripts/nao-local/<actor>.md` (ghi đè bằng `.cache/nao-local/<actor>.md`) |
 | `scripts/nao-demo.mjs` | **B3** — não mẫu rule-based (không LLM) chạy qua MCP stdio thật, làm bằng chứng vòng kín khi không có agy |
 | `bridge/tts.ts` | **B2** — giọng tiếng Việt: `GET /tts` (cổng 8788) gọi thẳng WebSocket Edge, trả mp3, cache `.cache/tts/<sha1>.mp3` |
 | `src/audio/tts-client.ts` | **B2** — tải + giải mã mp3, đo `durationMs` thật, phát bằng Web Audio, đẩy biên độ RMS mỗi 50 ms sang nhân vật |
@@ -638,3 +641,51 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
   stream, module đang kết tinh, bảng luma (mặt p95 ≤ 230 — đo thật: Javis
   166,3, Gen 177,2), FPS tương đối (~1 fps, cùng tầm lab cũ trên swiftshader),
   console 0 lỗi.
+
+## Quyết định V1 — não LLM local (26/10, INT-03 / INT-05)
+
+- **LLM local = Ollama** (Ryan chốt), API OpenAI-compatible `POST /v1/chat/completions`
+  với `tools`. "Local" chỉ áp cho não — TTS vẫn Edge. Driver nằm ở `scripts/`
+  (`pnpm nao-local`), chạy được khi không có VS Code; extension chỉ khởi động nó.
+  Chỉ chạy **một** driver não một lúc (`nao` hoặc `nao-local`).
+- **Khung dùng lại, không chép**: `laCauCuaSep`, `taoGop` (800 ms), `taoHangDoi`
+  (1 lượt), `phanXa` (nay nhận tham số `actor`, mặc định `gen`), `noiSanKhau`
+  (`?role=nao` + heartbeat 15 s + backoff 1→10 s + log lý do, không `unref` — #37),
+  `gonDescribe`, `dungDongNhac` đều import từ `nao-agy.mjs`.
+- **Chạy bằng `tsx`, không `node`**: driver import thẳng `bridge/mcp.ts`
+  (`toolTuLenh`, `lyDoCamNao`, `cuaBossTuDescribe` — hàm cuối vừa tách ra từ
+  `taoMcpServer`, hành vi MCP không đổi), registry và `tachNguoiNhan` (TS).
+  Extension/watchdog spawn bằng `node` thì phải đổi sang `tsx`.
+- **Tool = 10 cái trong danh sách trắng** (`DANH_SACH_TRANG`), schema sinh từ
+  `taoRegistry()` bằng đúng `toolTuLenh` của MCP rồi đổi sang format OpenAI —
+  không viết tay schema. Registry thiếu cái nào thì bỏ + log. Model local nhỏ
+  đưa 44 tool là lạc.
+- **Rào hai lớp trước khi chạm ws**: tool ngoài danh sách trắng → lỗi; còn lại
+  qua `lyDoCamNao` (owner theo VAI từ `stage.describe`, `stage.hear`, …). Bị chặn
+  thì trả `{ok:false,error}` về model như kết quả tool — model biết mà sửa.
+  Model quên `actor` thì driver điền người trả lời (không bao giờ owner).
+- **Người trả lời dùng chính `tachNguoiNhan` của lớp hiểu lệnh (C2)**: tên gọi →
+  `to` → gen. Người nhận chỉ là nhân vật `controlledBy:"owner"` (Javis) ⇒ driver
+  bỏ qua (lớp hiểu lệnh tự đáp "chưa hiểu" và gắn `handled`). Câu của nhân vật
+  agent nào cũng bị bỏ (mở rộng chặn vòng lặp ngoài `gen`).
+- **Ollama không có `tool_choice`**: model trả chữ thuần mà không có `actor_say`
+  thành công nào ⇒ driver tự `actor.say` nội dung (bỏ `<think>…</think>`, ≤ 300
+  ký tự) lên người trả lời. Tối đa **3 lần gọi model** mỗi lượt; hết 3 vòng mà
+  chưa nói gì thì nói câu dự phòng.
+- **Hạn lượt 60 s** (`GEN_STAGE_NAO_LOCAL_HAN`, AbortController) → "Em nghĩ lâu
+  quá…"; **20 s** chưa mở miệng → "Em đang nghĩ, Sếp chờ chút ạ"
+  (`GEN_STAGE_NAO_LOCAL_XIN_CHO`).
+- **Dò lúc chạy (STD-10)**: `GET /v1/models`; có `GEN_STAGE_OLLAMA_MODEL` thì
+  phải có trong danh sách, không thì chọn model đầu tiên mà `POST /api/show`
+  khai `capabilities` chứa `tools` (Ollama cũ không có trường này → lấy model
+  đầu tiên). Ollama tắt / không model ⇒ log lý do mỗi lần thử, Gen báo
+  "chưa có não local" **đúng một lần mỗi đợt mất**, thử lại backoff 1→10 s,
+  không crash; tìm lại được thì reset. Câu Sếp gõ trong lúc mất não chỉ được
+  log "bỏ lượt" (không nói thêm).
+- Biến môi trường: `GEN_STAGE_OLLAMA_URL` (mặc định `http://127.0.0.1:11434`),
+  `GEN_STAGE_OLLAMA_MODEL`, `GEN_STAGE_NAO_LOCAL_HAN`, `GEN_STAGE_NAO_LOCAL_XIN_CHO`,
+  cộng `GEN_STAGE_PORT`/`TOKEN`/`NAO_GOP`/`NAO_NHIP_TIM`/`NAO_QUA_HAN_TIM` như `nao-agy`.
+- Kiểm: `scripts/__tests__/nao-local.test.mjs` (bridge giả ws 8860 + Ollama giả
+  8861, cổng 8862 làm "Ollama tắt") và `node scripts/kiem-nao-local.mjs` (bridge
+  THẬT 8863–8866, Ollama giả 8867, 8868 tắt) → `docs/v1/nhat-ky-kiem-nao-local.json`.
+  **Chưa đo với Ollama + model thật.**

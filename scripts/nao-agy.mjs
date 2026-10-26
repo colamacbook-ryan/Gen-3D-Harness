@@ -506,10 +506,13 @@ export function taoLuot({
   };
 }
 
-/** Phản xạ ≤300 ms — bắn từ sự kiện thô, KHÔNG chờ cửa sổ gộp và não. */
-export function phanXa(san) {
-  void san.goi('actor.turnTo', { actor: 'gen', target: 'owner', interrupt: true });
-  void san.goi('actor.emote', { actor: 'gen', emote: 'suy-nghi' });
+/**
+ * Phản xạ ≤300 ms — bắn từ sự kiện thô, KHÔNG chờ cửa sổ gộp và não.
+ * `actor` = nhân vật sẽ trả lời (mặc định `gen`; não local V1 truyền người nhận câu).
+ */
+export function phanXa(san, actor = 'gen') {
+  void san.goi('actor.turnTo', { actor, target: 'owner', interrupt: true });
+  void san.goi('actor.emote', { actor, emote: 'suy-nghi' });
 }
 
 /* ============================================================ 8. nối bridge */

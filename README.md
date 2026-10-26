@@ -25,6 +25,19 @@ pnpm dev         # rồi mở http://localhost:5173/?bridge=1
 Nối não (agy CLI): [`docs/BOOTSTRAP-AGENT.md`](./docs/BOOTSTRAP-AGENT.md) —
 một câu: *gọi `stage_bootstrap` trước, làm theo nó*.
 
+### Não LLM local (Ollama, không cần mạng ra ngoài)
+
+```bash
+ollama serve && ollama pull qwen2.5:7b   # model nào có "tools" cũng được
+pnpm nao-local                            # driver nghe ô chat → Ollama → Gen trả lời
+```
+
+Biến môi trường: `GEN_STAGE_OLLAMA_URL` (mặc định `http://127.0.0.1:11434`),
+`GEN_STAGE_OLLAMA_MODEL` (bỏ trống = tự chọn model đầu tiên có khả năng `tools`).
+Persona từng nhân vật: `scripts/nao-local/<actor>.md`; muốn sửa riêng thì đặt
+`.cache/nao-local/<actor>.md` (được ưu tiên, không commit). Chỉ chạy **một** driver
+não một lúc (`pnpm nao` hoặc `pnpm nao-local`).
+
 Xem trên điện thoại cùng wifi: `pnpm dev --host` rồi mở địa chỉ `http://<IP máy>:5173`.
 
 Chi tiết quy ước: [`CLAUDE.md`](./CLAUDE.md) · giấy phép asset: [`assets/LICENSES.md`](./assets/LICENSES.md)

@@ -229,6 +229,15 @@ export function lyDoCamNao(
   return null;
 }
 
+/**
+ * Tập id actor "của Boss" (`controlledBy:"owner"`, luôn gồm `"owner"`) đọc từ kết quả `stage.describe`.
+ * Dùng chung cho MCP và driver não local (`scripts/nao-local.mjs`) để rào theo VAI ở một chỗ.
+ */
+export function cuaBossTuDescribe(ketQua: unknown): ReadonlySet<string> {
+  const ds = (ketQua as { actors?: { id: string; controlledBy?: string }[] } | undefined)?.actors ?? [];
+  return new Set(['owner', ...ds.filter((x) => x.controlledBy === 'owner').map((x) => x.id)]);
+}
+
 /** Toàn bộ tool: mỗi lệnh một tool + `stage_events`. */
 export function sinhTools(): ToolMcp[] {
   return [...taoRegistry().all().map(toolTuLenh), TOOL_SU_KIEN];
@@ -504,8 +513,7 @@ export function taoMcpServer(noi: NoiSanKhau): Server {
     let cuaBoss: ReadonlySet<string> = new Set(['owner']);
     if (cmd.startsWith('actor.') || cmd === 'script.run') {
       const mo = await noi.goi('stage.describe', {});
-      const ds = (mo.ok ? (mo.result as { actors?: { id: string; controlledBy?: string }[] } | undefined)?.actors : undefined) ?? [];
-      cuaBoss = new Set(['owner', ...ds.filter((x) => x.controlledBy === 'owner').map((x) => x.id)]);
+      cuaBoss = cuaBossTuDescribe(mo.ok ? mo.result : undefined);
     }
     const cam = lyDoCamNao(cmd, args, cuaBoss);
     if (cam) return { isError: true, content: [{ type: 'text' as const, text: cam }] };
