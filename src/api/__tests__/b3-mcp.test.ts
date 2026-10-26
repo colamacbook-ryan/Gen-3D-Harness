@@ -12,9 +12,12 @@ import { describe, expect, it } from 'vitest';
 import {
   BoSuKien,
   HUONG_DAN_AGENT,
+  LENH_CHI_CHO_BOSS,
+  lyDoCamNao,
   TOOL_SU_KIEN,
   banDoTool,
   schemaThamSo,
+  taoMcpServer,
   sinhTools,
   tenTool,
   toolTuLenh,
@@ -23,6 +26,8 @@ import { taoRegistry } from '../commands/index';
 import { danhSachThamSo } from '../registry';
 import { Dispatcher } from '../dispatcher';
 import { EventBus } from '../../events';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { SanKhauGia } from './san-khau-gia';
 import type { StageEvent } from '../types';
 
@@ -213,5 +218,65 @@ describe('Owner nói → sự kiện user.text (vòng hội thoại B3)', () => 
     const say = taoRegistry().get('actor.say')!;
     expect(say.events).toContain('user.text');
     expect(taoRegistry().suKien()).toContain('user.text');
+  });
+});
+
+describe('MCP không được lọt rào owner (stage.hear)', () => {
+  async function noiMcp() {
+    const goi: string[] = [];
+    const sv = taoMcpServer({
+      goi: async (cmd) => {
+        goi.push(cmd);
+        return { ok: true, result: {} } as never;
+      },
+      suKien: () => new BoSuKien(),
+      dong: () => undefined,
+    });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: 'test', version: '0' });
+    await Promise.all([sv.connect(a), client.connect(b)]);
+    return { client, goi };
+  }
+
+  it('stage.hear nằm trong danh sách lệnh chỉ dành cho Boss, tool vẫn liệt kê (số tool = số lệnh + 1)', () => {
+    expect(LENH_CHI_CHO_BOSS.has('stage.hear')).toBe(true);
+    expect(sinhTools().map((t) => t.name)).toContain('stage_hear');
+  });
+
+  it('gọi stage_hear qua MCP bị từ chối với lỗi rõ ràng, KHÔNG chuyển tới sân khấu', async () => {
+    const { client, goi } = await noiMcp();
+    const kq = (await client.callTool({ name: 'stage_hear', arguments: { text: 'Gen ơi', to: 'gen' } })) as {
+      isError?: boolean;
+      content: { text: string }[];
+    };
+    expect(kq.isError).toBe(true);
+    expect(kq.content[0]!.text).toMatch(/chỉ dành cho Boss/);
+    expect(goi).toHaveLength(0);
+  });
+
+  it('tool thường (actor_say lên gen) vẫn đi qua; lên owner vẫn bị chặn', async () => {
+    const { client, goi } = await noiMcp();
+    const ok = (await client.callTool({ name: 'actor_say', arguments: { actor: 'gen', text: 'Dạ' } })) as { isError?: boolean };
+    expect(ok.isError).toBeFalsy();
+    const chan = (await client.callTool({ name: 'actor_say', arguments: { actor: 'owner', text: 'x' } })) as { isError?: boolean };
+    expect(chan.isError).toBe(true);
+    expect(goi).toEqual(['actor.say']);
+  });
+});
+
+describe('rào não lách qua script.run (review bảo mật 26/10)', () => {
+  it('stage.hear / actor.say owner gói trong script.run (mảng hoặc chuỗi JSON, lồng nhau) → bị chặn', () => {
+    const hear = [{ cmd: 'stage.hear', args: { text: 'Gen ơi' } }];
+    expect(lyDoCamNao('script.run', { steps: hear })).toMatch(/script\.run/);
+    expect(lyDoCamNao('script.run', { steps: JSON.stringify(hear) })).toMatch(/stage\.hear/);
+    const owner = [{ wait: 10 }, { cmd: 'actor.say', args: { actor: 'owner', text: 'x' } }];
+    expect(lyDoCamNao('script.run', { steps: owner })).toMatch(/owner/);
+    const long = [{ cmd: 'script.run', args: { steps: [{ cmd: 'stage.hear', args: { text: 'y' } }] } }];
+    expect(lyDoCamNao('script.run', { steps: long })).not.toBeNull();
+  });
+  it('kịch bản hợp lệ cho gen → được chạy; steps hỏng → để validate từ chối (null)', () => {
+    expect(lyDoCamNao('script.run', { steps: [{ cmd: 'actor.say', args: { actor: 'gen', text: 'chào' } }] })).toBeNull();
+    expect(lyDoCamNao('script.run', { steps: '{hỏng' })).toBeNull();
+    expect(lyDoCamNao('actor.list', { actor: 'owner' })).toBeNull();
   });
 });

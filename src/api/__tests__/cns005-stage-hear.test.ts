@@ -10,7 +10,7 @@ import { taoRegistry } from '../commands/index';
 import { SanKhauGia } from './san-khau-gia';
 import { NhatKy } from '../../log';
 import type { StageEvent } from '../types';
-import { boPhieuGiong, layPhieuGiong } from '../../audio/so-giong';
+import { boPhieuGiong, datPhieuGiong, layPhieuGiong } from '../../audio/so-giong';
 import { batHieuLenh } from '../../behavior/hieu-lenh';
 import { batPhanXa } from '../../behavior/phan-xa';
 
@@ -74,13 +74,60 @@ describe('stage.hear', () => {
     expect(layPhieuGiong('chào')).toBeNull();
   });
 
-  it('actor.say bị từ chối (`to` sai kiểu) → phiếu không rò sang câu gõ tay', async () => {
+  it('validate từ chối trước handler (confidence ngoài 0..1) → không có phiếu rò sang câu gõ tay', async () => {
     const { d, thay } = dung();
     const kq = await d.run('stage.hear', { text: 'dừng lại', confidence: 5 });
     // confidence ngoài 0..1 bị validate từ chối trước khi tới handler
     expect(kq.ok).toBe(false);
     await d.run('actor.say', { actor: 'owner', text: 'dừng lại' });
     expect(dem(thay, 'user.speech')).toHaveLength(0);
+  });
+
+  it('actor.say THẬT SỰ thất bại trong handler → boPhieuGiong chạy, phiếu không rò sang câu gõ tay', async () => {
+    const { d, world, thay } = dung();
+    // owner có trong describe() (stage.hear qua được) nhưng coActor báo không có → actor.say ném lỗi TRONG handler
+    world.coActor = () => false;
+    const kq = await d.run('stage.hear', { text: 'dừng lại' });
+    expect(kq.ok).toBe(false);
+    expect(dem(thay, 'user.speech')).toHaveLength(0);
+    // phiếu phải đã bị xoá (không đợi actor.say sau tiêu thụ)
+    expect(layPhieuGiong('dừng lại')).toBeNull();
+  });
+
+  it('boPhieuGiong(text) chỉ xoá phiếu đúng câu đó', () => {
+    datPhieuGiong({ text: 'câu A', confidence: 1, durationMs: 0, goiGen: false });
+    boPhieuGiong('câu B');
+    expect(layPhieuGiong('câu A')).not.toBeNull();
+    datPhieuGiong({ text: 'câu A', confidence: 1, durationMs: 0, goiGen: false });
+    boPhieuGiong('câu A');
+    expect(layPhieuGiong('câu A')).toBeNull();
+  });
+
+  it('owner đang bận (đang nói câu trước) → câu tới NGAY (interrupt), vẫn có user.speech', async () => {
+    const { d, thay } = dung();
+    const di = d.run('actor.say', { actor: 'owner', text: 'câu trước đang nói dở' });
+    const nghe = d.run('stage.hear', { text: 'dừng lại ngay' });
+    await new Promise<void>((r) => setTimeout(r, 5)); // ngắn hơn một nhịp hành động của sân khấu giả
+    expect(dem(thay, 'user.text').filter((e) => e.data.text === 'dừng lại ngay')).toHaveLength(1);
+    expect(dem(thay, 'user.speech')).toHaveLength(1);
+    expect((await nghe).ok).toBe(true);
+    await di;
+  });
+
+  it('chữ STT thô "ghen ơi" → chuẩn hoá "Gen ơi" cho cả text lẫn goiGen', async () => {
+    const { d, thay } = dung();
+    await d.run('stage.hear', { text: 'ghen ơi dựng module' });
+    expect(dem(thay, 'user.text')[0]!.data.text).toBe('Gen ơi dựng module');
+    expect(dem(thay, 'user.speech')[0]!.data).toMatchObject({ text: 'Gen ơi dựng module', goiGen: true });
+  });
+
+  it('nói với chính mình (to === id người nói): `to` trong sự kiện giữ nguyên (để định tuyến), user.speech khớp user.text', async () => {
+    const { d, thay, world } = dung();
+    world.lichSu.length = 0;
+    await d.run('stage.hear', { text: 'chào mọi người', to: 'owner' });
+    expect(dem(thay, 'user.text')[0]!.data.to).toBe('owner');
+    expect(dem(thay, 'user.speech')[0]!.data.to).toBe('owner');
+    expect(dem(thay, 'actor.sayStart')[0]!.data.actor).toBe('owner');
   });
 
   it('registry: khai events + stage.bootstrap liệt kê', async () => {
@@ -95,7 +142,7 @@ describe('stage.hear', () => {
 describe('stage.hear × lớp hiểu lệnh + phản xạ', () => {
   beforeEach(() => boPhieuGiong());
 
-  it('to:"owner" + "đi tới bàn điều khiển" → Javis đi, handled đồng bộ, chạy đúng một lần', async () => {
+  it('to:"owner" (chatroom chọn Javis) + "đi tới bàn điều khiển" → Javis đi (INT-02), handled đồng bộ, chạy đúng một lần', async () => {
     const { d, bus, world, thay } = dung();
     const hl = batHieuLenh(d, bus);
     await hl.lamMoi();
@@ -114,6 +161,21 @@ describe('stage.hear × lớp hiểu lệnh + phản xạ', () => {
     const di = world.lichSu.filter((x) => x.startsWith('moveTo'));
     expect(di).toHaveLength(1);
     expect(di[0]).toContain('owner');
+    hl.thao();
+  });
+
+  it('dedup khoá theo to|text: Javis rồi Gen nghe đúng câu trong 2 s → Gen vẫn đi; cùng to cùng câu (speech+text) chỉ chạy 1 lần', async () => {
+    const { d, bus, world } = dung(['owner', 'gen', 'javis']);
+    const hl = batHieuLenh(d, bus);
+    await hl.lamMoi();
+    world.lichSu.length = 0;
+    await d.run('stage.hear', { text: 'đi tới bàn điều khiển', to: 'javis' });
+    await d.run('stage.hear', { text: 'đi tới bàn điều khiển', to: 'gen' });
+    await nhip();
+    const di = world.lichSu.filter((x) => x.startsWith('moveTo'));
+    expect(di.some((x) => x.includes('javis'))).toBe(true);
+    expect(di.some((x) => x.includes('gen'))).toBe(true);
+    expect(di).toHaveLength(2); // mỗi người đúng một lần dù mỗi câu bắn cả user.text lẫn user.speech
     hl.thao();
   });
 

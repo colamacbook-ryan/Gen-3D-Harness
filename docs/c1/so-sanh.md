@@ -21,7 +21,7 @@ node scripts/kiem-c1.mjs --lai                       # đo lại qua đúng POST
 
 ## 1. Bảng đo
 
-WER cột **thô** là chữ engine trả ra; cột **+ sổ từ** là sau `bridge/so-tu.ts`
+WER cột **thô** là chữ engine trả ra; cột **+ sổ từ** là sau `src/audio/so-tu.ts`
 (sửa tên riêng — xem mục 3). Trễ là thời gian cho **một câu**, model đã nạp sẵn
 trong tiến trình (đúng cảnh `pnpm bridge` chạy thật), tải máy `load average`
 6–17 vì có hai builder khác chạy song song.
@@ -115,7 +115,7 @@ Kho Ryan           → kho rayon / kho raion / khoai rai ầng
   sinh ra câu không có thật ("video này sẽ diễn ra nhất thế giới của bạn nhé");
 - `hotwords` của faster-whisper cũng làm tệ hơn ("kết tinh" → "thái tình").
 
-Nên chỗ chữa là **sau** nhận dạng: `bridge/so-tu.ts` — sổ từ nhà. WER
+Nên chỗ chữa là **sau** nhận dạng: `src/audio/so-tu.ts` — sổ từ nhà. WER
 47,4 % → **5,3 %**. Cách làm, và mấy cái bẫy đo thật mới thấy:
 
 | Điều | Vì sao |
@@ -159,7 +159,7 @@ tới". Vì thế VAD chừa lại `chuaMs = 120` ms mỗi đầu.
 - **Cài**: `bash scripts/fetch-stt.sh` (một lần, 465 MB vào `.cache/stt/`, không
   commit). `scripts/chay.sh` gọi sẵn.
 - **Đường đi**: `src/audio/mic.ts` → `POST /stt` (`bridge/stt.ts`, cổng 8790) →
-  ffmpeg 16 kHz mono → thợ python → `bridge/so-tu.ts` → ô chat → `actor.say`
+  ffmpeg 16 kHz mono → thợ python → `src/audio/so-tu.ts` → ô chat → `actor.say`
   owner → `user.text` + `user.speech`.
 - **Giấy phép**: PhoWhisper (VinAI) BSD-3-Clause · faster-whisper MIT ·
   CTranslate2 MIT · whisper.cpp MIT · Vosk Apache-2.0. Không thư viện copyleft

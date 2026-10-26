@@ -17,7 +17,7 @@ import {
   dangNghe,
   khoangCach,
   suaTheoSoTu,
-} from '../../../bridge/so-tu';
+} from '../../audio/so-tu';
 import { SoDoAm, timDaiNoi, tinhRms } from '../../audio/vad';
 import { boPhieuGiong, datPhieuGiong, layPhieuGiong } from '../../audio/so-giong';
 import { Dispatcher } from '../dispatcher';

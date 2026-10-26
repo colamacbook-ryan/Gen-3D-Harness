@@ -39,6 +39,7 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { taoRegistry } from '../src/api/commands/index';
+import { docSteps, type Step } from '../src/api/commands/script';
 import { danhSachThamSo } from '../src/api/registry';
 import type { CommandSpec, ParamSpec } from '../src/api/types';
 
@@ -178,6 +179,44 @@ export const HUONG_DAN_AGENT =
   'hologram bằng screen_stream / screen_focus, và kết tinh kết quả thành vật thể bằng module_build ' +
   'rồi module_store khi Sếp nhờ làm một việc. Nghe Sếp bằng stage_events (waitMs 25000) và phản ứng ' +
   'với sự kiện user.text.';
+
+/**
+ * Lệnh CHỈ dành cho Boss/ngoại vi (sidecar STT, extension VS Code gọi qua ws bridge).
+ * Tool vẫn liệt kê (giữ bất biến "số tool = số lệnh + 1") nhưng MCP của não gọi là bị từ chối:
+ * `stage.hear` chạy `actor.say` lên owner → não giả Boss nói rồi tự nghe lại chính mình.
+ */
+export const LENH_CHI_CHO_BOSS: ReadonlySet<string> = new Set(['stage.hear']);
+
+/**
+ * Lý do não KHÔNG được chạy lệnh này (hoặc `null` nếu được). Một chỗ duy nhất cho mọi rào của não:
+ * - `actor.*` lên `owner` (trừ `actor.list`): não nói hộ Sếp rồi tự nghe, lặp vô hạn (review PR #26);
+ * - `LENH_CHI_CHO_BOSS` (`stage.hear`): cùng vòng lặp, qua đường lệnh khác;
+ * - `script.run`: soi từng bước (đệ quy, có giới hạn sâu) — không thì gói lệnh cấm vào kịch bản là lọt.
+ * `steps` đọc hỏng thì trả `null`: validate của sân khấu sẽ từ chối, không có gì chạy.
+ */
+export function lyDoCamNao(cmd: string, args: Record<string, unknown>, sau = 0): string | null {
+  if (sau > 8) return 'Kịch bản lồng quá sâu — não không được gọi.';
+  if (cmd.startsWith('actor.') && cmd !== 'actor.list' && String(args.actor ?? '') === 'owner') {
+    return 'Não không được điều khiển actor "owner" (nhân vật của Sếp). Chỉ điều khiển "gen".';
+  }
+  if (LENH_CHI_CHO_BOSS.has(cmd)) {
+    return `Lệnh "${cmd}" chỉ dành cho Boss/ngoại vi (STT, extension) qua ws bridge — não không được gọi (sẽ tự nghe lại chính mình).`;
+  }
+  if (cmd === 'script.run') {
+    let tho: unknown = args.steps;
+    if (typeof tho === 'string') {
+      try { tho = JSON.parse(tho); } catch { return null; }
+    }
+    let buoc: Step[];
+    try { buoc = docSteps(tho); } catch { return null; }
+    for (const b of buoc) {
+      if (typeof b.cmd !== 'string') continue;
+      const ly = lyDoCamNao(b.cmd, b.args ?? {}, sau + 1);
+      if (ly) return `Trong script.run: ${ly}`;
+    }
+  }
+  return null;
+}
 
 /** Toàn bộ tool: mỗi lệnh một tool + `stage_events`. */
 export function sinhTools(): ToolMcp[] {
@@ -448,14 +487,10 @@ export function taoMcpServer(noi: NoiSanKhau): Server {
       };
     }
 
-    // Não KHÔNG được điều khiển nhân vật của Sếp: `actor.say owner` còn bắn
-    // `user.text` → não tự nói hộ rồi tự nghe, lặp vô hạn (review PR #26).
-    if (cmd.startsWith('actor.') && cmd !== 'actor.list' && String(args.actor ?? '') === 'owner') {
-      return {
-        isError: true,
-        content: [{ type: 'text' as const, text: 'Não không được điều khiển actor "owner" (nhân vật của Sếp). Chỉ điều khiển "gen".' }],
-      };
-    }
+    // Não KHÔNG được điều khiển nhân vật của Sếp, không được gọi lệnh chỉ dành cho Boss — kể cả
+    // khi gói trong `script.run` (review bảo mật 26/10: lách rào bằng lệnh lồng).
+    const cam = lyDoCamNao(cmd, args);
+    if (cam) return { isError: true, content: [{ type: 'text' as const, text: cam }] };
 
     const kq = await noi.goi(cmd, args);
     if (!kq.ok) {

@@ -468,7 +468,12 @@ export const LENH_ACTOR: CommandSpec[] = [
        * C0 (#28) — **người nghe**. Mặc định là `camera`: với nhân vật trong
        * sân khấu, Sếp chính là người đang xem qua màn hình, tức là máy quay.
        */
-      const nghe = a.to === undefined ? 'camera' : s(a.to);
+      const ngheTho = a.to === undefined ? 'camera' : s(a.to);
+      // Quay mặt/dáng nghe: nói với CHÍNH MÌNH là vô nghĩa (không faceTo mình, không bật dáng nghe
+      // cho mình) → hướng về camera. NHƯNG `to` trong user.text/user.speech giữ NGUYÊN `ngheTho`:
+      // chatroom chọn Javis gửi to:"owner" và lớp hiểu lệnh phải giao lệnh cho Javis (INT-02, CNS-001,
+      // Ryan chốt 2026-10-26) — đổi thành camera ở đây sẽ làm lệnh rơi sang Gen.
+      const nghe = ngheTho === id ? 'camera' : ngheTho;
 
       /**
        * B3 (#21) — Owner nói là **sự kiện cho não**, không chỉ là lời thoại.
@@ -481,7 +486,7 @@ export const LENH_ACTOR: CommandSpec[] = [
        */
       const nguoiNoi = ctx.world.describe().actors.find((x) => x.id === id);
       if (nguoiNoi?.controlledBy === 'owner') {
-        ctx.bus.emit('user.text', { actor: id, text: chu, to: nghe });
+        ctx.bus.emit('user.text', { actor: id, text: chu, to: ngheTho });
         /**
          * C1 (#31) — câu này Boss **nói** chứ không gõ thì bắn thêm
          * `user.speech { text, confidence, durationMs }` (spec mục 3.5). Mic
@@ -489,7 +494,8 @@ export const LENH_ACTOR: CommandSpec[] = [
          * dùng một lần nên gõ tay lại đúng câu đó không bị tính là nói.
          */
         const phieu = layPhieuGiong(chu);
-        if (phieu) ctx.bus.emit('user.speech', { actor: id, ...phieu });
+        // `to` cùng giá trị với user.text: lớp hiểu lệnh khoá dedup theo `to|text`
+        if (phieu) ctx.bus.emit('user.speech', { actor: id, to: ngheTho, ...phieu });
       }
 
       /**

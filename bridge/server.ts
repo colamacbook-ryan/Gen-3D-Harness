@@ -128,7 +128,10 @@ wss.on('connection', (ws, req) => {
         if (g.token === TOKEN) {
           daXac.add(ws);
           if (vai === 'client') chaoClient(ws);
-          else ws.send(JSON.stringify({ event: 'bridge.authOk', data: {} }));
+          else {
+            ws.send(JSON.stringify({ event: 'bridge.authOk', data: {} }));
+            nhanSanKhau(ws);
+          }
         } else {
           ghi('từ chối một kết nối sai token');
           ws.send(JSON.stringify({ ok: false, error: 'Token sai' }));
@@ -142,32 +145,9 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => daXac.delete(ws));
 
   if (vai === 'stage') {
-    if (sanKhau && sanKhau.readyState === WebSocket.OPEN) {
-      ghi('sân khấu mới kết nối — đóng bản cũ (tab cũ sẽ KHÔNG tự nối lại)');
-      // Mã 4001 = "bị thay thế": tab cũ đọc mã này và ngừng nối lại, không thì
-      // hai tab đá nhau mỗi 2 s, sự kiện rơi hết (Boss 26/10: "chưa có não").
-      huyLenhCho(sanKhau, 'Sân khấu bị thay bằng tab mới — lệnh bị hủy');
-      sanKhau.close(4001, 'thay-the');
-    }
-    sanKhau = ws;
-    ghi('sân khấu đã nối. Client đang chờ:', clients.size);
-    phatChoClient({ event: 'bridge.stageOnline', data: {} });
-    // sân khấu mới nối thì chưa biết gì — gửi lại tình trạng não ngay
-    baoNao(true);
-
-    ws.on('message', (tho) => tuSanKhau(String(tho)));
-    ws.on('close', () => {
-      // CNS-002 — lệnh đang chờ của sân khấu này sẽ không bao giờ có kết quả.
-      huyLenhCho(ws, 'Sân khấu đã ngắt hoặc bị thay thế — lệnh bị hủy');
-      if (sanKhau !== ws) {
-        ghi('sân khấu cũ đóng (đã có bản mới thay) — không báo offline');
-        return;
-      }
-      sanKhau = null;
-      ghi('sân khấu ngắt kết nối');
-      phatChoClient({ event: 'bridge.stageOffline', data: {} });
-    });
-    ws.on('error', (e) => ghi('lỗi sân khấu:', e.message));
+    // Có token: chỉ nhận làm sân khấu SAU khi qua cửa token (xem `nhanSanKhau`),
+    // không thì kết nối lạ đá được tab thật ra và hứng lệnh.
+    if (daXac.has(ws)) nhanSanKhau(ws);
     return;
   }
 
@@ -192,6 +172,36 @@ wss.on('connection', (ws, req) => {
   });
   ws.on('error', (e) => ghi('lỗi client:', e.message));
 });
+
+/** Đăng ký `ws` làm sân khấu duy nhất (chỉ gọi khi đã xác thực nếu bật token). */
+function nhanSanKhau(ws: WebSocket): void {
+  if (sanKhau && sanKhau.readyState === WebSocket.OPEN) {
+    ghi('sân khấu mới kết nối — đóng bản cũ (tab cũ sẽ KHÔNG tự nối lại)');
+    // Mã 4001 = "bị thay thế": tab cũ đọc mã này và ngừng nối lại, không thì
+    // hai tab đá nhau mỗi 2 s, sự kiện rơi hết (Boss 26/10: "chưa có não").
+    huyLenhCho(sanKhau, 'Sân khấu bị thay/ngắt — không rõ lệnh đã chạy hay chưa');
+    sanKhau.close(4001, 'thay-the');
+  }
+  sanKhau = ws;
+  ghi('sân khấu đã nối. Client đang chờ:', clients.size);
+  phatChoClient({ event: 'bridge.stageOnline', data: {} });
+  // sân khấu mới nối thì chưa biết gì — gửi lại tình trạng não ngay
+  baoNao(true);
+
+  ws.on('message', (tho) => tuSanKhau(String(tho)));
+  ws.on('close', () => {
+    // CNS-002 — lệnh đang chờ của sân khấu này sẽ không bao giờ có kết quả.
+    huyLenhCho(ws, 'Sân khấu bị thay/ngắt — không rõ lệnh đã chạy hay chưa');
+    if (sanKhau !== ws) {
+      ghi('sân khấu cũ đóng (đã có bản mới thay) — không báo offline');
+      return;
+    }
+    sanKhau = null;
+    ghi('sân khấu ngắt kết nối');
+    phatChoClient({ event: 'bridge.stageOffline', data: {} });
+  });
+  ws.on('error', (e) => ghi('lỗi sân khấu:', e.message));
+}
 
 /** Trả lỗi ngay cho mọi lệnh đang chờ của một sân khấu (không để treo tới HAN_MS). */
 function huyLenhCho(sk: WebSocket, lyDo: string): void {
@@ -280,7 +290,7 @@ function tuClient(ws: WebSocket, tho: string): void {
     );
     return;
   }
-  if (!sanKhau || sanKhau.readyState !== WebSocket.OPEN) {
+  if (!sanKhau || sanKhau.readyState !== WebSocket.OPEN || !daXac.has(sanKhau)) {
     ws.send(
       JSON.stringify({
         id: goi.id,

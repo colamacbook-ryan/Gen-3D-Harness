@@ -4,7 +4,7 @@
  *     trình duyệt ──POST /stt (webm/opus | wav)──► bridge
  *                                                   │ ffmpeg → 16 kHz mono wav
  *                                                   │ thợ python (model nạp sẵn)
- *                                                   │ sổ từ nhà (bridge/so-tu.ts)
+ *                                                   │ sổ từ nhà (src/audio/so-tu.ts)
  *                 ◄── { text, confidence, durationMs, goiGen } ──┘
  *
  * **Vì sao nhận dạng ở bridge, không ở trình duyệt**: Boss dùng Firefox trên
@@ -29,7 +29,7 @@
  * 3. **Sửa theo sổ từ nhà, không nâng model.** Đo thật: mọi engine nghe đúng
  *    câu lệnh tiếng Việt thường nhưng không engine nào nghe ra `Gen`,
  *    `connector`, `Baserow`, `module`, `Kho Ryan` — đó là tên riêng ngoài vốn
- *    từ, nâng cỡ model không chữa được. `bridge/so-tu.ts` hạ WER 47 % → 3,9 %.
+ *    từ, nâng cỡ model không chữa được. `src/audio/so-tu.ts` hạ WER 47 % → 3,9 %.
  *
  * Bind giống bridge ws và TTS: mặc định chỉ `127.0.0.1`.
  */
@@ -40,7 +40,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { chuanHoaCauNoi } from './so-tu';
+import { chuanHoaCauNoi } from '../src/audio/so-tu';
 
 /* --------------------------------------------------------------- hằng số */
 
