@@ -13,6 +13,7 @@ import {
   CAU_CHUA_CO_NAO,
   DANH_SACH_TRANG,
   batDriver,
+  docPersona,
   chonNguoiTraLoi,
   sachNoiDung,
   sinhToolLocal,
@@ -329,3 +330,15 @@ describe('nao-local — driver chạy thật với bridge + Ollama giả', () =>
     }
   });
 });
+
+describe('docPersona — id actor không được thoát khỏi thư mục persona (review bảo mật 26/10)', () => {
+  it('id có / hoặc .. → không đọc file, trả persona mặc định', () => {
+    for (const xau of ['../../etc/passwd', 'a/b', '..', '', 'x'.repeat(40)]) {
+      expect(docPersona(xau)).toMatch(/^# Em là /);
+    }
+  });
+  it('id hợp lệ "gen" vẫn đọc file persona có sẵn', () => {
+    expect(docPersona('gen')).not.toMatch(/^# Em là gen\n\nEm là nhân vật/);
+  });
+});
+

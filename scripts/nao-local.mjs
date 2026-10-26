@@ -146,7 +146,9 @@ export function chonNguoiTraLoi(text, actors, to) {
 
 /** Persona: `.cache/nao-local/<actor>.md` (của Sếp) > `scripts/nao-local/<actor>.md` > mặc định. */
 export function docPersona(actor, { goc = GOC } = {}) {
-  const ung = [resolve(goc, '.cache/nao-local', `${actor}.md`), resolve(goc, 'scripts/nao-local', `${actor}.md`)];
+  // id actor đi thẳng vào đường dẫn file ⇒ chỉ nhận id an toàn (không `/`, `..`) — review bảo mật 26/10
+  const an = /^[a-z0-9_-]{1,32}$/i.test(String(actor));
+  const ung = an ? [resolve(goc, '.cache/nao-local', `${actor}.md`), resolve(goc, 'scripts/nao-local', `${actor}.md`)] : [];
   for (const f of ung) {
     if (existsSync(f)) return readFileSync(f, 'utf8').split('\n').slice(0, PERSONA_TOI_DA_DONG).join('\n').trim();
   }
