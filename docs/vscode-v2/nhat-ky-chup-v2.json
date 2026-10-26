@@ -1,0 +1,127 @@
+{
+  "batDau": "2026-10-26T09:38:43.851Z",
+  "tinLen": [
+    {
+      "t": 1793007524168,
+      "loai": "sanSang"
+    },
+    {
+      "t": 1793007524321,
+      "loai": "micGiu"
+    },
+    {
+      "t": 1793007525213,
+      "loai": "micTha"
+    },
+    {
+      "t": 1793007525382,
+      "loai": "micGiu"
+    },
+    {
+      "t": 1793007525754,
+      "loai": "micTha"
+    },
+    {
+      "t": 1793007526299,
+      "loai": "giongGui",
+      "text": "Gen ơi, mở màn hình"
+    },
+    {
+      "t": 1793007526324,
+      "loai": "micGiu"
+    },
+    {
+      "t": 1793007526385,
+      "loai": "micTha"
+    }
+  ],
+  "lenhBridge": [
+    {
+      "id": "tai-nghe-1",
+      "cmd": "stage.hear",
+      "args": {
+        "text": "Gen ơi, chào em",
+        "to": "gen",
+        "confidence": 0.92,
+        "durationMs": 400
+      }
+    },
+    {
+      "id": "vscode-1",
+      "cmd": "stage.hear",
+      "args": {
+        "text": "Gen ơi, mở màn hình",
+        "to": "gen",
+        "confidence": 0.41,
+        "durationMs": 400
+      }
+    }
+  ],
+  "viPhamCsp": [],
+  "loiConsole": [],
+  "anh": [
+    {
+      "anh": "01-dang-nghe.png",
+      "giong": {
+        "pha": "nghe",
+        "cheDo": "giu",
+        "toi": "gen",
+        "chu": "Đang nghe… (thả nút để gửi)",
+        "goiY": "",
+        "cau": null,
+        "dangGui": false,
+        "dangNoi": [],
+        "nutDuoc": true,
+        "nutLyDo": ""
+      }
+    },
+    {
+      "anh": "02-cho-xac-nhan.png",
+      "giong": {
+        "pha": "cho-xac-nhan",
+        "cheDo": "giu",
+        "toi": "gen",
+        "chu": "Nghe chưa chắc (tin cậy 41 %) — sửa rồi Gửi, hoặc Bỏ.",
+        "goiY": "",
+        "cau": {
+          "id": 1,
+          "text": "ghen ơi mở màng hình",
+          "confidence": 0.41,
+          "durationMs": 400,
+          "to": "gen"
+        },
+        "dangGui": false,
+        "dangNoi": [],
+        "nutDuoc": true,
+        "nutLyDo": ""
+      }
+    },
+    {
+      "anh": "03-loi-thiet-bi.png",
+      "giong": {
+        "pha": "loi",
+        "cheDo": "giu",
+        "toi": "gen",
+        "chu": "Lỗi micro: không mở được nguồn thu mặc định (ffmpeg: Connection refused)",
+        "goiY": "Kiểm tra ffmpeg/PipeWire (`ffmpeg -version`, `pactl list short sources`) hoặc đặt genStage.taiNghe.nguon (User settings).",
+        "cau": null,
+        "dangGui": false,
+        "dangNoi": [],
+        "nutDuoc": true,
+        "nutLyDo": ""
+      }
+    }
+  ],
+  "guiSauSua": {
+    "text": "Gen ơi, mở màn hình",
+    "to": "gen",
+    "confidence": 0.41,
+    "durationMs": 400
+  },
+  "nutKhiGenNoi": {
+    "disabled": true,
+    "title": "Không nói được: Gen đang nói — đợi nói xong"
+  },
+  "thanhCong": true,
+  "ketThuc": "2026-10-26T09:38:47.266Z"
+}

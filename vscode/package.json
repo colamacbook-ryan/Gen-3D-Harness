@@ -17,11 +17,12 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "Restricted Mode: xem sân khấu + chatroom với bridge/vite có sẵn; KHÔNG tự bật tiến trình nào (kể cả driver não). genStage.pnpm/genStage.root/genStage.nao không đọc từ workspace.",
+      "description": "Restricted Mode: xem sân khấu + chatroom với bridge/vite có sẵn; KHÔNG tự bật tiến trình nào (kể cả driver não và tai-nghe/giọng nói). genStage.pnpm/genStage.root/genStage.nao/genStage.taiNghe.nguon không đọc từ workspace.",
       "restrictedConfigurations": [
         "genStage.pnpm",
         "genStage.root",
-        "genStage.nao"
+        "genStage.nao",
+        "genStage.taiNghe.nguon"
       ]
     }
   },
@@ -46,6 +47,18 @@
         "command": "genStage.xemLog",
         "title": "Xem nhật ký",
         "category": "Gen-Stage"
+      },
+      {
+        "command": "genStage.noi",
+        "title": "Nói (bật/tắt)",
+        "category": "Gen-Stage"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "genStage.noi",
+        "key": "ctrl+alt+space",
+        "mac": "ctrl+alt+space"
       }
     ],
     "viewsContainers": {
@@ -111,6 +124,18 @@
           ],
           "default": "tat",
           "description": "Driver não extension tự bật (chỉ trong workspace đã tin cậy, cần genStage.root hoặc root đã được xác nhận). Chỉ MỘT driver cho một bridge: đã có driver khác nối cùng cổng thì không bật thêm; đổi setting thì tắt driver cũ do VS Code bật. Chỉ đặt được ở User settings (scope machine).",
+          "scope": "machine"
+        },
+        "genStage.sttPort": {
+          "type": "number",
+          "default": 8790,
+          "description": "V2 — cổng HTTP nhận dạng giọng (`POST /stt`) của bridge, truyền cho tai-nghe (`--stt-port`). Chỉ đặt được ở User settings (scope machine).",
+          "scope": "machine"
+        },
+        "genStage.taiNghe.nguon": {
+          "type": "string",
+          "default": "",
+          "description": "V2 — nguồn thu (micro) cho tai-nghe (`--nguon`), vd tên nguồn PipeWire/Pulse trong `pactl list short sources`. Bỏ trống = tai-nghe tự dò. Giá trị bắt đầu bằng \"-\" hoặc có ký tự điều khiển bị bỏ qua. Chỉ đặt được ở User settings (scope machine).",
           "scope": "machine"
         }
       }

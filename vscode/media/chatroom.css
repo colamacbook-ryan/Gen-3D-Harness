@@ -74,3 +74,47 @@ ul, ol { list-style: none; margin: 0; padding: 0; }
   color: var(--vscode-button-foreground); background: var(--vscode-button-background);
 }
 #o-nhap button:disabled { opacity: .5; cursor: default; }
+#o-nhap button:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 1px; }
+
+/* V2 — giọng nói */
+#o-nhap button.mic {
+  padding: 4px 7px; touch-action: none; user-select: none;
+  color: var(--vscode-button-secondaryForeground, inherit); background: var(--vscode-button-secondaryBackground, #3a3d41);
+}
+#o-nhap button.mic.dang-thu {
+  color: var(--vscode-button-foreground, #fff);
+  background: var(--vscode-testing-iconFailed, #f85149);
+}
+#giong {
+  padding: 5px 8px; font-size: 12px;
+  border-top: 1px solid var(--vscode-panel-border, #8884);
+}
+#giong-dong { display: flex; align-items: center; gap: 8px; }
+#giong-chu { flex: 1; min-width: 0; }
+#giong.pha-nghe #giong-chu, #giong.pha-khoi-dong #giong-chu, #giong.pha-nhan-dang #giong-chu { font-weight: 600; }
+#giong.pha-loi #giong-chu { color: var(--vscode-errorForeground, #f48771); }
+#giong.pha-bo-qua #giong-chu { color: var(--vscode-editorWarning-foreground, #d29922); }
+#giong-vach {
+  flex: 0 0 72px; height: 6px; border-radius: 3px; overflow: hidden;
+  background: var(--vscode-input-background, #3c3c3c);
+}
+#giong-muc {
+  display: block; height: 100%; width: 0%;
+  background: var(--vscode-testing-iconPassed, #3fb950); transition: width 60ms linear;
+}
+#giong-goi-y { margin-top: 3px; font-size: 11px; opacity: .85; }
+#giong-xac-nhan { display: flex; gap: 4px; margin-top: 5px; }
+#giong-xac-nhan[hidden], #giong[hidden], #giong-goi-y[hidden], #giong-vach[hidden] { display: none; }
+#giong-sua {
+  flex: 1; min-width: 0; padding: 3px 6px; font: inherit;
+  color: var(--vscode-input-foreground); background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-inputValidation-warningBorder, #d29922); border-radius: 2px;
+}
+#giong-xac-nhan button {
+  font: inherit; padding: 3px 10px; cursor: pointer; border: 0; border-radius: 2px;
+  color: var(--vscode-button-foreground); background: var(--vscode-button-background);
+}
+#giong-xac-nhan button.phu {
+  color: var(--vscode-button-secondaryForeground, inherit); background: var(--vscode-button-secondaryBackground, #3a3d41);
+}
+#giong-xac-nhan button:disabled { opacity: .5; cursor: default; }

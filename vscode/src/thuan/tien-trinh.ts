@@ -45,12 +45,11 @@ export interface LenhChay {
   env: Record<string, string>;
 }
 
-export function lenhBridge(c: Pick<CauHinh, 'pnpm' | 'bridgePort' | 'ttsPort'>): LenhChay {
-  return {
-    cmd: c.pnpm,
-    args: ['bridge'],
-    env: { GEN_STAGE_PORT: String(c.bridgePort), GEN_STAGE_TTS_PORT: String(c.ttsPort) },
-  };
+export function lenhBridge(c: Pick<CauHinh, 'pnpm' | 'bridgePort' | 'ttsPort'> & Partial<Pick<CauHinh, 'sttPort'>>): LenhChay {
+  const env: Record<string, string> = { GEN_STAGE_PORT: String(c.bridgePort), GEN_STAGE_TTS_PORT: String(c.ttsPort) };
+  // V2 — bridge tự bật nghe /stt đúng cổng tai-nghe sẽ gọi (`genStage.sttPort`)
+  if (c.sttPort !== undefined) env.GEN_STAGE_STT_PORT = String(c.sttPort);
+  return { cmd: c.pnpm, args: ['bridge'], env };
 }
 
 export function lenhVite(c: Pick<CauHinh, 'pnpm' | 'devPort'>): LenhChay {

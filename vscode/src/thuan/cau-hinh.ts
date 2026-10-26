@@ -18,6 +18,10 @@ export interface CauHinh {
    * `agy` = `pnpm nao` (agy CLI), `tat` = không bật gì. Scope machine.
    */
   nao: CheDoNao;
+  /** V2 — cổng `POST /stt` của bridge (`tai-nghe --stt-port`). Scope machine. */
+  sttPort: number;
+  /** V2 — nguồn thu của tai-nghe (`--nguon`); rỗng = để tai-nghe tự dò. Scope machine. */
+  taiNgheNguon: string;
 }
 
 export type CheDoNao = 'local' | 'agy' | 'tat';
@@ -34,7 +38,24 @@ export const MAC_DINH: Omit<CauHinh, 'root'> = {
   tuBat: true,
   pnpm: 'pnpm',
   nao: 'tat',
+  sttPort: 8790,
+  taiNgheNguon: '',
 };
+
+/**
+ * V2 — `genStage.taiNghe.nguon` đi thẳng vào argv của tai-nghe (spawn không qua
+ * shell nên không có chuyện chèn lệnh), nhưng giá trị bắt đầu bằng `-` sẽ bị
+ * tai-nghe đọc thành một cờ khác, và ký tự điều khiển/xuống dòng không phải tên
+ * thiết bị nào → bỏ (dùng tự dò), kèm lý do để ghi log.
+ */
+export function chuanNguonTaiNghe(x: unknown): { nguon: string; loi: string } {
+  const s = typeof x === 'string' ? x.trim() : '';
+  if (!s) return { nguon: '', loi: '' };
+  if (s.startsWith('-') || /[\u0000-\u001f\u007f]/.test(s) || s.length > 200) {
+    return { nguon: '', loi: `genStage.taiNghe.nguon "${s.slice(0, 40)}" không hợp lệ (bắt đầu bằng "-", có ký tự điều khiển hoặc quá 200 ký tự) — dùng tự dò` };
+  }
+  return { nguon: s, loi: '' };
+}
 
 /** Chỉ nói chuyện với máy này — bridge và vite đều bị ép nghe 127.0.0.1. */
 export const MAY = '127.0.0.1';
