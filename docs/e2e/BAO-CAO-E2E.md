@@ -86,6 +86,22 @@ chuyện môi trường. Log trước khi sửa giữ ở `vscode-that-truoc-sua
 Chưa xử lý (ghi lại): model ≤ 1.5B không đủ gọi tool — cần đo model ≥ 7B trên máy Ryan; "Gen" → "trên" với giọng Piper cần đo giọng thật
 trước khi thêm vào sổ từ nhà; cảnh báo VS Code "webview without a content security policy" chưa rõ nguồn.
 
+## V3 giác quan IDE trên VS Code thật (26/10)
+
+`scripts/kiem-vscode-that.mjs` nay bấm thật cả 4 giác quan rồi nghe `ide.event` ở bridge bằng một client ws — **19/19 OK** (`vscode-that.json`):
+
+| Giác quan | Bấm thật | `ide.event` nhận được | Trễ |
+| --- | --- | --- | --- |
+| Lưu file | sửa + `save()` `.cache/e2e-v3/luu.txt` | `save info` "Lưu 1 file: .cache/e2e-v3/luu.txt" | 5,2 s (cửa sổ gộp 5 s) |
+| Lỗi biên dịch | `.ts` sạch → gán `"chu"` cho `number` | `diag bad` "Có 1 lỗi biên dịch" | 4,0 s (debounce 3 s) |
+| Hết lỗi | sửa lại | `diag good` "Hết lỗi biên dịch" `before: 1` | 3,4 s |
+| Test hỏng | task "test e2e" `exit 3` | `test bad` "(mã 3)" `exitCode: 3` | 1,8 s |
+| Task xong | task "build e2e" `exit 0` | `task good` | 0,5 s |
+| Git commit | repo tạm (không đụng repo thật) + `git.openRepository` + commit CLI | `git good` "Commit 9dd287a: thêm dòng hai" | 1,2 s |
+
+Gen phản xạ `suy-nghi` sau `diag bad`; các sự kiện sau rơi trong khoảng nghỉ 20 s (`MS_GIUA_PHAN_XA_IDE`) nên không phản xạ thêm — đúng thiết kế, không để Gen giật liên tục.
+Chưa kiểm bằng VS Code thật: dòng 👁 trong chatroom (chỉ kiểm bằng test đơn vị) và câu não nói (cần não Ollama ≥ 7B).
+
 ## Cách chạy lại
 
 ```bash

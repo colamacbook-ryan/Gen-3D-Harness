@@ -894,4 +894,4 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
   onDidSaveTextDocument`/`getWorkspaceFolder`/`asRelativePath` — chép từ `@types/vscode@1.106.1`, đã biên dịch `src/` với bản thật.
   API git không có trong `@types/vscode` → khai interface tối thiểu `GitExtensionToiThieu` trong `giac-quan.ts`.
 - Kiểm: `src/api/__tests__/v3-giac-quan.test.ts`, `b3-mcp.test.ts` (stage_notice bị chặn), `scripts/__tests__/nao-agy.test.mjs` +
-  `nao-local.test.mjs` (mục V3), `vscode/test/giac-quan.test.mjs`. **Chưa kiểm trên VS Code thật** (README checklist 15–19).
+  `nao-local.test.mjs` (mục V3), `vscode/test/giac-quan.test.mjs`, và **VS Code 1.143.1 thật** (`scripts/kiem-vscode-that.mjs`, 6 bước V3: save/diag bad/diag good/test/task/git → `ide.event`, 19/19 — `docs/e2e/BAO-CAO-E2E.md`). Chưa kiểm thật: dòng 👁 chatroom, câu não nói.
