@@ -99,7 +99,15 @@ export function activate(ctx: vscode.ExtensionContext): void {
 
   // Sổ PID + log tiến trình con nằm trong globalStorage (dùng chung mọi cửa sổ,
   // để biết cửa sổ nào là chủ) — không ghi gì vào repo.
-  tienTrinh = new QuanLyTienTrinh(cfg, ghi, { thuMuc: ctx.globalStorageUri.fsPath, choPhepBat });
+  tienTrinh = new QuanLyTienTrinh(cfg, ghi, {
+    thuMuc: ctx.globalStorageUri.fsPath,
+    choPhepBat,
+    // driver não thoát bất cứ lúc nào → không để chatroom nói "đang chạy" cho driver đã chết
+    khiNaoThoat: (kq) => {
+      so.datNao(kq.cheDo, kq.trangThai);
+      chatroom?.ve();
+    },
+  });
   ghi(`[khởi động] sổ tiến trình: ${tienTrinh.fileSo()}`);
   tienTrinh.nhanLai();
 

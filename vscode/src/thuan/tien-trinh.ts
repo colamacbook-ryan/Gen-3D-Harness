@@ -122,6 +122,39 @@ export function timDriverNaoNgoai(bridgePort: number, boQuaNhom?: number): numbe
 
 export type TrangThaiNao = 'tat' | 'dang-chay' | 'cua-ngoai' | 'loi';
 
+/** Mã thoát của driver khi bị khoá `.cache/nao-driver.lock` (= `MA_THOAT_BI_KHOA` ở `scripts/khoa-nao.mjs`). */
+export const MA_THOAT_BI_KHOA = 3;
+const LY_DO_KHOA = 'driver não khác đang giữ khoá';
+
+/**
+ * Đường file khoá driver não: `GEN_STAGE_NAO_KHOA` nếu đặt (tương đối thì tính
+ * từ root), mặc định `<root>/.cache/nao-driver.lock` — cùng `scripts/khoa-nao.mjs`.
+ */
+export function duongKhoaNao(root: string, env: NodeJS.ProcessEnv = process.env): string {
+  const e = env.GEN_STAGE_NAO_KHOA;
+  return e ? path.resolve(root, e) : path.join(root, '.cache', 'nao-driver.lock');
+}
+
+/**
+ * Khoá thuộc TIẾN TRÌNH SỐNG (pid còn + starttime khớp `/proc/<pid>/stat` field 22)
+ * không phải `boQuaPid`? Trả `{pid, ten}` hoặc null (không có / hỏng / mồ côi).
+ * Port tối thiểu của `layKhoaNao` (scripts/khoa-nao.mjs, .mjs ngoài rootDir của extension).
+ */
+export function docKhoaNaoSong(duong: string, boQuaPid?: number): { pid: number; ten: string } | null {
+  let k: { pid?: unknown; starttime?: unknown; ten?: unknown };
+  try {
+    k = JSON.parse(fs.readFileSync(duong, 'utf8'));
+  } catch {
+    return null;
+  }
+  if (!k || !Number.isInteger(k.pid) || (k.pid as number) <= 0) return null;
+  const pid = k.pid as number;
+  if (pid === boQuaPid) return null;
+  const st = docStat(pid);
+  if (!st || st.trangThai === 'Z' || String(st.starttime) !== String(k.starttime)) return null;
+  return { pid, ten: typeof k.ten === 'string' ? k.ten : '?' };
+}
+
 export interface KetQuaNao {
   trangThai: TrangThaiNao;
   cheDo: CheDoNao;
@@ -339,8 +372,13 @@ export interface TuyChonQuanLy {
   choPhepBat?: () => Promise<string | null>;
   /** Hạn đợi cổng lên mỗi dịch vụ (ms). */
   hanDoiMs?: number;
-  /** V1 — đợi bao lâu sau khi bật driver não để bắt "chết ngay" (ms, mặc định 1500). */
+  /** V1 — đợi bao lâu sau khi bật driver não để bắt "chết ngay" (ms, mặc định 4000 — `pnpm nao-local` bị khoá thoát sau ~1,4 s, máy bận lâu hơn). */
   hanDoiNaoMs?: number;
+  /**
+   * Driver não của MÌNH thoát ngoài ý muốn (không phải do `tatMot`/đổi chế độ) —
+   * mọi lúc, không chỉ ngay sau khi bật. Mã 3 = khoá → `cua-ngoai`; 0 → `tat`; còn lại `loi`.
+   */
+  khiNaoThoat?: (kq: KetQuaNao) => void;
 }
 
 interface CuaMinh {
@@ -582,6 +620,10 @@ export class QuanLyTienTrinh {
       await this.tatMot('nao');
     }
     if (cheDo === 'tat') return kq('tat');
+    if (this.cfg.root) {
+      const khoa = docKhoaNaoSong(duongKhoaNao(this.cfg.root), cu?.pid);
+      if (khoa) return kq('cua-ngoai', `${LY_DO_KHOA} (${khoa.ten}, pid ${khoa.pid}) — không bật thêm (chỉ một driver).`);
+    }
     const ngoai = timDriverNaoNgoai(this.cfg.bridgePort);
     if (ngoai.length) {
       return kq('cua-ngoai', `đã có driver não khác nối bridge ${this.cfg.bridgePort} (pid ${ngoai.join(', ')}) — không bật thêm (chỉ một driver).`);
@@ -592,7 +634,8 @@ export class QuanLyTienTrinh {
     if (lyDo) return kq('loi', lyDo);
     const tt = this.bat('nao');
     // driver chết ngay (thiếu script, thiếu Ollama…) thì báo lỗi luôn, không nói "đang chạy"
-    await doiToi(async () => tt.daChet, this.o.hanDoiNaoMs ?? 1500, 100);
+    await doiToi(async () => tt.daChet, this.o.hanDoiNaoMs ?? 4000, 100);
+    if (tt.daChet && tt.ma === MA_THOAT_BI_KHOA) return kq('cua-ngoai', `${LY_DO_KHOA} — driver thoát mã ${MA_THOAT_BI_KHOA}, không bật lại.`);
     if (tt.daChet) return kq('loi', `driver não (${l.args.join(' ')}) thoát ngay — xem log ${this.fileLog('nao')}`);
     return kq('dang-chay');
   }
@@ -636,8 +679,8 @@ export class QuanLyTienTrinh {
   }
 
   /** Bật một dịch vụ. Trả cờ `daChet` (bật lỗi / thoát) để bên đợi thoát sớm. */
-  private bat(ten: TenDichVu): { daChet: boolean } {
-    const trangThai = { daChet: false };
+  private bat(ten: TenDichVu): { daChet: boolean; ma?: number | null } {
+    const trangThai: { daChet: boolean; ma?: number | null } = { daChet: false };
     const cu = this.cuaMinh.get(ten);
     if (cu && laDungTienTrinh(cu)) {
       this.ghi(`[tiến trình] ${ten} của mình (pid ${cu.pid}) vẫn sống — không bật thêm`);
@@ -681,6 +724,7 @@ export class QuanLyTienTrinh {
     });
     con.on('exit', (ma, tin) => {
       trangThai.daChet = true;
+      trangThai.ma = ma;
       this.docTail(ten);
       this.ghi(`[${ten}] thoát (mã ${ma ?? '-'}${tin ? ' · ' + tin : ''})`);
       const v = this.cuaMinh.get(ten);
@@ -688,6 +732,17 @@ export class QuanLyTienTrinh {
         this.cuaMinh.delete(ten);
         this.dungTail(ten);
         this.luuSo();
+        // còn trong sổ = không do mình tắt (tatMot xoá trước) → báo trạng thái thật, không "đang chạy" giả
+        if (ten === 'nao' && this.o.khiNaoThoat) {
+          const cheDo = this.cfg.nao;
+          const kq: KetQuaNao =
+            ma === MA_THOAT_BI_KHOA
+              ? { trangThai: 'cua-ngoai', cheDo, lyDo: LY_DO_KHOA }
+              : ma === 0
+                ? { trangThai: 'tat', cheDo, lyDo: 'driver não đã thoát' }
+                : { trangThai: 'loi', cheDo, lyDo: `driver não thoát (mã ${ma ?? '-'}${tin ? ' · ' + tin : ''}) — xem log ${this.fileLog('nao')}` };
+          this.o.khiNaoThoat(kq);
+        }
       }
     });
     const dt = con.pid !== undefined ? danhTinhCua(con.pid) : null;

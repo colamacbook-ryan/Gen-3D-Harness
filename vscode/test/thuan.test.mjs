@@ -83,7 +83,7 @@ test('taoNonce: 128 bit CSPRNG, base64url 22 ký tự (hợp lệ cho CSP nonce)
   assert.notEqual(n, html.taoNonce());
 });
 
-test('vỏ panel: bỏ qua tin postMessage đến từ chính iframe sân khấu', () => {
+test('vỏ panel: chỉ nhận tin từ window.parent (host); iframe sân khấu/lồng/null bị bỏ', () => {
   const h = html.taoHtmlSanKhau({ url: 'http://127.0.0.1:5173/?bridge=1', origin: 'http://127.0.0.1:5173', cspSource: 'c', nonce: 'n' });
   const js = h.split('<script nonce="n">')[1].split('</script>')[0];
   // chạy script vỏ trong DOM giả tối thiểu
@@ -98,25 +98,28 @@ test('vỏ panel: bỏ qua tin postMessage đến từ chính iframe sân khấu
   };
   const el = () => ({ textContent: '', classList: { toggle: () => undefined }, addEventListener: () => undefined });
   const phan = { 'san-khau': khung, 'trang-thai': el(), che: el(), 'tai-lai': el() };
-  const win = { addEventListener: (_t, f) => nghe.push(f) };
+  const win = { addEventListener: (_t, f) => nghe.push(f), parent: { ten: 'host' } };
   const doc = { getElementById: (id) => phan[id] };
   new Function('window', 'document', 'acquireVsCodeApi', js)(win, doc, () => ({ postMessage: () => undefined }));
   assert.equal(nghe.length, 1);
   nghe[0]({ source: khung.contentWindow, data: { lenh: 'napLai', url: 'http://evil/' } });
   assert.equal(khung.src, '', 'tin từ iframe không được đổi src');
-  nghe[0]({ source: null, data: { lenh: 'napLai', url: 'http://127.0.0.1:5173/?bridge=1' } });
-  assert.equal(khung.src, 'http://127.0.0.1:5173/?bridge=1', 'tin từ host vẫn chạy');
+  nghe[0]({ source: null, data: { lenh: 'napLai', url: 'http://evil/' } });
+  nghe[0]({ source: { iframeLong: true }, data: { lenh: 'napLai', url: 'http://evil/' } });
+  assert.equal(khung.src, '', 'tin từ nguồn khác window.parent (null, iframe lồng) bị bỏ');
+  nghe[0]({ source: win.parent, data: { lenh: 'napLai', url: 'http://127.0.0.1:5173/?bridge=1' } });
+  assert.equal(khung.src, 'http://127.0.0.1:5173/?bridge=1', 'tin từ host (window.parent) vẫn chạy');
   // V1 (INT-06) — hienAn trước khi iframe nạp xong: chưa gửi; 'load' → gửi tin cuối đúng khoá + origin
-  nghe[0]({ source: null, data: { lenh: 'hienAn', visible: true, active: false } });
+  nghe[0]({ source: win.parent, data: { lenh: 'hienAn', visible: true, active: false } });
   assert.equal(guiXuong.length, 0, 'iframe chưa nạp xong thì chưa gửi');
   ngheKhung.load();
   assert.deepEqual(guiXuong.at(-1), [{ nguon: 'gen-stage-vscode', loai: 'nen', visible: true, active: false }, 'http://127.0.0.1:5173']);
-  nghe[0]({ source: null, data: { lenh: 'hienAn', visible: true, active: true } });
+  nghe[0]({ source: win.parent, data: { lenh: 'hienAn', visible: true, active: true } });
   assert.deepEqual(guiXuong.at(-1)[0], { nguon: 'gen-stage-vscode', loai: 'nen', visible: true, active: true });
   // tải lại: chờ load mới gửi lại tin cuối
   const truoc = guiXuong.length;
-  nghe[0]({ source: null, data: { lenh: 'napLai' } });
-  nghe[0]({ source: null, data: { lenh: 'hienAn', visible: false, active: false } });
+  nghe[0]({ source: win.parent, data: { lenh: 'napLai' } });
+  nghe[0]({ source: win.parent, data: { lenh: 'hienAn', visible: false, active: false } });
   assert.equal(guiXuong.length, truoc);
   ngheKhung.load();
   assert.deepEqual(guiXuong.at(-1)[0], { nguon: 'gen-stage-vscode', loai: 'nen', visible: false, active: false });

@@ -196,3 +196,99 @@ test('cửa sổ chủ chết → cửa sổ mới nhận lại driver não (đ�
   fs.rmSync(root, { recursive: true, force: true });
   fs.rmSync(kho, { recursive: true, force: true });
 });
+
+/** pnpm giả tuỳ biến: ghi script sh vào `kho`, trả đường dẫn. */
+function pnpmTuyBien(kho, ten, than) {
+  const f = path.join(kho, ten);
+  fs.writeFileSync(f, `#!/bin/sh\n${than}\n`, { mode: 0o755 });
+  return f;
+}
+
+test('mã thoát 3 (khoá) sau 2000 ms → cua-ngoai, KHÔNG dang-chay; khiNaoThoat cũng báo cua-ngoai', async () => {
+  const root = thuMucTam();
+  const kho = thuMucTam();
+  const khoa = pnpmTuyBien(kho, 'pnpm-khoa.sh', 'sleep 2; echo "đang có driver não khác" >&2; exit 3');
+  const bao = [];
+  const ql = new tt.QuanLyTienTrinh(cfg(root, 'local', { pnpm: khoa }), () => undefined, {
+    thuMuc: kho,
+    hanDoiNaoMs: 5000,
+    khiNaoThoat: (k) => bao.push(k),
+  });
+  const kq = await ql.dongBoNao();
+  assert.equal(kq.trangThai, 'cua-ngoai', JSON.stringify(kq));
+  assert.match(kq.lyDo, /driver não khác đang giữ khoá/);
+  assert.ok(await cho(() => bao.length === 1), 'khiNaoThoat được gọi');
+  assert.equal(bao[0].trangThai, 'cua-ngoai');
+  assert.equal(ql.laCuaMinh('nao'), false);
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.rmSync(kho, { recursive: true, force: true });
+});
+
+test('file khoá của pid SỐNG lạ → cua-ngoai, không spawn; khoá mồ côi (pid chết) → bật được', async () => {
+  const root = thuMucTam();
+  const kho = thuMucTam();
+  const la = spawn('sleep', ['30'], { stdio: 'ignore', detached: true });
+  conPhaiDon.push(la);
+  const duong = tt.duongKhoaNao(root, {});
+  fs.mkdirSync(path.dirname(duong), { recursive: true });
+  const st = tt.docStat(la.pid);
+  fs.writeFileSync(duong, JSON.stringify({ pid: la.pid, starttime: st.starttime, ten: 'nao-agy' }));
+  const log = [];
+  const ql = new tt.QuanLyTienTrinh(cfg(root, 'local'), (d) => log.push(d), { thuMuc: kho, hanDoiNaoMs: 300 });
+  let kq = await ql.dongBoNao();
+  assert.equal(kq.trangThai, 'cua-ngoai', JSON.stringify(kq));
+  assert.match(kq.lyDo, /giữ khoá/);
+  assert.equal(log.some((d) => /bật nao:/.test(d)), false, 'không spawn');
+  assert.equal(ql.laCuaMinh('nao'), false);
+
+  // starttime lệch (pid bị cấp lại) = mồ côi
+  fs.writeFileSync(duong, JSON.stringify({ pid: la.pid, starttime: '1', ten: 'nao-agy' }));
+  kq = await ql.dongBoNao();
+  assert.equal(kq.trangThai, 'dang-chay', JSON.stringify(kq));
+  ql.tatCuaMinh();
+  assert.ok(await cho(() => driverTrenCong().length === 0));
+
+  // pid đã chết hẳn
+  process.kill(-la.pid, 'SIGKILL');
+  assert.ok(await cho(() => !tt.conSong(la.pid)));
+  fs.writeFileSync(duong, JSON.stringify({ pid: la.pid, starttime: st.starttime, ten: 'nao-agy' }));
+  assert.equal(tt.docKhoaNaoSong(duong), null);
+  kq = await ql.dongBoNao();
+  assert.equal(kq.trangThai, 'dang-chay', JSON.stringify(kq));
+  ql.tatCuaMinh();
+  assert.ok(await cho(() => driverTrenCong().length === 0));
+  assert.equal(tt.duongKhoaNao(root, { GEN_STAGE_NAO_KHOA: '/x/k.lock' }), '/x/k.lock');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.rmSync(kho, { recursive: true, force: true });
+});
+
+test('driver chạy rồi tự chết sau 3 s → khiNaoThoat báo loi (mã ≠ 0) / tat (mã 0); tắt chủ động không báo', async () => {
+  const root = thuMucTam();
+  const kho = thuMucTam();
+  const chet = pnpmTuyBien(kho, 'pnpm-chet.sh', 'sleep 3; exit 1');
+  const bao = [];
+  const ql = new tt.QuanLyTienTrinh(cfg(root, 'local', { pnpm: chet }), () => undefined, {
+    thuMuc: kho,
+    hanDoiNaoMs: 300,
+    khiNaoThoat: (k) => bao.push(k),
+  });
+  assert.equal((await ql.dongBoNao()).trangThai, 'dang-chay');
+  assert.ok(await cho(() => bao.length === 1, 6000), 'đã báo khi driver chết');
+  assert.equal(bao[0].trangThai, 'loi');
+  assert.equal(ql.laCuaMinh('nao'), false);
+
+  const ra0 = pnpmTuyBien(kho, 'pnpm-0.sh', 'sleep 1; exit 0');
+  ql.datCauHinh(cfg(root, 'local', { pnpm: ra0 }));
+  assert.equal((await ql.dongBoNao()).trangThai, 'dang-chay');
+  assert.ok(await cho(() => bao.length === 2, 4000));
+  assert.equal(bao[1].trangThai, 'tat');
+
+  // tắt chủ động (tatCuaMinh) không gọi khiNaoThoat
+  ql.datCauHinh(cfg(root, 'local'));
+  assert.equal((await ql.dongBoNao()).trangThai, 'dang-chay');
+  ql.tatCuaMinh();
+  await doi(500);
+  assert.equal(bao.length, 2);
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.rmSync(kho, { recursive: true, force: true });
+});

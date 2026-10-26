@@ -149,8 +149,8 @@ export function taoHtmlSanKhau(t: ThamSoHtmlSanKhau): string {
     vs.postMessage({ loai: 'taiLai' });
   });
   window.addEventListener('message', function (ev) {
-    // tin từ chính iframe sân khấu không phải lệnh của host — bỏ qua
-    if (ev.source === khung.contentWindow) return;
+    // chỉ nhận tin từ host VS Code (window.parent); iframe sân khấu, iframe lồng… đều bỏ
+    if (ev.source !== window.parent) return;
     const m = ev.data || {};
     if (m.lenh === 'napLai') napLai(m.url);
     else if (m.lenh === 'trangThai') trangThai(String(m.chu || ''), m.loi);
