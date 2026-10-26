@@ -6,8 +6,11 @@
 > repo này chỉ chứa code + tài liệu của chính nó.
 >
 > **Nguồn gốc:** nhập toàn bộ từ `Genesis-ryan-84-0567536339/gen-stage` (giữ lịch sử) ngày 2026-10-26 theo lệnh Ryan
-> ("clone hết về repo Gen-3D-Harness để làm thành dự án độc lập trọn bộ"). Từ đây Gen-3D-Harness là dự án độc lập;
-> đồng bộ thêm từ repo cũ chỉ khi Ryan yêu cầu (`git fetch genstage main` rồi merge).
+> ("clone hết về repo Gen-3D-Harness để làm thành dự án độc lập trọn bộ"). Từ đây Gen-3D-Harness là dự án độc lập.
+> **Đồng bộ định kỳ (Ryan 28/10: "lâu lâu bạn có thể kiểm tra lấy về ứng dụng thêm")**: đầu mỗi phiên làm Gen-3D-Harness
+> chạy `git fetch genstage main && git log --oneline HEAD..genstage/main`; có commit mới thì gộp vào nhánh đang làm
+> (merge, giữ cả hai phía — Gen-Stage gốc vẫn là nơi Ryan phát triển lõi sân khấu), chạy đủ test + build rồi mới đẩy.
+> Lần gộp gần nhất: `genstage/main @e2a8366` (D1b, E1, E2, F1–F3, G2, G3) — 28/10.
 > **License:** © 2026 Gen Labs — All rights reserved (xem `LICENSE`).
 > **Thư mục `vscode/`** (đang làm): extension VS Code — sân khấu trong tab editor + chatroom cột phải + não LLM local.
 
