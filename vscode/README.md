@@ -119,6 +119,7 @@ chối (não không được giả giác quan).
 | `genStage.pnpm` | `pnpm` | **scope `machine`**. Chỉ nhận **tên lệnh** (tìm trong các thư mục *tuyệt đối* của PATH — bỏ qua `.`/mục rỗng) hoặc **đường dẫn tuyệt đối**; đường dẫn tương đối bị từ chối. Đặt đường dẫn tuyệt đối nếu PATH của VS Code không thấy nvm/corepack |
 | `genStage.nao` | `tat` | **scope `machine`** (V1). `local` = `pnpm nao-local`, `agy` = `pnpm nao`, `tat` = không bật. Giá trị lạ = `tat`. Driver nối bridge `genStage.bridgePort` qua `GEN_STAGE_PORT` |
 | `genStage.sttPort` | 8790 | **scope `machine`** (V2). Cổng `POST /stt` của bridge → `tai-nghe --stt-port` |
+| `genStage.mcpPort` | 8789 | **scope `machine`**. Cổng MCP HTTP của bridge do extension tự bật (`GEN_STAGE_MCP_PORT`). Đổi khi đã có bridge khác giữ 8789 (cổng bận thì bridge chỉ tắt MCP, ws + giọng vẫn chạy) |
 | `genStage.giacQuan.batTat` | `true` | **scope `window`** (V3). Tắt = không gửi notice nào |
 | `genStage.giacQuan.save` / `.diag` / `.test` / `.git` | `true` | **scope `window`** (V3). Tắt từng loại; `.test` tắt cả task lẫn test. Đọc lại mỗi lần gửi (tắt giữa lúc đang gộp → mẻ đó bỏ) |
 | `genStage.taiNghe.nguon` | `""` | **scope `machine`**, có trong `restrictedConfigurations` (V2). Nguồn thu → `--nguon` (vd tên nguồn trong `pactl list short sources`). Trống = tai-nghe tự dò. Bắt đầu bằng `-`, có ký tự điều khiển hoặc > 200 ký tự → bỏ qua (tự dò) + ghi log |
@@ -195,6 +196,12 @@ node <repo>/node_modules/typescript/bin/tsc -p /tmp/tv/tsconfig.json
 ```
 
 ## Checklist trên máy Sếp (V0-5..9 — cloud không kiểm được)
+
+**Bước 0 — một lệnh, tự động (≈ 5–10 phút):** `pnpm kiem:vscode` (cần `pnpm assets` + `bash scripts/fetch-anim.sh` trước).
+Nó tải một VS Code stable riêng vào `.cache/kiem-vscode/` (không đụng VS Code đang cài), cài extension, mở sân khấu, bấm thật
+lưu file / lỗi biên dịch / task / git (repo tạm), rồi in OK/FAIL từng bước — 19 bước, đã qua 19/19 trên cloud (VS Code 1.143.1).
+Kết quả: `docs/e2e/vscode-that.json` + ảnh chatroom có dòng 👁 `docs/e2e/vscode-v3-chatroom.png`. Dán số OK/FAIL vào PR là đủ cho
+phần tự động; các mục dưới là phần **mắt/tai** máy không tự kiểm được.
 
 Điều kiện đầu: **không** tab Gen-Stage nào khác đang mở (Firefox), **không** chạy `pnpm start` song song (CNS-002).
 

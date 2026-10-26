@@ -9,8 +9,7 @@
  *   pnpm -C vscode build
  *   E2E_VSC_DIR=/đường/tới/thư-mục-cài xvfb-run -a node scripts/kiem-vscode-that.mjs
  *
- * Cổng: bridge 9012 · TTS 9013 · vite 9014 · STT 9015 · MCP 9016 (qua env thừa hưởng —
- * extension không có setting mcpPort). Không đụng 8787–8790/5173 của Sếp.
+ * Cổng: bridge 9012 · TTS 9013 · vite 9014 · STT 9015 · MCP 9016 (setting genStage.mcpPort). Không đụng 8787–8790/5173 của Sếp.
  * user-data-dir + extensions-dir tạm trong E2E_VSC_DIR (không ghi vào repo, không đụng VS Code của Sếp).
  * Ra: docs/e2e/vscode-that.json (kết quả từ trong extension host + trích log extension host + log kênh Gen-Stage).
  */
@@ -47,6 +46,7 @@ fs.writeFileSync(
       'genStage.ttsPort': C.tts,
       'genStage.devPort': C.dev,
       'genStage.sttPort': C.stt,
+      'genStage.mcpPort': C.mcp,
       'genStage.nao': 'tat',
       'genStage.tuBat': true,
       'security.workspace.trust.enabled': false,
@@ -80,7 +80,8 @@ async function soiWebview() {
   if (!br) return void (soi.loi = 'không nối được CDP');
   const daGan = new Set();
   const het = Date.now() + 70000;
-  while (Date.now() < het) {
+  // soi chi tiết 70 s đầu; sau đó vẫn chạy (nhẹ) tới khi VS Code tắt để bắt dòng 👁 của V3 trong chatroom
+  while (Date.now() < het || !soi.dung) {
     for (const ctx of br.contexts())
       for (const pg of ctx.pages()) {
         if (!daGan.has(pg)) {
@@ -90,6 +91,17 @@ async function soiWebview() {
         }
         for (const f of pg.frames()) {
           const u = f.url();
+          // V3 — dòng "👁 …" chatroom vẽ cho mỗi notice IDE đã gửi (chatroom là webview: chỉ CDP đọc được)
+          if (/fake\.html/.test(u)) {
+            const mat = await f.evaluate(() => (document.title === 'Chatroom' ? document.body.innerText.split('\n').filter((d) => d.includes('👁')) : null)).catch(() => null);
+            if (mat && mat.length > (soi.mat ?? []).length) {
+              soi.mat = mat;
+              if (mat.length >= 5) {
+                soi.anhMat = Date.now() - t0;
+                await pg.screenshot({ path: path.join(GOC, 'docs/e2e/vscode-v3-chatroom.png') }).catch((e) => (soi.loiAnhMat = String(e).slice(0, 200)));
+              }
+            }
+          }
           if (!soi.frames.includes(u)) soi.frames.push(u);
           if (/fake\.html/.test(u) && (soi.vo ?? []).length < 14) {
             try {
@@ -169,6 +181,7 @@ try {
   loiChay = String(e?.stack ?? e);
 }
 
+soi.dung = true;
 await soiXong;
 // gom log: extension host + kênh output "Gen-Stage" (VS Code ghi kênh output ra file trong logs/)
 const logs = [];
@@ -201,7 +214,7 @@ const ketQua = {
   coGl: process.env.E2E_VSC_GL ?? null,
   moPhongSuaBoLoc: !!process.env.E2E_VSC_GIA_SUA,
   suite,
-  soiWebviewQuaCdp: process.env.E2E_VSC_CDP ? { frames: soi.frames, vo: soi.vo, daBamTaiLaiMs: soi.daBamTaiLai, moPhongSuaBoLocMs: soi.giaSua ?? null, loiBam: soi.loiBam, danhGia: soi.danhGia, console: soi.console.slice(0, 60), loi: soi.loi } : '(tắt — đặt E2E_VSC_CDP=1)',
+  soiWebviewQuaCdp: process.env.E2E_VSC_CDP ? { frames: soi.frames, vo: soi.vo, daBamTaiLaiMs: soi.daBamTaiLai, moPhongSuaBoLocMs: soi.giaSua ?? null, chatroomMat: soi.mat ?? [], anhChatroomMatMs: soi.anhMat ?? null, loiAnhMat: soi.loiAnhMat, loiBam: soi.loiBam, danhGia: soi.danhGia, console: soi.console.slice(0, 60), loi: soi.loi } : '(tắt — đặt E2E_VSC_CDP=1)',
   logExthost: { soFile: logs.filter((p) => /exthost\.log$/.test(p)).length, dongLoiCanhBao: dongLoiExthost, dongGenStage: exthost.split('\n').filter((d) => /gen-stage|genStage|gen-labs/i.test(d)).slice(0, 30) },
   logKenhGenStage: genStageLog.split('\n').filter(Boolean).slice(0, 60),
 };

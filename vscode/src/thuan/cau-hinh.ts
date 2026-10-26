@@ -20,6 +20,8 @@ export interface CauHinh {
   nao: CheDoNao;
   /** V2 — cổng `POST /stt` của bridge (`tai-nghe --stt-port`). Scope machine. */
   sttPort: number;
+  /** Cổng MCP HTTP của bridge do extension bật (`GEN_STAGE_MCP_PORT`). Scope machine. */
+  mcpPort: number;
   /** V2 — nguồn thu của tai-nghe (`--nguon`); rỗng = để tai-nghe tự dò. Scope machine. */
   taiNgheNguon: string;
 }
@@ -39,6 +41,7 @@ export const MAC_DINH: Omit<CauHinh, 'root'> = {
   pnpm: 'pnpm',
   nao: 'tat',
   sttPort: 8790,
+  mcpPort: 8789,
   taiNgheNguon: '',
 };
 

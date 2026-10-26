@@ -132,6 +132,12 @@
           "description": "V2 — cổng HTTP nhận dạng giọng (`POST /stt`) của bridge, truyền cho tai-nghe (`--stt-port`). Chỉ đặt được ở User settings (scope machine).",
           "scope": "machine"
         },
+        "genStage.mcpPort": {
+          "type": "number",
+          "default": 8789,
+          "description": "Cổng MCP HTTP của bridge do extension tự bật (GEN_STAGE_MCP_PORT). Đổi khi đã có bridge khác giữ 8789. Chỉ đặt được ở User settings (scope machine).",
+          "scope": "machine"
+        },
         "genStage.taiNghe.nguon": {
           "type": "string",
           "default": "",

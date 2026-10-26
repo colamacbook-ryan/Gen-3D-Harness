@@ -51,8 +51,10 @@ test('coNgheTcp + doSanKhau với server thật', async () => {
 test('lenhBridge/lenhVite: ép 127.0.0.1 + strictPort, truyền cổng qua env', () => {
   const cfg = { pnpm: 'pnpm', bridgePort: 8797, ttsPort: 8798, devPort: 5180 };
   assert.deepEqual(tt.lenhVite(cfg).args, ['exec', 'vite', '--host', '127.0.0.1', '--port', '5180', '--strictPort']);
-  assert.deepEqual(tt.lenhBridge(cfg).env, { GEN_STAGE_PORT: '8797', GEN_STAGE_TTS_PORT: '8798', GEN_STAGE_MCP_PORT: '8799' });
+  assert.deepEqual(tt.lenhBridge(cfg).env, { GEN_STAGE_PORT: '8797', GEN_STAGE_TTS_PORT: '8798' });
   assert.deepEqual(tt.lenhBridge(cfg).args, ['bridge']);
+  // B7 (E2E 26/10): cổng MCP theo genStage.mcpPort, không ngầm 8789 và không suy từ bridgePort
+  assert.equal(tt.lenhBridge({ ...cfg, mcpPort: 9016 }).env.GEN_STAGE_MCP_PORT, '9016');
 });
 
 test('keHoachBat: chỉ bật cái thiếu; có sẵn thì không đụng', () => {

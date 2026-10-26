@@ -76,7 +76,7 @@ Môi trường (không phải bug): TTS Edge trả 502 (`Unexpected server respo
 | B4 | `src/behavior/ngu-phap.ts` `tenDep` | Tên đọc theo nghĩa D1: bàn làm việc, phòng khách, kệ sách, cửa sổ, sofa, bàn ăn, bếp, ghế ăn, ghế làm việc. |
 | B5 | `scripts/nao-local.mjs` `sachNoiDung` | Chữ có dấu vết lệnh/JSON: rút đúng `"text"` của lời nói nếu có, không thì bỏ (driver dùng câu dự phòng). Không bao giờ đọc JSON thành tiếng. |
 | B6 | `vscode/src/thuan/cau-hinh.ts` `urlSanKhau` | Truyền `sttPort` khi khác mặc định. |
-| B7 | `vscode/src/thuan/tien-trinh.ts` + `bridge/mcp.ts` | Bridge do extension bật ở cổng khác mặc định thì MCP dời theo (`bridgePort + 2`); MCP không nghe được cổng thì log và tắt riêng MCP, không kéo sập bridge. |
+| B7 | `vscode/src/thuan/tien-trinh.ts` + `bridge/mcp.ts` | Setting mới `genStage.mcpPort` (mặc định 8789) → `GEN_STAGE_MCP_PORT`; MCP không nghe được cổng thì log và tắt riêng MCP, không kéo sập bridge. (Bản sửa đầu suy `bridgePort + 2` — đụng đúng `devPort` của chính bài kiểm, 9012 → 9014 — nên bỏ.) |
 
 **Chạy lại VS Code 1.143.1 thật SAU khi sửa** (`vscode-that.json`, KHÔNG mô phỏng, cờ GL swiftshader của môi trường cloud):
 **13/13 OK** — sân khấu trong webview nối bridge (stage.describe có actor), `actor.say` qua bridge chạy, `renderMode: "full"` khi panel

@@ -61,6 +61,7 @@ function docCauHinh(extensionPath: string): CauHinh {
     pnpm: String(c.get<string>('pnpm') ?? MAC_DINH.pnpm).trim() || MAC_DINH.pnpm,
     nao: chuanNao(c.get('nao') ?? MAC_DINH.nao),
     sttPort: chuanCong(c.get('sttPort'), MAC_DINH.sttPort),
+    mcpPort: chuanCong(c.get('mcpPort'), MAC_DINH.mcpPort),
     taiNgheNguon: (() => {
       const n = chuanNguonTaiNghe(c.get('taiNghe.nguon'));
       loiNguon = n.loi;
