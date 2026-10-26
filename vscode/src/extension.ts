@@ -9,7 +9,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ChatroomProvider } from './chatroom';
 import { SanKhauPanel } from './san-khau';
-import { chuanCong, MAC_DINH, urlBridge, type CauHinh } from './thuan/cau-hinh';
+import { chuanCong, chuanNao, MAC_DINH, urlBridge, type CauHinh } from './thuan/cau-hinh';
 import { CauNoi, chonNhaMayWs } from './thuan/cau-noi';
 import { SoChatroom } from './thuan/so-chatroom';
 import { QuanLyTienTrinh } from './thuan/tien-trinh';
@@ -53,6 +53,7 @@ function docCauHinh(extensionPath: string): CauHinh {
     devPort: chuanCong(c.get('devPort'), MAC_DINH.devPort),
     tuBat: c.get<boolean>('tuBat') ?? MAC_DINH.tuBat,
     pnpm: String(c.get<string>('pnpm') ?? MAC_DINH.pnpm).trim() || MAC_DINH.pnpm,
+    nao: chuanNao(c.get('nao') ?? MAC_DINH.nao),
   };
 }
 
@@ -140,10 +141,26 @@ export function activate(ctx: vscode.ExtensionContext): void {
     }),
   );
 
+  /**
+   * V1 — đưa driver não về đúng `genStage.nao` (tắt/giữ/đổi/bật). Chỉ khi
+   * setting khác `tat` mới có thể bật gì; `dongBoNao` tự hỏi `choPhepBat`
+   * (workspace trust + root) như bridge/vite, và nhường driver ngoài.
+   */
+  const dongBoNao = async (): Promise<void> => {
+    if (!tienTrinh) return;
+    const kq = await tienTrinh.dongBoNao();
+    so.datNao(kq.cheDo, kq.trangThai);
+    chatroom?.ve();
+    if (kq.trangThai === 'loi' && kq.cheDo !== 'tat') {
+      void vscode.window.showWarningMessage(`Gen-Stage — không bật được driver não (${kq.cheDo}): ${kq.lyDo}`);
+    }
+  };
+  so.datNao(cfg.nao, 'tat');
+
   const sanKhau = new SanKhauPanel(ctx, () => cfg, tienTrinh, ghi, (p) => {
     so.datPanel(p);
     chatroom?.ve();
-  });
+  }, () => void dongBoNao());
 
   ctx.subscriptions.push(
     vscode.commands.registerCommand('genStage.moSanKhau', () => sanKhau.mo()),
@@ -155,9 +172,12 @@ export function activate(ctx: vscode.ExtensionContext): void {
       if (kq.tt.bridge && kq.tt.sanKhau === 'gen-stage') void vscode.window.showInformationMessage(`Gen-Stage — ${chu}`);
       else void vscode.window.showWarningMessage(`Gen-Stage — ${chu}. Xem "Gen-Stage: Xem nhật ký".`);
       void sanKhau.kiemVaNap();
+      void dongBoNao();
     }),
     vscode.commands.registerCommand('genStage.tatDichVu', () => {
       const da = tienTrinh!.tatCuaMinh();
+      so.datNao(cfg.nao, 'tat');
+      chatroom?.ve();
       void vscode.window.showInformationMessage(
         da.length ? `Gen-Stage — đã tắt: ${da.join(', ')}` : 'Gen-Stage — không có dịch vụ nào do VS Code bật.',
       );
@@ -171,10 +191,16 @@ export function activate(ctx: vscode.ExtensionContext): void {
       ghi('[cấu hình] đã đổi');
       if (cu.bridgePort !== cfg.bridgePort) cauNoi?.doiUrl(urlBridge(cfg));
       sanKhau.doiCauHinh(cu, cfg);
+      // đổi chế độ não (hoặc cổng bridge mà driver nối tới) → tắt cái cũ của mình, bật cái mới
+      if (cu.nao !== cfg.nao || cu.bridgePort !== cfg.bridgePort || cu.root !== cfg.root) {
+        ghi(`[não] genStage.nao: ${cu.nao} → ${cfg.nao}`);
+        void dongBoNao();
+      }
     }),
     vscode.workspace.onDidGrantWorkspaceTrust(() => {
       ghi('[khởi động] workspace vừa được tin cậy — được phép tự bật tiến trình');
       void sanKhau.kiemVaNap();
+      void dongBoNao();
     }),
   );
 

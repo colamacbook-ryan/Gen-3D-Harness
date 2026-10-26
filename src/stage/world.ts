@@ -34,6 +34,7 @@ import type {
 import type { EventBus } from '../events';
 import { dungPhong, haiSuongBuc, KICH_THUOC_PHONG, KICH_THUOC_SAU, MAU_CAM, MAU_CYAN } from './phong';
 import { LOP_BLOOM } from './bloom-layer';
+import { DT_TOI_DA_NEN, nenVeKhung, TY_LE_PIXEL_NEN, type RenderMode } from './che-do-nen';
 import { NhanVat, TOC_DO_DI, uocThoiLuongNoi } from './nhanvat';
 import {
   BIEU_CAM,
@@ -165,6 +166,17 @@ export class World implements StageWorld {
   private mixPass!: ShaderPass;
   private bloomDangBat = true;
   private fpsThapTu = 0;
+  /**
+   * V1 (INT-06) — chế độ vẽ. `nen`: ≤ FPS_NEN khung/giây, bloom tắt, pixel
+   * ratio 1. `bloomTruocNen` nhớ bloom LÚC VÀO nền (có thể đang tắt vì FPS
+   * thấp) để lúc ra trả đúng trạng thái đó, không bật nhầm.
+   */
+  private cheDoVe: RenderMode = 'full';
+  private bloomTruocNen: boolean | null = null;
+  /** Mốc rAF (ms) của khung VẼ gần nhất — để bỏ khung khi nền. */
+  private lanVeCuoi = -Infinity;
+  /** Số khung đã vẽ thật (bằng chứng đo fps — `scripts/kiem-nen.mjs`). */
+  private soKhungDaVe = 0;
   private readonly matDen = new THREE.MeshBasicMaterial({ color: 0x000000 });
   private readonly vatLieuDaThay = new Map<string, THREE.Material | THREE.Material[]>();
   private readonly lopBloomKiemTra = new THREE.Layers();
@@ -189,7 +201,7 @@ export class World implements StageWorld {
     this.bongBongLop = bongBongLop;
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(this.tyLePixel());
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -420,17 +432,18 @@ export class World implements StageWorld {
   /* ----------------------------------------------------------- vòng lặp */
 
   batDauVe(): void {
-    this.renderer.setAnimationLoop(() => this.motKhung());
+    this.renderer.setAnimationLoop((t: number) => {
+      // V1 (INT-06) — nền: bỏ khung theo ĐỒNG HỒ THẬT (mốc rAF). Không gọi
+      // `dongHo.update()` ở khung bỏ, nên `dt` của khung vẽ kế tiếp là thời
+      // gian thật đã trôi; hành động có thời lượng vốn nội suy theo đồng hồ +
+      // hẹn giờ huỷ được, nên `durationMs` không đổi.
+      if (!nenVeKhung(this.cheDoVe, t, this.lanVeCuoi)) return;
+      this.lanVeCuoi = t;
+      this.motKhung();
+    });
     window.addEventListener('resize', () => {
       this.datGocMay();
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
-      this.bloomComposer.setSize(window.innerWidth, window.innerHeight);
-      this.finalComposer.setSize(window.innerWidth, window.innerHeight);
-      this.bloom.resolution.set(
-        Math.max(1, Math.floor(window.innerWidth / 2)),
-        Math.max(1, Math.floor(window.innerHeight / 2)),
-      );
+      this.apKichThuoc();
     });
     window.addEventListener('pointermove', (e) => {
       this.chuotNDC.set(
@@ -444,9 +457,67 @@ export class World implements StageWorld {
     });
   }
 
+  /** Pixel ratio theo chế độ vẽ: nền = 1, thường = min(dpr, 2) (quy ước hiệu năng). */
+  private tyLePixel(): number {
+    return this.cheDoVe === 'nen' ? TY_LE_PIXEL_NEN : Math.min(window.devicePixelRatio, 2);
+  }
+
+  /** Áp kích thước cửa sổ + pixel ratio cho renderer và cả hai composer. */
+  private apKichThuoc(): void {
+    const pr = this.tyLePixel();
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    this.renderer.setPixelRatio(pr);
+    this.renderer.setSize(w, h);
+    this.bloomComposer.setPixelRatio(pr);
+    this.bloomComposer.setSize(w, h);
+    this.finalComposer.setPixelRatio(pr);
+    this.finalComposer.setSize(w, h);
+    this.bloom.resolution.set(Math.max(1, Math.floor(w / 2)), Math.max(1, Math.floor(h / 2)));
+  }
+
+  /**
+   * V1 (INT-06) — đổi chế độ vẽ. Gọi từ tầng lắp (`main.ts`) theo tín hiệu
+   * focus/ẩn/vỏ VS Code; KHÔNG có lệnh nào trong registry gọi tới đây, nên
+   * MCP/não không chỉnh được fps.
+   */
+  datCheDoVe(mode: RenderMode, lyDo = ''): void {
+    if (mode === this.cheDoVe) return;
+    this.cheDoVe = mode;
+    if (mode === 'nen') {
+      this.bloomTruocNen = this.bloomDangBat;
+      this.coBloom(false);
+    } else {
+      // trả bloom đúng như lúc vào nền — đang tắt vì FPS thấp thì vẫn tắt
+      this.coBloom(this.bloomTruocNen ?? this.bloomDangBat);
+      this.bloomTruocNen = null;
+      this.fpsThapTu = 0;
+      // khung đầu tiên sau nền có `dt` dài (≤ 1/15 s) — đừng tính vào FPS thấp
+      this.dongHo.update();
+    }
+    this.apKichThuoc();
+    this.bus.emit('stage.renderMode', {
+      mode,
+      bloom: this.bloomDangBat,
+      pixelRatio: this.renderer.getPixelRatio(),
+      ...(lyDo ? { reason: lyDo } : {}),
+    });
+  }
+
+  /** Số đo chế độ vẽ (bằng chứng `scripts/kiem-nen.mjs`). */
+  doVe(): { renderMode: RenderMode; soKhung: number; bloom: boolean; pixelRatio: number } {
+    return {
+      renderMode: this.cheDoVe,
+      soKhung: this.soKhungDaVe,
+      bloom: this.bloomDangBat,
+      pixelRatio: this.renderer.getPixelRatio(),
+    };
+  }
+
   private motKhung(): void {
+    this.soKhungDaVe++;
     this.dongHo.update();
-    const dt = Math.min(this.dongHo.getDelta(), 1 / 20);
+    const dt = Math.min(this.dongHo.getDelta(), this.cheDoVe === 'nen' ? DT_TOI_DA_NEN : 1 / 20);
 
     // điểm con trỏ chiếu ra không gian, cách camera 2,4 m
     this.diemChuot
@@ -505,7 +576,8 @@ export class World implements StageWorld {
 
   /** Hiệu năng (spec mục 5): FPS tụt dưới ngưỡng quá 2 s thì tự tắt bloom. */
   private theoDoiFps(dt: number): void {
-    if (dt <= 0) return;
+    // nền: fps thấp là CỐ Ý — không được tính vào "máy yếu" để tự tắt/bật bloom
+    if (dt <= 0 || this.cheDoVe === 'nen') return;
     const fps = 1 / dt;
     if (fps < FPS_TU_TAT_BLOOM) {
       this.fpsThapTu += dt * 1000;
@@ -1450,6 +1522,8 @@ export class World implements StageWorld {
       },
       // C0 (#28) — số do bridge báo xuống, sân khấu chỉ đọc lại (`so-nao.ts`)
       brainConnected: coNao(),
+      // V1 (INT-06) — sân khấu đang vẽ đủ hay chế độ nền tiết kiệm
+      renderMode: this.cheDoVe,
     };
   }
 

@@ -27,6 +27,8 @@ export class SanKhauPanel {
     private readonly tienTrinh: QuanLyTienTrinh,
     private readonly ghi: (dong: string) => void,
     private readonly khiDoiHienAn: (p: TrangThaiPanel) => void,
+    /** V1 — bridge đã lên sau một lượt dò/bật → đồng bộ driver não theo setting. */
+    private readonly khiBridgeSan: () => void = () => undefined,
   ) {}
 
   mo(): void {
@@ -126,8 +128,11 @@ export class SanKhauPanel {
       void panel.webview.postMessage({ lenh: 'trangThai', chu: 'Đang dò bridge + vite…', loi: false });
       const { tt, canhBao } = await this.tienTrinh.batNeuCan();
       const cfg = this.layCfg();
+      if (tt.bridge) this.khiBridgeSan();
       if (tt.sanKhau === 'gen-stage') {
         void panel.webview.postMessage({ lenh: 'napLai', url: urlSanKhau(cfg) });
+        // V1 (INT-06) — trạng thái panel hiện tại; vỏ gửi lại xuống app khi iframe nạp xong
+        void panel.webview.postMessage({ lenh: 'hienAn', visible: panel.visible, active: panel.active });
         if (!tt.bridge) {
           void panel.webview.postMessage({
             lenh: 'trangThai',

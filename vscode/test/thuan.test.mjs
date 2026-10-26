@@ -88,7 +88,14 @@ test('vỏ panel: bỏ qua tin postMessage đến từ chính iframe sân khấu
   const js = h.split('<script nonce="n">')[1].split('</script>')[0];
   // chạy script vỏ trong DOM giả tối thiểu
   const nghe = [];
-  const khung = { contentWindow: { postMessage: () => undefined }, dataset: { url: 'u0' }, src: '' };
+  const guiXuong = [];
+  const ngheKhung = {};
+  const khung = {
+    contentWindow: { postMessage: (m, o) => guiXuong.push([m, o]) },
+    dataset: { url: 'u0' },
+    src: '',
+    addEventListener: (t, f) => (ngheKhung[t] = f),
+  };
   const el = () => ({ textContent: '', classList: { toggle: () => undefined }, addEventListener: () => undefined });
   const phan = { 'san-khau': khung, 'trang-thai': el(), che: el(), 'tai-lai': el() };
   const win = { addEventListener: (_t, f) => nghe.push(f) };
@@ -99,6 +106,20 @@ test('vỏ panel: bỏ qua tin postMessage đến từ chính iframe sân khấu
   assert.equal(khung.src, '', 'tin từ iframe không được đổi src');
   nghe[0]({ source: null, data: { lenh: 'napLai', url: 'http://127.0.0.1:5173/?bridge=1' } });
   assert.equal(khung.src, 'http://127.0.0.1:5173/?bridge=1', 'tin từ host vẫn chạy');
+  // V1 (INT-06) — hienAn trước khi iframe nạp xong: chưa gửi; 'load' → gửi tin cuối đúng khoá + origin
+  nghe[0]({ source: null, data: { lenh: 'hienAn', visible: true, active: false } });
+  assert.equal(guiXuong.length, 0, 'iframe chưa nạp xong thì chưa gửi');
+  ngheKhung.load();
+  assert.deepEqual(guiXuong.at(-1), [{ nguon: 'gen-stage-vscode', loai: 'nen', visible: true, active: false }, 'http://127.0.0.1:5173']);
+  nghe[0]({ source: null, data: { lenh: 'hienAn', visible: true, active: true } });
+  assert.deepEqual(guiXuong.at(-1)[0], { nguon: 'gen-stage-vscode', loai: 'nen', visible: true, active: true });
+  // tải lại: chờ load mới gửi lại tin cuối
+  const truoc = guiXuong.length;
+  nghe[0]({ source: null, data: { lenh: 'napLai' } });
+  nghe[0]({ source: null, data: { lenh: 'hienAn', visible: false, active: false } });
+  assert.equal(guiXuong.length, truoc);
+  ngheKhung.load();
+  assert.deepEqual(guiXuong.at(-1)[0], { nguon: 'gen-stage-vscode', loai: 'nen', visible: false, active: false });
 });
 
 test('SoChatroom.moHinhNeuDoi: chỉ trả khi mô hình đổi; quenDaVe thì gửi lại', () => {
@@ -218,4 +239,48 @@ test('script vỏ panel là JS hợp lệ (bắt lỗi thoát chuỗi trong temp
   const h = html.taoHtmlSanKhau({ url: 'http://127.0.0.1:5173/?bridge=1', origin: 'http://127.0.0.1:5173', cspSource: 'c', nonce: 'n' });
   const js = h.split('<script nonce="n">')[1].split('</script>')[0];
   assert.doesNotThrow(() => new Function(js));
+});
+
+test('V1 — SoChatroom: renderMode + não từ describe và sự kiện; mất bridge = chưa biết', () => {
+  const so = new SoChatroom(null);
+  so.datBridge(true);
+  so.nhanSuKien('bridge.hello', { stageOnline: true });
+  so.datPanel('hien');
+  let m = so.moHinh();
+  assert.equal(m.renderMode, null);
+  assert.equal(m.naoNoi, null);
+  assert.equal(m.trangThaiNao.chu, 'Não: ?');
+  so.nhanDescribe({ actors: DS.slice(0, 2), renderMode: 'nen', brainConnected: false });
+  m = so.moHinh();
+  assert.equal(m.renderMode, 'nen');
+  assert.deepEqual(m.trangThaiSanKhau, { chu: 'Sân khấu: chế độ nền (≤15 fps)', den: 'vang' });
+  assert.deepEqual(m.trangThaiNao, { chu: 'Não: chưa nối (genStage.nao = tat)', den: 'vang' });
+  so.nhanSuKien('stage.renderMode', { mode: 'full' });
+  so.nhanSuKien('stage.renderMode', { mode: 'la' }); // giá trị lạ bị bỏ
+  assert.deepEqual(so.moHinh().trangThaiSanKhau, { chu: 'Sân khấu: đã nối', den: 'xanh' });
+  so.datNao('local', 'dang-chay');
+  so.nhanSuKien('bridge.brain', { count: 1, connected: true });
+  assert.deepEqual(so.moHinh().trangThaiNao, { chu: 'Não: đã nối · local', den: 'xanh' });
+  so.nhanSuKien('bridge.brain', { count: 0, connected: false });
+  assert.deepEqual(so.moHinh().trangThaiNao, { chu: 'Não: chưa nối · local', den: 'do' });
+  so.datNao('agy', 'cua-ngoai');
+  assert.match(so.moHinh().trangThaiNao.chu, /agy \(driver ngoài\)/);
+  // tab ẩn thắng chế độ nền (CNS-003: ẩn = tạm dừng hẳn)
+  so.nhanSuKien('stage.renderMode', { mode: 'nen' });
+  so.datPanel('an');
+  assert.match(so.moHinh().trangThaiSanKhau.chu, /đang ẩn/);
+  so.nhanSuKien('bridge.stageOffline', {});
+  assert.equal(so.moHinh().renderMode, null);
+  so.datBridge(false);
+  assert.equal(so.moHinh().naoNoi, null);
+  assert.equal(so.moHinh().trangThaiSanKhau.den, 'do');
+});
+
+test('V1 — vỏ panel: nhớ tin nền cuối, gửi lại khi iframe nạp xong, đúng khoá + targetOrigin', () => {
+  const h = html.taoHtmlSanKhau({ url: 'http://127.0.0.1:5173/?bridge=1', origin: 'http://127.0.0.1:5173', cspSource: 'c', nonce: 'n' });
+  assert.match(h, /nguon: 'gen-stage-vscode', loai: 'nen'/);
+  assert.match(h, /addEventListener\('load'/);
+  assert.match(h, /postMessage\(\s*\{ nguon: 'gen-stage-vscode'[^)]*\}, ORIGIN\)/);
+  assert.doesNotMatch(h, /TODO\(V1\)/);
+  assert.match(html.taoHtmlChatroom({ cspSource: 'c', nonce: 'n', scriptUri: 's', cssUri: 'c' }), /id="chu-nao"/);
 });

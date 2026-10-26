@@ -25,6 +25,12 @@ async function moTa(): Promise<StageState> {
 }
 
 describe('khuôn stage.describe', () => {
+  it('V1 (INT-06) — có renderMode "full"|"nen", phản ánh đúng sân khấu', async () => {
+    expect((await moTa()).renderMode).toBe('full');
+    world.cheDoVe = 'nen';
+    expect((await moTa()).renderMode).toBe('nen');
+  });
+
   it('có đủ khoá version / time / actors / places / screens / props / lastEvents', async () => {
     const st = await moTa();
     expect(Object.keys(st)).toEqual(

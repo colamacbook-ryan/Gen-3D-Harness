@@ -14,6 +14,11 @@ elif [ "${1:-}" = "exec" ] && [ "${2:-}" = "vite" ]; then
   done
   [ "$HOST" = "127.0.0.1" ] && [ "$STRICT" = 1 ] || { echo "thiếu --host 127.0.0.1 --strictPort" >&2; exit 3; }
   node "$DIR/server-gia.mjs" http "$PORT" &
+elif [ "${1:-}" = "nao-local" ]; then
+  # V1 — driver não giả (pnpm thật: tsx scripts/nao-local.mjs)
+  node "$DIR/scripts/nao-local.mjs" &
+elif [ "${1:-}" = "nao" ]; then
+  node "$DIR/scripts/nao-agy.mjs" &
 else
   echo "pnpm-gia: không biết lệnh $*" >&2; exit 2
 fi

@@ -11,7 +11,7 @@ body {
   border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, var(--vscode-panel-border, #8884));
   font-size: 11px; opacity: .9;
 }
-#trang-thai span:nth-child(2) { margin-right: 8px; }
+#trang-thai span:nth-child(2n) { margin-right: 8px; }
 .den { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: #888; }
 .den.xanh { background: var(--vscode-testing-iconPassed, #3fb950); }
 .den.do { background: var(--vscode-testing-iconFailed, #f85149); }

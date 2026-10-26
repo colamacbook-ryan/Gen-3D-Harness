@@ -22,7 +22,9 @@ const $ = <T extends HTMLElement>(id: string): T => {
 const denBridge = $('den-bridge');
 const chuBridge = $('chu-bridge');
 const denSanKhau = $('den-san-khau');
-const chuSanKhau = $('chu-san-khau');
+const chuSanKhauEl = $('chu-san-khau');
+const denNao = $('den-nao');
+const chuNaoEl = $('chu-nao');
 const canhBao = $('canh-bao');
 const dsNhanVat = $<HTMLUListElement>('ds-nhan-vat');
 const dsDong = $<HTMLOListElement>('ds-dong');
@@ -96,9 +98,11 @@ function ve(m: MoHinhChatroom): void {
   moHinh = m;
   denBridge.className = 'den ' + (m.bridgeNoi ? 'xanh' : 'do');
   chuBridge.textContent = 'Bridge: ' + (m.bridgeNoi ? 'đã nối' : 'chưa nối');
-  denSanKhau.className = 'den ' + (m.sanKhauNoi ? (m.panel === 'an' ? 'vang' : 'xanh') : 'do');
-  chuSanKhau.textContent =
-    'Sân khấu: ' + (m.sanKhauNoi ? (m.panel === 'an' ? 'đang ẩn' : 'đã nối') : 'chưa nối');
+  // chữ + màu trạng thái do host tính sẵn (hàm thuần `chuSanKhau`/`chuNao`) — webview chỉ vẽ
+  denSanKhau.className = 'den ' + m.trangThaiSanKhau.den;
+  chuSanKhauEl.textContent = m.trangThaiSanKhau.chu;
+  denNao.className = 'den ' + m.trangThaiNao.den;
+  chuNaoEl.textContent = m.trangThaiNao.chu;
   canhBao.hidden = !m.canhBao;
   canhBao.textContent = m.canhBao;
   veNhanVat(m);
