@@ -121,12 +121,12 @@ describe('stage.hear', () => {
     expect(dem(thay, 'user.speech')[0]!.data).toMatchObject({ text: 'Gen ơi dựng module', goiGen: true });
   });
 
-  it('nói với chính mình (to === id người nói) → coi như camera, user.speech mang `to` khớp user.text', async () => {
+  it('nói với chính mình (to === id người nói): `to` trong sự kiện giữ nguyên (để định tuyến), user.speech khớp user.text', async () => {
     const { d, thay, world } = dung();
     world.lichSu.length = 0;
     await d.run('stage.hear', { text: 'chào mọi người', to: 'owner' });
-    expect(dem(thay, 'user.text')[0]!.data.to).toBe('camera');
-    expect(dem(thay, 'user.speech')[0]!.data.to).toBe('camera');
+    expect(dem(thay, 'user.text')[0]!.data.to).toBe('owner');
+    expect(dem(thay, 'user.speech')[0]!.data.to).toBe('owner');
     expect(dem(thay, 'actor.sayStart')[0]!.data.actor).toBe('owner');
   });
 
@@ -142,7 +142,7 @@ describe('stage.hear', () => {
 describe('stage.hear × lớp hiểu lệnh + phản xạ', () => {
   beforeEach(() => boPhieuGiong());
 
-  it('to:"owner" (chính người nói → camera) + "đi tới bàn điều khiển" → Gen đi, handled đồng bộ, chạy đúng một lần', async () => {
+  it('to:"owner" (chatroom chọn Javis) + "đi tới bàn điều khiển" → Javis đi (INT-02), handled đồng bộ, chạy đúng một lần', async () => {
     const { d, bus, world, thay } = dung();
     const hl = batHieuLenh(d, bus);
     await hl.lamMoi();
@@ -160,7 +160,7 @@ describe('stage.hear × lớp hiểu lệnh + phản xạ', () => {
     expect(dem(thay, 'user.command')).toHaveLength(1);
     const di = world.lichSu.filter((x) => x.startsWith('moveTo'));
     expect(di).toHaveLength(1);
-    expect(di[0]).toContain('gen');
+    expect(di[0]).toContain('owner');
     hl.thao();
   });
 

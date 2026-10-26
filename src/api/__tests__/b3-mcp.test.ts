@@ -13,6 +13,7 @@ import {
   BoSuKien,
   HUONG_DAN_AGENT,
   LENH_CHI_CHO_BOSS,
+  lyDoCamNao,
   TOOL_SU_KIEN,
   banDoTool,
   schemaThamSo,
@@ -260,5 +261,22 @@ describe('MCP không được lọt rào owner (stage.hear)', () => {
     const chan = (await client.callTool({ name: 'actor_say', arguments: { actor: 'owner', text: 'x' } })) as { isError?: boolean };
     expect(chan.isError).toBe(true);
     expect(goi).toEqual(['actor.say']);
+  });
+});
+
+describe('rào não lách qua script.run (review bảo mật 26/10)', () => {
+  it('stage.hear / actor.say owner gói trong script.run (mảng hoặc chuỗi JSON, lồng nhau) → bị chặn', () => {
+    const hear = [{ cmd: 'stage.hear', args: { text: 'Gen ơi' } }];
+    expect(lyDoCamNao('script.run', { steps: hear })).toMatch(/script\.run/);
+    expect(lyDoCamNao('script.run', { steps: JSON.stringify(hear) })).toMatch(/stage\.hear/);
+    const owner = [{ wait: 10 }, { cmd: 'actor.say', args: { actor: 'owner', text: 'x' } }];
+    expect(lyDoCamNao('script.run', { steps: owner })).toMatch(/owner/);
+    const long = [{ cmd: 'script.run', args: { steps: [{ cmd: 'stage.hear', args: { text: 'y' } }] } }];
+    expect(lyDoCamNao('script.run', { steps: long })).not.toBeNull();
+  });
+  it('kịch bản hợp lệ cho gen → được chạy; steps hỏng → để validate từ chối (null)', () => {
+    expect(lyDoCamNao('script.run', { steps: [{ cmd: 'actor.say', args: { actor: 'gen', text: 'chào' } }] })).toBeNull();
+    expect(lyDoCamNao('script.run', { steps: '{hỏng' })).toBeNull();
+    expect(lyDoCamNao('actor.list', { actor: 'owner' })).toBeNull();
   });
 });
