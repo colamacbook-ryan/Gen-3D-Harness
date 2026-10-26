@@ -663,6 +663,9 @@ export function batHieuLenh(
     }
   }
 
+  /** Kết quả `handled` của lần xử lý đầu theo khoá `to|text` — để sự kiện lặp lại nhận đúng cờ. */
+  const daXuLy = new Map<string, boolean>();
+
   function nghe(e: StageEvent): void {
     const d = e.data as Record<string, unknown>;
     const text = typeof d.text === 'string' ? d.text : '';
@@ -681,13 +684,15 @@ export function batHieuLenh(
     const truoc = ganDay.get(khoa);
     const now = Date.now();
     if (truoc !== undefined && now - truoc < CUA_SO_LAP) {
-      // đã xử lý câu này ở sự kiện trước (speech → text): chỉ truyền lại cờ
-      if (lenhCuoiBan?.text === sach && lenhCuoiBan.matched) d.handled = true;
+      // đã xử lý câu này ở sự kiện trước (text → speech): truyền lại ĐÚNG kết quả lần đầu —
+      // khớp lệnh HAY Javis đã tự đáp câu tự do (CNS-021: thiếu nhánh sau thì user.speech lọt sang não Gen)
+      if ((lenhCuoiBan?.text === sach && lenhCuoiBan.matched) || daXuLy.get(khoa) === true) d.handled = true;
       return;
     }
     ganDay.set(khoa, now);
-    for (const [k, t] of ganDay) if (now - t > CUA_SO_LAP * 5) ganDay.delete(k);
+    for (const [k, t] of ganDay) if (now - t > CUA_SO_LAP * 5) { ganDay.delete(k); daXuLy.delete(k); }
     xuLy(text, d, to || undefined);
+    daXuLy.set(khoa, d.handled === true);
   }
 
   huy.push(bus.on('user.text', nghe));

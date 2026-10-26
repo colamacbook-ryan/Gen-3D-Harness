@@ -107,6 +107,24 @@ describe('batHieuLenh — `to` trong dữ liệu sự kiện', () => {
     expect(daChay.find((c) => c.cmd === 'actor.say')?.args.actor).toBe('owner');
     hl.thao();
   });
+  it('CNS-021: to:"owner" + câu tự do NÓI (user.text rồi user.speech) → cả hai handled, não không nhận', async () => {
+    const { bus, hl } = dungMay();
+    await hl.lamMoi();
+    const t = bus.emit('user.text', { actor: 'owner', text: 'hôm nay trời đẹp nhỉ', to: 'owner' });
+    const sp = bus.emit('user.speech', { actor: 'owner', text: 'hôm nay trời đẹp nhỉ', to: 'owner' });
+    expect(t.data.handled).toBe(true);
+    expect(sp.data.handled).toBe(true);
+    hl.thao();
+  });
+  it('to:"gen" + câu tự do NÓI → cả hai KHÔNG handled (não nghe)', async () => {
+    const { bus, hl } = dungMay();
+    await hl.lamMoi();
+    const t = bus.emit('user.text', { actor: 'owner', text: 'kể chuyện đi', to: 'gen' });
+    const sp = bus.emit('user.speech', { actor: 'owner', text: 'kể chuyện đi', to: 'gen' });
+    expect(t.data.handled).toBeUndefined();
+    expect(sp.data.handled).toBeUndefined();
+    hl.thao();
+  });
   it('to:"gen" + câu tự do → không handled (chảy tới não như cũ)', async () => {
     const { bus, hl } = dungMay();
     await hl.lamMoi();

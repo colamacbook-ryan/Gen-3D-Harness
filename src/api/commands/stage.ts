@@ -92,7 +92,7 @@ export const LENH_STAGE: CommandSpec[] = [
     events: ['user.text', 'user.speech', 'actor.sayStart', 'actor.sayDone', 'cmd.queued'],
     desc:
       'Đánh dấu một câu là Boss NÓI (không phải gõ) từ nguồn ngoài trình duyệt (extension, ' +
-      'sidecar STT, agent): bắn đúng một user.text + một user.speech (confidence, goiGen). ' +
+      'sidecar STT — qua ws bridge, MCP của não bị chặn): bắn đúng một user.text + một user.speech (confidence, goiGen). ' +
       'Chữ đi qua sổ từ nhà như đường mic ("ghen ơi" → "Gen ơi"). ' +
       'Chạy actor.say (interrupt) lên nhân vật controlledBy "owner" nên user.text vẫn chỉ có một nguồn. ' +
       'Chỉ dành cho Boss/ngoại vi (ws bridge): MCP của não bị chặn lệnh này',

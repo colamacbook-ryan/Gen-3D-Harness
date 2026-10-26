@@ -498,7 +498,7 @@ Số đo đầy đủ và lý do loại từng lựa chọn: **`docs/c1/so-sanh.
   `user.speech` thêm vào nhờ **phiếu dùng một lần** trong `src/audio/so-giong.ts`,
   nên không phải thêm tham số lạ vào `actor.say` mà mọi agent phải học.
 - **`stage.hear` (CNS-005) — nguồn giọng NGOÀI trình duyệt** (extension VS Code,
-  sidecar STT, agent qua MCP): phiếu giọng chỉ đặt được trong trình duyệt nên
+  sidecar STT — qua ws bridge; MCP của não bị chặn, xem dưới): phiếu giọng chỉ đặt được trong trình duyệt nên
   các nguồn này không đánh dấu được "câu này là nói". `stage.hear {text, to?,
   confidence?, durationMs?}` đặt phiếu bằng đúng `datPhieuGiong` (`goiGen` tính
   bằng `chuanHoaCauNoi` của bridge, như đường mic) rồi **chạy `actor.say` lên
@@ -514,7 +514,7 @@ Số đo đầy đủ và lý do loại từng lựa chọn: **`docs/c1/so-sanh.
   (2) `stage.hear` chạy `actor.say` với `interrupt: true` như ô chat. (3) `user.speech` mang
   `to` (= `to` của `user.text`); dedup 2 s của lớp hiểu lệnh khoá `to|text`, nên chọn Javis
   rồi Gen nói cùng câu thì cả hai chạy. (4) `boPhieuGiong(text?)` chỉ xoá phiếu đúng câu.
-  (5) `actor.say` với `to === id` người nói ⇒ `camera`. (6) `stage.hear` chuẩn hoá chữ bằng
+  (5) `actor.say` với `to === id` người nói ⇒ hướng mặt/dáng nghe về `camera`, NHƯNG `to` trong `user.text`/`user.speech` giữ nguyên (chọn Javis ở chatroom → `to:"owner"` → Javis nhận lệnh, INT-02). Câu lặp text→speech nhận lại đúng cờ `handled` của lần đầu, kể cả khi Javis tự đáp câu tự do (CNS-021). (6) `stage.hear` chuẩn hoá chữ bằng
   `chuanHoaCauNoi` cho cả text lẫn `goiGen`. (7) `so-tu.ts` dời sang `src/audio/` (dùng
   chung bridge + trình duyệt). (8) Bridge bật token: stage chỉ thay `sanKhau` SAU khi qua
   cửa token, `tuClient` chỉ chuyển lệnh khi `sanKhau` đã xác thực; lỗi lệnh chờ ghi
