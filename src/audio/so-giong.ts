@@ -56,7 +56,11 @@ export function layPhieuGiong(text: string): PhieuGiong | null {
   return ra;
 }
 
-/** Xoá phiếu (Boss sửa chữ trong ô chat rồi gửi → tính là gõ tay). */
-export function boPhieuGiong(): void {
+/**
+ * Xoá phiếu (Boss sửa chữ trong ô chat rồi gửi → tính là gõ tay).
+ * Có `text` thì CHỈ xoá khi phiếu đúng câu đó — không xoá nhầm phiếu của câu khác.
+ */
+export function boPhieuGiong(text?: string): void {
+  if (text !== undefined && phieu && phieu.text.trim() !== text.trim()) return;
   phieu = null;
 }

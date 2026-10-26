@@ -675,16 +675,19 @@ export function batHieuLenh(
       d.handled = true;
       return;
     }
-    const truoc = ganDay.get(sach);
+    // khoá theo `to|text`: cùng câu nói với người KHÁC nhau là hai lệnh khác nhau
+    const to = typeof d.to === 'string' ? d.to : '';
+    const khoa = `${to}|${sach}`;
+    const truoc = ganDay.get(khoa);
     const now = Date.now();
     if (truoc !== undefined && now - truoc < CUA_SO_LAP) {
       // đã xử lý câu này ở sự kiện trước (speech → text): chỉ truyền lại cờ
       if (lenhCuoiBan?.text === sach && lenhCuoiBan.matched) d.handled = true;
       return;
     }
-    ganDay.set(sach, now);
+    ganDay.set(khoa, now);
     for (const [k, t] of ganDay) if (now - t > CUA_SO_LAP * 5) ganDay.delete(k);
-    xuLy(text, d, typeof d.to === 'string' ? d.to : undefined);
+    xuLy(text, d, to || undefined);
   }
 
   huy.push(bus.on('user.text', nghe));

@@ -179,6 +179,13 @@ export const HUONG_DAN_AGENT =
   'rồi module_store khi Sếp nhờ làm một việc. Nghe Sếp bằng stage_events (waitMs 25000) và phản ứng ' +
   'với sự kiện user.text.';
 
+/**
+ * Lệnh CHỈ dành cho Boss/ngoại vi (sidecar STT, extension VS Code gọi qua ws bridge).
+ * Tool vẫn liệt kê (giữ bất biến "số tool = số lệnh + 1") nhưng MCP của não gọi là bị từ chối:
+ * `stage.hear` chạy `actor.say` lên owner → não giả Boss nói rồi tự nghe lại chính mình.
+ */
+export const LENH_CHI_CHO_BOSS: ReadonlySet<string> = new Set(['stage.hear']);
+
 /** Toàn bộ tool: mỗi lệnh một tool + `stage_events`. */
 export function sinhTools(): ToolMcp[] {
   return [...taoRegistry().all().map(toolTuLenh), TOOL_SU_KIEN];
@@ -454,6 +461,16 @@ export function taoMcpServer(noi: NoiSanKhau): Server {
       return {
         isError: true,
         content: [{ type: 'text' as const, text: 'Não không được điều khiển actor "owner" (nhân vật của Sếp). Chỉ điều khiển "gen".' }],
+      };
+    }
+
+    if (LENH_CHI_CHO_BOSS.has(cmd)) {
+      return {
+        isError: true,
+        content: [{
+          type: 'text' as const,
+          text: `Lệnh "${cmd}" chỉ dành cho Boss/ngoại vi (STT, extension) qua ws bridge — não không được gọi (sẽ tự nghe lại chính mình).`,
+        }],
       };
     }
 

@@ -11,7 +11,7 @@ import { ngay, pSo } from './tien-ich';
 import { lenhCuoi } from '../../behavior/hieu-lenh';
 // CNS-005 — phiếu giọng + cách tính `goiGen` y hệt đường mic (bridge/stt.ts)
 import { boPhieuGiong, datPhieuGiong } from '../../audio/so-giong';
-import { chuanHoaCauNoi } from '../../../bridge/so-tu';
+import { chuanHoaCauNoi } from '../../audio/so-tu';
 
 export const PHIEN_BAN_API = '0.1';
 
@@ -93,7 +93,9 @@ export const LENH_STAGE: CommandSpec[] = [
     desc:
       'Đánh dấu một câu là Boss NÓI (không phải gõ) từ nguồn ngoài trình duyệt (extension, ' +
       'sidecar STT, agent): bắn đúng một user.text + một user.speech (confidence, goiGen). ' +
-      'Chạy actor.say lên nhân vật controlledBy "owner" nên user.text vẫn chỉ có một nguồn',
+      'Chữ đi qua sổ từ nhà như đường mic ("ghen ơi" → "Gen ơi"). ' +
+      'Chạy actor.say (interrupt) lên nhân vật controlledBy "owner" nên user.text vẫn chỉ có một nguồn. ' +
+      'Chỉ dành cho Boss/ngoại vi (ws bridge): MCP của não bị chặn lệnh này',
     params: [
       { name: 'text', type: 'text', desc: 'Câu đã nhận dạng', required: true },
       {
@@ -110,14 +112,16 @@ export const LENH_STAGE: CommandSpec[] = [
     async handler(a, ctx) {
       const owner = ctx.world.describe().actors.find((x) => x.controlledBy === 'owner');
       if (!owner) throw new Error('Không có actor controlledBy "owner" để nghe câu này');
-      const text = String(a.text);
+      // cùng chuẩn hoá với đường mic (sổ từ nhà): "ghen ơi" → "Gen ơi"; text gửi đi và goiGen dùng CÙNG chữ đã sửa
+      const chuan = chuanHoaCauNoi(String(a.text));
+      const text = chuan.text;
       const conf = a.confidence === undefined ? 1 : Number(a.confidence);
       const dur = a.durationMs === undefined ? 0 : Number(a.durationMs);
       datPhieuGiong({
         text,
         confidence: Math.min(1, Math.max(0, conf)),
         durationMs: Math.max(0, dur),
-        goiGen: chuanHoaCauNoi(text).goiGen,
+        goiGen: chuan.goiGen,
       });
       let kq;
       try {
@@ -125,15 +129,17 @@ export const LENH_STAGE: CommandSpec[] = [
         kq = await ctx.run('actor.say', {
           actor: owner.id,
           text,
+          // như ô chat: Boss nói khi nhân vật đang bận (moveTo/đang nói) thì câu tới NGAY, không xếp hàng
+          interrupt: true,
           ...(a.to === undefined ? {} : { to: String(a.to) }),
         });
       } catch (e) {
-        boPhieuGiong();
+        boPhieuGiong(text);
         throw e;
       }
       if (!kq.ok) {
         // actor.say từ chối → không để phiếu treo sang câu gõ tay sau
-        boPhieuGiong();
+        boPhieuGiong(text);
         throw new Error(kq.error);
       }
       return ngay({ heard: true, actor: owner.id, text });

@@ -156,7 +156,7 @@ else console.log('Dùng: node scripts/do-stt.mjs mau | do <ten> "<lệnh {wav}>"
 // Dùng cho engine nạp model MỘT LẦN rồi chạy cả bộ (đúng cảnh bridge chạy
 // thật): engine tự in mỗi dòng một câu theo đúng thứ tự `bo-thu.json`.
 export async function chamTsv(ten, tsv, sua = false) {
-  const { chuanHoaCauNoi } = sua ? await import('../bridge/so-tu.ts') : { chuanHoaCauNoi: null };
+  const { chuanHoaCauNoi } = sua ? await import('../src/audio/so-tu.ts') : { chuanHoaCauNoi: null };
   const danh = JSON.parse(await readFile(join(THU_MUC, 'bo-thu.json'), 'utf8'));
   const dong = tsv.trim().split('\n');
   let tongSua = 0;

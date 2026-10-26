@@ -468,7 +468,9 @@ export const LENH_ACTOR: CommandSpec[] = [
        * C0 (#28) — **người nghe**. Mặc định là `camera`: với nhân vật trong
        * sân khấu, Sếp chính là người đang xem qua màn hình, tức là máy quay.
        */
-      const nghe = a.to === undefined ? 'camera' : s(a.to);
+      const ngheTho = a.to === undefined ? 'camera' : s(a.to);
+      // nói với CHÍNH MÌNH là vô nghĩa (không faceTo mình, không bật dáng nghe cho mình) → coi như nói với camera
+      const nghe = ngheTho === id ? 'camera' : ngheTho;
 
       /**
        * B3 (#21) — Owner nói là **sự kiện cho não**, không chỉ là lời thoại.
@@ -489,7 +491,8 @@ export const LENH_ACTOR: CommandSpec[] = [
          * dùng một lần nên gõ tay lại đúng câu đó không bị tính là nói.
          */
         const phieu = layPhieuGiong(chu);
-        if (phieu) ctx.bus.emit('user.speech', { actor: id, ...phieu });
+        // `to` cùng giá trị với user.text: lớp hiểu lệnh khoá dedup theo `to|text`
+        if (phieu) ctx.bus.emit('user.speech', { actor: id, to: nghe, ...phieu });
       }
 
       /**

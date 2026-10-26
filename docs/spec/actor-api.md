@@ -73,7 +73,7 @@ Kết luận thiết kế: khi A xong, "gắn não" = viết 1 skill cho agent C
 | `stage.bootstrap` | — | Toàn bộ sách hướng dẫn: version, danh sách lệnh + mô tả + ví dụ, actors, places, props, clips, expressions, voices. **Agent gọi đầu tiên.** |
 | `stage.describe` | — | Trạng thái hiện tại: mỗi actor đang ở đâu, làm gì, biểu cảm gì; props ở đâu |
 | `stage.reset` | — | Về trạng thái ban đầu |
-| `stage.hear` | `text`, `to?`, `confidence?` (0..1, mặc định 1), `durationMs?` (mặc định 0) | **Cửa giọng nói từ ngoài trình duyệt** (extension VS Code, sidecar STT, agent). Đánh dấu câu là NÓI (phiếu giọng) rồi chạy `actor.say` lên actor `controlledBy:"owner"` kèm `to` ⇒ bắn `user.text` + `user.speech` mỗi loại đúng một lần; `user.text` vẫn chỉ có một nguồn là `actor.say` owner. Không có owner ⇒ `ok:false`. (Thêm 26/10 — CNS-005, Gen-3D-Harness) |
+| `stage.hear` | `text`, `to?`, `confidence?` (0..1, mặc định 1), `durationMs?` (mặc định 0) | **Cửa giọng nói từ ngoài trình duyệt** (extension VS Code, sidecar STT, agent). Đánh dấu câu là NÓI (phiếu giọng) rồi chạy `actor.say` lên actor `controlledBy:"owner"` kèm `to` ⇒ bắn `user.text` + `user.speech` mỗi loại đúng một lần; `user.text` vẫn chỉ có một nguồn là `actor.say` owner. Chữ đi qua sổ từ nhà (`chuanHoaCauNoi`: "ghen ơi" → "Gen ơi"), `actor.say` chạy với `interrupt:true` như ô chat. **Chỉ dành cho Boss/ngoại vi qua ws bridge — MCP của não gọi `stage_hear` bị từ chối** (tool vẫn liệt kê). Không có owner ⇒ `ok:false`. (Thêm 26/10 — CNS-005, Gen-3D-Harness) |
 
 ### 3.2 Nhân vật
 | Lệnh | Args | Ghi chú |
@@ -329,7 +329,7 @@ Ví dụ kịch bản Boss dán vào ô kịch bản (hoặc agent gửi):
 ```
 
 ### 3.5 Sự kiện sân khấu → agent
-`actor.arrived`, `actor.steerDone`, `actor.clipDone`, `actor.sayDone`, `actor.emoteDone`, `script.done`, `user.speech` (Boss nói, đã chuyển thành chữ), `user.click` (Boss bấm vào actor/prop), `user.text` (Boss gõ).
+`actor.arrived`, `actor.steerDone`, `actor.clipDone`, `actor.sayDone`, `actor.emoteDone`, `script.done`, `user.speech` (Boss nói, đã chuyển thành chữ; `data` có `to` cùng giá trị với `user.text` — `to === id` người nói thì coi như `camera`), `user.click` (Boss bấm vào actor/prop), `user.text` (Boss gõ).
 
 **Sửa spec (26/10, C0 — Issue #28):** thêm `bridge.brain { count, connected }` —
 bridge báo số client MCP đang nối, đi **xuống** sân khấu (hướng ngược với mọi

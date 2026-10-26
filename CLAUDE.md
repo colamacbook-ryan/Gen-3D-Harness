@@ -146,7 +146,7 @@ biết registry, **giao diện** không gọi thẳng vào sân khấu.
 | `src/audio/nut-tieng.ts` | **B2** — nút "🔊 Bật tiếng" mở khoá autoplay, nhớ bằng `localStorage` |
 | `bridge/stt.ts` | **C1** — nhận dạng giọng Việt: `POST /stt` (cổng 8790) → ffmpeg 16 kHz mono → thợ python (PhoWhisper-small ct2 int8) → `{ text, confidence, durationMs, goiGen }`, cache `.cache/stt/cache/<sha1>.json` |
 | `bridge/stt-worker.py` | **C1** — thợ nhận dạng chạy mãi: nạp model + hâm máy một lần lúc bật bridge, mỗi dòng stdin là một wav |
-| `bridge/so-tu.ts` | **C1** — SỔ TỪ NHÀ: sửa tên riêng (`Gen`, `connector`, `Baserow`, `module`, `Kho Ryan`) sau nhận dạng. Hạ WER 47 % → 5 %; khớp mờ cho tên dài, đồng âm khai tay cho tên ngắn |
+| `src/audio/so-tu.ts` | **C1** — SỔ TỪ NHÀ: sửa tên riêng (`Gen`, `connector`, `Baserow`, `module`, `Kho Ryan`) sau nhận dạng. Hạ WER 47 % → 5 %; khớp mờ cho tên dài, đồng âm khai tay cho tên ngắn |
 | `src/audio/mic.ts` | **C1** — giữ phím **V** (hoặc giữ nút 🎤) để nói: `MediaRecorder` + đo RMS → `POST /stt` → chữ vào ô chat 1,5 s cho Boss sửa |
 | `src/audio/vad.ts` | **C1** — cắt im lặng đầu/cuối theo RMS (ngưỡng tương đối theo đỉnh, chừa 120 ms mỗi đầu). Không phụ thuộc DOM |
 | `src/audio/so-giong.ts` | **C1** — sổ nối mic ↔ `commands/actor.ts`: phiếu dùng một lần để `actor.say` biết câu này Boss NÓI chứ không gõ |
@@ -483,7 +483,7 @@ Số đo đầy đủ và lý do loại từng lựa chọn: **`docs/c1/so-sanh.
   Việt thường nhưng **không engine nào** nghe ra `Gen`, `connector`, `Baserow`,
   `module`, `Kho Ryan`. Nâng cỡ model không chữa được (`large-v3-turbo` vẫn
   sai y thế, chỉ chậm hơn 24 lần), `initial_prompt` và `hotwords` làm **tệ
-  hơn** (model sinh câu không có thật). Chỗ chữa là `bridge/so-tu.ts` — sổ từ
+  hơn** (model sinh câu không có thật). Chỗ chữa là `src/audio/so-tu.ts` — sổ từ
   nhà, WER **47,4 % → 5,3 %**. Sổ chỉ chứa **tên riêng**: khai từ Việt thường
   vào là nó sửa bừa câu Boss nói đúng ("cất module" → "kết tinh module").
 - **Thợ python chạy mãi + hâm máy.** Nạp model mất 3–6 s và 6 câu đầu mất
@@ -506,6 +506,19 @@ Số đo đầy đủ và lý do loại từng lựa chọn: **`docs/c1/so-sanh.
   một nguồn (spec 3.5) và `to`/dedup/`handled` của lớp hiểu lệnh chạy y hệt câu
   gõ. `actor.say` lỗi thì phiếu bị xoá, không rò sang câu gõ sau. Không có owner
   → `ok:false`. Test: `cns005-stage-hear.test.ts`.
+  **Review sau CNS-005 (26/10):** (1) MCP KHÔNG được gọi `stage.hear` — `bridge/mcp.ts`
+  có `LENH_CHI_CHO_BOSS`; chọn *vẫn liệt kê tool nhưng gọi bị từ chối* (giữ bất biến
+  "số tool = số lệnh + 1", không phải sửa test/tài liệu đếm tool; lỗi nói rõ lý do) vì
+  loại khỏi danh sách thì não không thấy lệnh trong `stage_bootstrap`/schema mà vẫn có thể
+  đoán tên gọi; hàng rào thật nằm ở chỗ gọi. Nguồn ngoài (STT, extension) gọi qua ws.
+  (2) `stage.hear` chạy `actor.say` với `interrupt: true` như ô chat. (3) `user.speech` mang
+  `to` (= `to` của `user.text`); dedup 2 s của lớp hiểu lệnh khoá `to|text`, nên chọn Javis
+  rồi Gen nói cùng câu thì cả hai chạy. (4) `boPhieuGiong(text?)` chỉ xoá phiếu đúng câu.
+  (5) `actor.say` với `to === id` người nói ⇒ `camera`. (6) `stage.hear` chuẩn hoá chữ bằng
+  `chuanHoaCauNoi` cho cả text lẫn `goiGen`. (7) `so-tu.ts` dời sang `src/audio/` (dùng
+  chung bridge + trình duyệt). (8) Bridge bật token: stage chỉ thay `sanKhau` SAU khi qua
+  cửa token, `tuClient` chỉ chuyển lệnh khi `sanKhau` đã xác thực; lỗi lệnh chờ ghi
+  "bị thay/ngắt — không rõ đã chạy hay chưa". Kiểm: `scripts/kiem-bridge-thay-san-khau.mjs`.
 - **Cắt im lặng phải chừa lề.** Đo thật: cắt 200 ms đầu làm mất phụ âm đầu —
   "dừng lại" → "đừng lại", "mở màn hình" → "ở màn hình". VAD chừa 120 ms mỗi đầu.
 - **Cạm bẫy Chrome**: `--use-file-for-fake-audio-capture` với đường có **khoảng
