@@ -5,11 +5,14 @@
  * Kiểm: extension nạp + activate · lệnh genStage.* đăng ký · view chatroom (secondary sidebar)
  * mở được · genStage.moSanKhau tạo panel webview · extension tự bật bridge + vite (cổng E2E) ·
  * sân khấu trong webview nối bridge (stage.describe qua ws) · node/WebSocket của extension host ·
- * genStage.tatDichVu giải phóng cổng.
+ * V3 giác quan IDE trên VS Code thật: lưu file · lỗi biên dịch 0⇄>0 · task test/build ·
+ * git commit → `ide.event` tới bridge (nghe bằng một client ws) · genStage.tatDichVu giải phóng cổng.
  */
 const vscode = require('vscode');
 const fs = require('node:fs');
 const net = require('node:net');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 const RA = process.env.E2E_VSC_RA;
 const C = JSON.parse(process.env.E2E_VSC_CONG);
@@ -41,6 +44,111 @@ function hoiBridge(cmd, args = {}) {
     };
     w.onerror = () => (clearTimeout(t), res({ ok: false, error: 'ws lỗi' }));
   });
+}
+
+/** Client ws chỉ để NGHE: gom mọi sự kiện bridge phát (ide.event, actor.emote…). */
+function ngheBridge() {
+  const thay = [];
+  const w = new WebSocket(`ws://127.0.0.1:${C.bridge}/`);
+  w.onmessage = (m) => {
+    try {
+      const g = JSON.parse(String(m.data));
+      if (typeof g.event === 'string') thay.push({ t: Date.now(), event: g.event, data: g.data });
+    } catch {
+      /* bỏ */
+    }
+  };
+  return { thay, dong: () => w.close() };
+}
+
+async function choSuKien(nghe, dk, ms) {
+  const han = Date.now() + ms;
+  while (Date.now() < han) {
+    const e = nghe.thay.find(dk);
+    if (e) return e;
+    await ngu(250);
+  }
+  return null;
+}
+
+/** V3 — bấm thật từng giác quan, chờ `ide.event` tương ứng tới bridge. */
+async function kiemV3(ghi, kq) {
+  const goc = vscode.workspace.workspaceFolders[0].uri.fsPath;
+  const thu = path.join(goc, '.cache', 'e2e-v3');
+  fs.rmSync(thu, { recursive: true, force: true });
+  fs.mkdirSync(thu, { recursive: true });
+  const nghe = ngheBridge();
+  await ngu(800);
+  const ide = (kind, level) => (e) => e.event === 'ide.event' && e.data && e.data.kind === kind && (!level || e.data.level === level);
+  const tom = (e) => e && { ms: e.t - kq._t, level: e.data.level, summary: e.data.summary, data: e.data.data };
+  try {
+    // 1. lưu file (gộp 5 s từ lần lưu đầu)
+    const f = vscode.Uri.file(path.join(thu, 'luu.txt'));
+    fs.writeFileSync(f.fsPath, 'a\n');
+    const doc = await vscode.workspace.openTextDocument(f);
+    const ed = await vscode.window.showTextDocument(doc);
+    kq._t = Date.now();
+    await ed.edit((e) => e.insert(new vscode.Position(1, 0), 'b\n'));
+    await doc.save();
+    const eLuu = await choSuKien(nghe, ide('save'), 15000);
+    ghi('V3 lưu file → ide.event save (gộp 5 s)', !!eLuu, tom(eLuu));
+
+    // 2. lỗi biên dịch: file .ts sạch → thêm lỗi kiểu → sửa lại (debounce 3 s, chỉ khi 0⇄>0)
+    const ts = vscode.Uri.file(path.join(thu, 'loi.ts'));
+    fs.writeFileSync(ts.fsPath, 'export const so: number = 1;\n');
+    const docTs = await vscode.workspace.openTextDocument(ts);
+    const edTs = await vscode.window.showTextDocument(docTs);
+    await ngu(8000); // TS server khởi động + mốc 0 lỗi
+    kq._t = Date.now();
+    await edTs.edit((e) => e.replace(new vscode.Range(0, 0, 1, 0), 'export const so: number = "chu";\n'));
+    const eLoi = await choSuKien(nghe, ide('diag', 'bad'), 60000);
+    ghi('V3 lỗi biên dịch 0 → >0 → ide.event diag bad', !!eLoi, tom(eLoi) || { soLoiVsCode: vscode.languages.getDiagnostics(ts).length });
+    kq._t = Date.now();
+    await edTs.edit((e) => e.replace(new vscode.Range(0, 0, 1, 0), 'export const so: number = 2;\n'));
+    const eHet = await choSuKien(nghe, ide('diag', 'good'), 60000);
+    ghi('V3 hết lỗi >0 → 0 → ide.event diag good', !!eHet, tom(eHet));
+    await docTs.save();
+
+    // 3. task: tên có "test" + exit 3 → test bad; build exit 0 → task good
+    const chayTask = async (ten, lenh) => {
+      const t = new vscode.Task({ type: 'shell' }, vscode.TaskScope.Workspace, ten, 'e2e', new vscode.ShellExecution(lenh));
+      kq._t = Date.now();
+      await vscode.tasks.executeTask(t);
+    };
+    await chayTask('test e2e', 'exit 3');
+    const eTest = await choSuKien(nghe, ide('test'), 30000);
+    ghi('V3 task "test e2e" exit 3 → ide.event test bad (mã thoát 3)', !!eTest && eTest.data.level === 'bad' && eTest.data.data && eTest.data.data.exitCode === 3, tom(eTest));
+    await chayTask('build e2e', 'exit 0');
+    const eTask = await choSuKien(nghe, ide('task'), 30000);
+    ghi('V3 task "build e2e" exit 0 → ide.event task good', !!eTask && eTask.data.level === 'good', tom(eTask));
+
+    // 4. git: repo tạm (KHÔNG đụng repo thật) mở bằng git.openRepository, commit bằng CLI
+    const rg = path.join(thu, 'repo');
+    fs.mkdirSync(rg);
+    const g = (...a) => execFileSync('git', ['-C', rg, '-c', 'user.name=E2E', '-c', 'user.email=e2e@example.invalid', '-c', 'commit.gpgsign=false', ...a]);
+    g('init', '-q');
+    fs.writeFileSync(path.join(rg, 'a.txt'), '1\n');
+    g('add', '.');
+    g('commit', '-qm', 'mốc đầu');
+    await vscode.commands.executeCommand('git.openRepository', rg);
+    await ngu(5000); // extension git ghi mốc HEAD
+    fs.writeFileSync(path.join(rg, 'a.txt'), '2\n');
+    g('commit', '-qam', 'thêm dòng hai');
+    kq._t = Date.now();
+    try {
+      await vscode.commands.executeCommand('git.refresh');
+    } catch {
+      /* không có thì thôi — watcher .git tự bắt */
+    }
+    const eGit = await choSuKien(nghe, ide('git'), 30000);
+    ghi('V3 git commit (cha = HEAD cũ) → ide.event git good', !!eGit && eGit.data.level === 'good', tom(eGit));
+
+    // sân khấu có phản ứng (phản xạ C0 — emote) sau các ide.event không
+    kq.suKienSauV3 = nghe.thay.filter((e) => /^(actor\.(emote|say)|ide\.event)/.test(e.event)).map((e) => ({ event: e.event, actor: e.data && e.data.actor, emote: e.data && e.data.emote, kind: e.data && e.data.kind }));
+  } finally {
+    nghe.dong();
+    delete kq._t;
+  }
 }
 
 exports.run = async function run() {
@@ -108,6 +216,7 @@ exports.run = async function run() {
     if (dsc) {
       const say = await hoiBridge('actor.say', { actor: 'gen', text: 'Chào từ VS Code thật' });
       ghi('lệnh actor.say qua bridge tới sân khấu trong webview', say.ok, say.ok ? { durationMs: say.result && say.result.durationMs } : say.error);
+      await kiemV3(ghi, kq);
     }
 
     // gọi lại moSanKhau → reveal, không mở panel thứ hai
