@@ -49,7 +49,7 @@ export const LENH_MODULE: CommandSpec[] = [
     ],
     example: {
       cmd: 'module.build',
-      args: { id: 'connector-baserow', shape: 'book', label: 'Baserow', from: 'main' },
+      args: { id: 'connector-baserow', shape: 'book', label: 'Baserow', from: 'may-tinh' },
     },
     handler(a, ctx) {
       const id = s(a.id);
