@@ -1,6 +1,8 @@
 // V1 — driver não do extension quản lý (`genStage.nao`), bằng pnpm GIẢ
 // (`gia/pnpm-gia.sh nao-local|nao` → node gia/scripts/nao-*.mjs). Cổng bridge
-// giả 8874/8875 (dải riêng V1) — driver giả không nối gì, chỉ mang GEN_STAGE_PORT.
+// giả (mặc định 8874/8875, dải riêng V1; đổi gốc bằng GEN_STAGE_TEST_CONG — khi đặt thì
+// dời +5 để không đụng dải của giong.test.mjs dùng chính biến đó) — driver giả không nối gì,
+// chỉ mang GEN_STAGE_PORT. Cổng cứng từng gây đỏ chập chờn khi chạy song song.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -15,8 +17,8 @@ const tt = require('../out/thuan/tien-trinh.js');
 const ch = require('../out/thuan/cau-hinh.js');
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const PNPM_GIA = path.join(DIR, 'gia', 'pnpm-gia.sh');
-const CONG = 8874;
-const CONG_KHAC = 8875;
+const CONG = process.env.GEN_STAGE_TEST_CONG ? Number(process.env.GEN_STAGE_TEST_CONG) + 5 : 8874;
+const CONG_KHAC = CONG + 1;
 
 const conPhaiDon = [];
 after(() => {

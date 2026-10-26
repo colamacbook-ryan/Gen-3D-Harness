@@ -647,6 +647,26 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
   166,3, Gen 177,2), FPS tương đối (~1 fps, cùng tầm lab cũ trên swiftshader),
   console 0 lỗi.
 
+- **Nợ còn mở (V1, 26/10)**: `vscode/test/nao.test.mjs` ca "dongBoNao … đổi chế độ" vẫn đỏ ~2/5 lần dù đã
+  đổi cổng — không phải xung đột cổng mà là race thật ở `vscode/src/thuan/tien-trinh.ts` `tatMot`: chỉ đợi *đầu
+  nhóm* (bash/pnpm) chết, không đợi cả nhóm, nên `timDriverNaoNgoai` còn thấy node con đang tắt → `cua-ngoai`
+  thay vì `dang-chay`. Sửa: đợi tới khi `process.kill(-pgid, 0)` ném ESRCH.
+
+## Quyết định chay.sh — dò theo cổng, không mở hai sân khấu (26/10, CNS-002 e)
+
+- **Dò dịch vụ theo CỔNG đang nghe, không theo `pgrep -f`**: bridge/vite do extension
+  VS Code bật có dòng lệnh khác mẫu nên `pgrep` không thấy → bật trùng. `cong_dang_nghe`
+  thử `ss -ltn` → `lsof` → `fuser` → `/dev/tcp`; `giai_phong_cong` thử `fuser -k` → `lsof` → `ss`.
+  Bridge coi là "đã chạy" khi cả cổng ws + tts nghe (dùng lại); chỉ một nửa → giải phóng rồi bật lại.
+  Cổng đọc từ `GEN_STAGE_PORT/_TTS_PORT/_MCP_PORT/_STT_PORT/_DEV_PORT`. (`pgrep` còn lại chỉ
+  cho driver não — không có cổng; khoá driver lo chống trùng.)
+- **Không mở Firefox khi đã có sân khấu**: `scripts/hoi-san-khau.mjs` nối ws vai client, đọc
+  `bridge.hello.data.stageOnline` (mã thoát 0 có / 1 chưa / 2 không hỏi được → thà mở như cũ;
+  token qua env). Chỉ hỏi khi bridge không phải vừa bật. Cờ `--khong-mo-trinh-duyet` bỏ hẳn bước mở.
+  `GEN_STAGE_MO_TRINH_DUYET` thay lệnh mở (test dùng `echo`), `GEN_STAGE_KHONG_TAI_ASSET=1` bỏ tải asset.
+- Watchdog + mã thoát 3 giữ nguyên. Đã kiểm bằng server giả cổng 8990–8994 (không bật Firefox
+  thật); nhánh `tat` chưa chạy thử (có `pkill`).
+
 ## Quyết định V1 — não LLM local (26/10, INT-03 / INT-05)
 
 - **LLM local = Ollama** (Ryan chốt), API OpenAI-compatible `POST /v1/chat/completions`
@@ -758,9 +778,11 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
   ±10 %; trễ dương là khung swiftshader dài chặn hẹn giờ, chế độ thường cũng lệch
   +4–5 %). Cú đi ĐẦU TIÊN của phiên lệch tới ~17 % ở chế độ thường (dựng clip +
   biên dịch shader) — script hâm một cú trước khi đo.
-- **Cạm bẫy đo: `theoDoiFps` cũ đo sai khi máy chậm** — `dt` đã kẹp 1/20 s nên
-  `1/dt ≥ 20`, ở 2–4 fps thật bộ đếm chỉ cộng 50 ms mỗi khung → cần ~40 khung
-  (10–20 s) mới tự tắt bloom. Có từ A3, ngoài phạm vi V1, chưa sửa.
+- **`theoDoiFps` đã sửa (đo bằng đồng hồ thật)**: bản A3 lấy `1/dt` với `dt` đã kẹp
+  1/20 s nên `fps ≥ 20` mãi, máy 2–4 fps cần 10–20 s mới tắt bloom. Nay `src/stage/do-fps.ts`
+  (`DoFps`, thuần, có test `do-fps.test.ts`) đo khoảng cách thật giữa các khung vẽ
+  (`performance.now()`); ngưỡng cũ giữ nguyên (< 24 fps liên tục > 2 s → tắt; > 32 fps → bật).
+  Nền thì không đo và bỏ mốc cũ (ra nền, khung đầu không bị tính chậm). 3 fps tắt sau ~2,3 s.
 - Driver não trong extension (`genStage.nao`): xem `vscode/README.md` (dùng chung
   sổ PID/nhóm tiến trình; một driver cho một bridge, nhận diện driver ngoài bằng
   argv `nao-(agy|local).mjs` + `GEN_STAGE_PORT`).
@@ -830,6 +852,6 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
 - Hộp thoại hỏi root khi bấm 🎤 lần đầu nói rõ "(thu micro, để nghe giọng nói)"; thả nút lúc modal
   còn mở ⇒ chatroom nhắc "Bấm giữ 🎤 lại sau khi xác nhận".
 - Kiểm: `scripts/__tests__/tai-nghe.test.mjs` (CLI thật + ffmpeg thật, bridge giả
-  8920, STT giả 8921; đổi gốc bằng `GEN_STAGE_TEST_CONG_TAI`; phía host: `vscode/test/giong.test.mjs`, gốc 8930, đổi bằng `GEN_STAGE_TEST_CONG`) và
+  8920, STT giả 8921; đổi gốc bằng `GEN_STAGE_TEST_CONG_TAI`; phía host: `vscode/test/giong.test.mjs`, gốc 8930, đổi bằng `GEN_STAGE_TEST_CONG`; `nao.test.mjs` mặc định 8874/8875, khi đặt biến đó thì dùng gốc +5) và
   `node scripts/kiem-tai-nghe.mjs` (bridge THẬT có token). **Chưa đo với mic thật
   và PhoWhisper thật** (máy kiểm không có cả hai).

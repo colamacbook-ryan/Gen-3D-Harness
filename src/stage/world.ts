@@ -34,6 +34,7 @@ import type {
 import type { EventBus } from '../events';
 import { dungPhong, haiSuongBuc, KICH_THUOC_PHONG, KICH_THUOC_SAU, MAU_CAM, MAU_CYAN } from './phong';
 import { LOP_BLOOM } from './bloom-layer';
+import { DoFps } from './do-fps';
 import { DT_TOI_DA_NEN, nenVeKhung, TY_LE_PIXEL_NEN, type RenderMode } from './che-do-nen';
 import { NhanVat, TOC_DO_DI, uocThoiLuongNoi } from './nhanvat';
 import {
@@ -80,9 +81,6 @@ export const OWNER = { id: 'owner', ten: TEN_HIEN_THI.owner, model: 'models/owne
 export const GEN = { id: 'gen', ten: 'Gen', model: 'models/avatar.vrm' } as const;
 /** Giữ tên cũ cho mã/kịch bản A1–A3 còn tham chiếu: nay trỏ vào `gen`. */
 export const ACTOR_MAC_DINH = { id: GEN.id, ten: GEN.ten, model: GEN.model };
-
-/** FPS trung bình dưới mức này trong > 2 s thì tự tắt bloom. */
-const FPS_TU_TAT_BLOOM = 24;
 
 interface DoVat {
   id: string;
@@ -165,7 +163,7 @@ export class World implements StageWorld {
   private bloom!: UnrealBloomPass;
   private mixPass!: ShaderPass;
   private bloomDangBat = true;
-  private fpsThapTu = 0;
+  private doFps = new DoFps();
   /**
    * V1 (INT-06) — chế độ vẽ. `nen`: ≤ FPS_NEN khung/giây, bloom tắt, pixel
    * ratio 1. `bloomTruocNen` nhớ bloom LÚC VÀO nền (có thể đang tắt vì FPS
@@ -491,8 +489,8 @@ export class World implements StageWorld {
       // trả bloom đúng như lúc vào nền — đang tắt vì FPS thấp thì vẫn tắt
       this.coBloom(this.bloomTruocNen ?? this.bloomDangBat);
       this.bloomTruocNen = null;
-      this.fpsThapTu = 0;
-      // khung đầu tiên sau nền có `dt` dài (≤ 1/15 s) — đừng tính vào FPS thấp
+      // khung đầu tiên sau nền có khoảng dài — đừng tính vào FPS thấp
+      this.doFps.datLai();
       this.dongHo.update();
     }
     this.apKichThuoc();
@@ -571,21 +569,14 @@ export class World implements StageWorld {
     this.capNhatBongBong();
     this.controls.update();
     this.veMotKhung();
-    this.theoDoiFps(dt);
+    this.theoDoiFps();
   }
 
-  /** Hiệu năng (spec mục 5): FPS tụt dưới ngưỡng quá 2 s thì tự tắt bloom. */
-  private theoDoiFps(dt: number): void {
-    // nền: fps thấp là CỐ Ý — không được tính vào "máy yếu" để tự tắt/bật bloom
-    if (dt <= 0 || this.cheDoVe === 'nen') return;
-    const fps = 1 / dt;
-    if (fps < FPS_TU_TAT_BLOOM) {
-      this.fpsThapTu += dt * 1000;
-      if (this.fpsThapTu > 2000) this.coBloom(false);
-    } else {
-      this.fpsThapTu = 0;
-      if (fps > FPS_TU_TAT_BLOOM + 8) this.coBloom(true);
-    }
+  /** Hiệu năng (spec mục 5): FPS tụt dưới ngưỡng quá 2 s thì tự tắt bloom. Đo bằng đồng hồ thật (`do-fps.ts`), không bằng `dt` đã kẹp. */
+  private theoDoiFps(): void {
+    const qd = this.doFps.capNhat(performance.now(), this.cheDoVe === 'nen');
+    if (qd === 'tat') this.coBloom(false);
+    else if (qd === 'bat') this.coBloom(true);
   }
 
   private datGocMay(): void {
