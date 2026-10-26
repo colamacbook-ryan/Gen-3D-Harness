@@ -19,7 +19,7 @@
         "to": "ban-dieu-khien"
       },
       "mau": "moveTo",
-      "nhacLai": "đi tới bàn điều khiển",
+      "nhacLai": "đi tới bàn làm việc",
       "aiOk": true,
       "lenhOk": true
     },
@@ -38,7 +38,7 @@
         "to": "ke-module"
       },
       "mau": "moveTo",
-      "nhacLai": "đi tới kệ module",
+      "nhacLai": "đi tới kệ sách",
       "aiOk": true,
       "lenhOk": true
     },
@@ -114,7 +114,7 @@
         "to": "buc-trung-tam"
       },
       "mau": "moveTo",
-      "nhacLai": "đi tới bục trung tâm",
+      "nhacLai": "đi tới phòng khách",
       "aiOk": true,
       "lenhOk": true
     },
@@ -190,7 +190,7 @@
         "seat": "ghe-2"
       },
       "mau": "ngoiGhe",
-      "nhacLai": "ngồi ghế hai",
+      "nhacLai": "ngồi ghế làm việc",
       "aiOk": true,
       "lenhOk": true
     },
@@ -263,7 +263,7 @@
         "target": "owner"
       },
       "mau": "nhin",
-      "nhacLai": "nhìn Javis",
+      "nhacLai": "nhìn Nam",
       "aiOk": true,
       "lenhOk": true
     },
@@ -282,7 +282,7 @@
         "target": "ban-dieu-khien"
       },
       "mau": "nhin",
-      "nhacLai": "nhìn bàn điều khiển",
+      "nhacLai": "nhìn bàn làm việc",
       "aiOk": true,
       "lenhOk": true
     },
@@ -459,7 +459,7 @@
         "to": "buc-trung-tam"
       },
       "mau": "moveTo",
-      "nhacLai": "đi tới bục trung tâm",
+      "nhacLai": "đi tới phòng khách",
       "aiOk": true,
       "lenhOk": true
     },

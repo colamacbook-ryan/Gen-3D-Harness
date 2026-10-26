@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "cai-dat": "bash scripts/cai-dat.sh",
     "start": "bash scripts/chay.sh",
     "stop": "bash scripts/chay.sh tat",
     "build": "tsc && vite build",
@@ -29,6 +30,9 @@
     "kiem-b3": "node scripts/kiem-b3.mjs",
     "kiem-nao": "node scripts/kiem-nao.mjs",
     "kiem-d1": "node scripts/kiem-d1.mjs",
+    "kiem-d1b": "node scripts/kiem-d1b.mjs",
+    "kiem-f2": "node scripts/kiem-f2.mjs",
+    "kiem-f3": "node scripts/kiem-f3.mjs",
     "kiem:vscode": "bash scripts/kiem-vscode-may.sh"
   },
   "devDependencies": {

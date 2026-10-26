@@ -3,7 +3,7 @@
  *
  *     ffmpeg (mic / file .wav) ──s16le 16 kHz mono qua pipe──► file này
  *          │  RMS mỗi 50 ms  →  {"su":"muc"} (≤ 10 lần/s) + VAD tự dừng
- *          │  cắt im lặng đầu/cuối bằng `timDaiNoi` (src/audio/vad.ts, chừa 120 ms)
+ *          │  cắt im lặng đầu/cuối bằng `timDaiNoi` (src/audio/vad.ts, chừa 200 ms — G3 #62)
  *          ▼
  *     POST /stt (bridge/stt.ts)  →  { text, confidence, durationMs, goiGen }
  *          │  confidence ≥ 0,6 và không --khong-gui
@@ -48,7 +48,7 @@
  * 3. **VAD dùng lại `timDaiNoi` của C1, không chép.** Tự dừng = chạy lại đúng
  *    hàm đó trên chuỗi RMS đến giờ (`chuaMs: 0`): đã có tiếng và đuôi im lặng
  *    sau đoạn nói ≥ `--im-lang-ms` thì dừng. Cắt trước khi gửi = cùng hàm với
- *    cấu hình mặc định (chừa 120 ms — cắt sát làm "dừng lại" thành "đừng lại").
+ *    cấu hình mặc định (chừa 200 ms từ G3 #62 — cắt sát làm "dừng lại" thành "đừng lại").
  *    `src/audio/vad.ts` chỉ dùng cú pháp TS xoá-được nên `node` ≥ 22.18 import
  *    thẳng (type stripping), không cần tsx.
  * 4. **Tin cậy < 0,6 thì không tự gửi** (cùng `TIN_DU` của `src/audio/mic.ts`):
@@ -269,7 +269,7 @@ export function taoWav(pcm, tanSo = TAN_SO) {
   return Buffer.concat([h, pcm]);
 }
 
-/** Cắt im lặng đầu/cuối (chừa 120 ms như C1). `null` = không có tiếng. */
+/** Cắt im lặng đầu/cuối (chừa 200 ms như mic trình duyệt, G3 #62). `null` = không có tiếng. */
 export function catIm(pcm, rms) {
   const d = timDaiNoi(rms, BUOC_MS);
   if (!d.coTieng) return null;

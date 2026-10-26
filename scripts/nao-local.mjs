@@ -199,7 +199,9 @@ export function taoToolSong({ san, tools, banDo, ghi = console.log }) {
 export function chonNguoiTraLoi(text, actors, to) {
   const ds = Array.isArray(actors) && actors.length ? actors : ACTOR_MAC_DINH;
   const bc = { actors: ds.map((a) => ({ id: a.id, controlledBy: a.controlledBy ?? 'agent' })), places: [], emotes: [], screens: [], props: [], gocMay: [] };
-  const nn = tachNguoiNhan(tach(String(text ?? '')), bc, typeof to === 'string' ? to : undefined).nguoiNhan;
+  const cauGoc = String(text ?? '');
+  // textGoc: G3 gọi trần "Nhi, …" đầu câu cần câu nguyên văn (dấu phẩy)
+  const nn = tachNguoiNhan(tach(cauGoc), bc, typeof to === 'string' ? to : undefined, cauGoc).nguoiNhan;
   return nn.find((id) => bc.actors.find((a) => a.id === id)?.controlledBy === 'agent') ?? null;
 }
 

@@ -31,3 +31,15 @@ docs/b1/.da-chay
 docs/c2/.da-chay
 # C0 — cờ khoá "đã chạy kiem-c0.mjs" (xoá bằng --lai)
 docs/c0/.da-chay
+# E1 (#48) — cờ "đã cài xong phần nặng" (scripts/cai-dat.sh ghi, chay.sh đọc).
+# Nằm trong `.cache/` nên đã bị bỏ qua sẵn; ghi ra đây cho người đọc biết là
+# CÓ Ý, không phải quên. Sổ PID của chay.sh cũng ở `.cache/pid/`.
+# D1b (#48) — cờ khoá "đã chạy kiem-d1b.mjs" (xoá bằng --lai)
+docs/d1b/.da-chay
+docs/f1/.da-chay
+# F2 (#56) — cờ khoá "đã chạy kiem-f2.mjs" (xoá bằng --lai)
+docs/f2/.da-chay
+# F3 (#56) — cờ "đã chạy bằng chứng", của máy chạy, không vào repo
+docs/f3/.da-chay
+# G3 (#62) — cờ "đã chạy bằng chứng", của máy chạy, không vào repo
+docs/g3/.da-chay

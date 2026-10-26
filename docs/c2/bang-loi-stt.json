@@ -19,7 +19,7 @@
         "to": "ban-dieu-khien"
       },
       "mau": "moveTo",
-      "nhacLai": "đi tới bàn điều khiển",
+      "nhacLai": "đi tới bàn làm việc",
       "aiOk": true,
       "lenhOk": true
     },
@@ -38,7 +38,7 @@
         "to": "ban-dieu-khien"
       },
       "mau": "moveTo",
-      "nhacLai": "đi tới bàn điều khiển",
+      "nhacLai": "đi tới bàn làm việc",
       "aiOk": true,
       "lenhOk": true
     },
@@ -76,7 +76,7 @@
         "seat": "ghe-2"
       },
       "mau": "ngoiGhe",
-      "nhacLai": "ngồi ghế hai",
+      "nhacLai": "ngồi ghế làm việc",
       "aiOk": true,
       "lenhOk": true
     },

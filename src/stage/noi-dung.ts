@@ -44,7 +44,14 @@ export function layMatGhe(id: string): number {
 }
 
 /**
- * Places của cảnh CĂN NHÀ ẤM (D1, Issue #43, `phong.ts` + `bo-cuc.ts`).
+ * Places của cảnh CĂN NHÀ ẤM (D1 #43 → **F1 #56**, `phong.ts` + `bo-cuc.ts`).
+ *
+ * F1 (#56 mục 1) — bố cục nhà dựng lại theo 4 cụm chặt (`docs/f1/so-do.md`):
+ * **mọi `id` place giữ nguyên** (hợp đồng với agent/MCP/test không đổi), chỉ
+ * TOẠ ĐỘ đi theo sơ đồ mới. Dời nhiều nhất: `ke-module` (tường đông →
+ * x = 1,5 sát tường bắc, nhường góc đông-bắc cho bếp chữ L), `ban-an`
+ * (3,5;2,5 → 4;2), `bep` (6,5;2 → 6,5;−2,5), `buc-trung-tam` (−4,5;2,6 →
+ * −4,5;3,5 vì cụm sofa–thảm giãn ra).
  *
  * 26/10 — Boss: "nhân vật phát sáng chói mắt, nội thất lộn xộn" → đổi lab
  * viễn tưởng thành một căn nhà 1 tầng 14×10 m đầy đủ nội thất, ánh sáng tự
@@ -59,36 +66,41 @@ export function layMatGhe(id: string): number {
  * Thêm mới: `sofa`, `ban-an`, `bep`, `cua-so`.
  */
 export const PLACES: readonly DinhNghiaPlace[] = [
-  // Góc làm việc: bàn áp tường bắc, mặt bàn hướng +Z — đứng ở `standAt` quay
-  // mặt về -Z (180°), tức nhìn vào bàn. Phải khớp `KHOI_CANH['ban-dieu-khien'].tai`.
+  // Góc làm việc (F1 #56): bàn áp tường bắc ở x = 3, liền kệ sách — mặt bàn
+  // hướng +Z nên `standAt` ở phía +Z, quay mặt về −Z (180°) tức nhìn vào bàn.
+  // Phải khớp `KHOI_CANH['ban-dieu-khien'].tai` (test b1 kiểm bằng số).
   {
     id: 'ban-dieu-khien',
-    pos: [4, 0, -4.5],
+    pos: [3, 0, -4.5],
     kind: 'desk',
-    // standAt cách ghế làm việc (`ghe-2`, z = −3,5) ít nhất 0,8 m — đứng gần
-    // quá thì chân lún vào mẫu ghế (ảnh thử D1).
-    standAt: [4, 0, -2.6],
+    // cách ghế làm việc (`ghe-2`, z = −3,5) 0,9 m — đứng gần quá thì chân lún
+    // vào mẫu ghế (ảnh thử D1).
+    standAt: [3, 0, -2.6],
     facing: 180,
   },
-  // Mốc test trung tính (A1), đặt ở hai khoảng sàn trống không chạm nội thất.
+  // Mốc test trung tính (A1), đặt ở hai khoảng sàn trống không chạm nội thất:
+  // rìa tây hành lang, bắc và nam.
   { id: 'ban-1', pos: [-1, 0, -2], kind: 'desk', standAt: [-1, 0, -1], facing: 180 },
   { id: 'ban-2', pos: [-1, 0, 2.5], kind: 'desk', standAt: [-1, 0, 3.5], facing: 0 },
-  // `ghe-1` = ghế ăn (bàn ăn khu bếp), `ghe-2` = ghế làm việc. `seatY` ở đây
+  // `ghe-1` = ghế ăn phía bắc bàn ăn, `ghe-2` = ghế làm việc. `seatY` ở đây
   // chỉ là FALLBACK: `phong.ts` đo mặt ghế thật trên model rồi ghi đè `datSeatY()`.
-  { id: 'ghe-1', pos: [3.5, 0, 1.5], kind: 'seat', facing: 0, seatY: 0.46 },
-  { id: 'ghe-2', pos: [4, 0, -3.5], kind: 'seat', facing: 180, seatY: 0.46 },
-  // Trên thảm phòng khách, phía nam sofa (mặt quay vào sofa + TV, −Z) — tránh
-  // đứng chồng lên hộp chắn của sofa (z ≤ 2,0, xem `bo-cuc.ts`). Mốc mặc định
-  // của sân khấu giả trong test.
-  { id: 'buc-trung-tam', pos: [-4.5, 0, 2.6], kind: 'stage', facing: 180 },
+  { id: 'ghe-1', pos: [4, 0, 1], kind: 'seat', facing: 0, seatY: 0.46 },
+  { id: 'ghe-2', pos: [3, 0, -3.5], kind: 'seat', facing: 180, seatY: 0.46 },
+  // Trong phòng khách, phía NAM cụm sofa–thảm (F1: cụm chiếm z −1…+2,9 nên
+  // chỗ đứng phải ở z ≥ 3,2 mới ra ngoài hộp chắn của `ghe-don-2`). Quay mặt
+  // 180° = nhìn vào cả cụm sofa + kệ TV. Mốc mặc định của sân khấu giả trong test.
+  { id: 'buc-trung-tam', pos: [-4.5, 0, 3.5], kind: 'stage', facing: 180 },
   // Cửa ra vào, tường bắc — `facing: 0` = quay mặt vào trong nhà (+Z).
   { id: 'cua', pos: [0, 0, -5], kind: 'door', standAt: [0, 0, -3.8], facing: 0 },
-  // Kệ sách, tường đông góc làm việc.
-  { id: 'ke-module', pos: [6.5, 0, -4], kind: 'shelf', standAt: [5.3, 0, -4], facing: 90 },
-  // Mới (D1): sofa phòng khách, bàn ăn + bếp, cửa sổ lớn tường nam.
-  { id: 'sofa', pos: [-4.5, 0, 1.5], kind: 'seat', standAt: [-4.5, 0, 0.9], facing: 0, seatY: 0.42 },
-  { id: 'ban-an', pos: [3.5, 0, 2.5], kind: 'desk', standAt: [3.5, 0, 1.1], facing: 0 },
-  { id: 'bep', pos: [6.5, 0, 2], kind: 'desk', standAt: [5.3, 0, 2], facing: 90 },
+  // Kệ sách, đầu TÂY của dãy làm việc sát tường bắc (F1: dời từ tường đông về
+  // x = 1,5 để bếp chữ L lấy trọn góc đông-bắc).
+  { id: 'ke-module', pos: [1.5, 0, -4.5], kind: 'shelf', standAt: [1.5, 0, -3.4], facing: 180 },
+  // Sofa 3 chỗ phòng khách, mặt quay về kệ TV (−X) → chỗ đứng ở phía bắc đầu sofa.
+  { id: 'sofa', pos: [-3, 0, 1], kind: 'seat', standAt: [-3, 0, -0.7], facing: 270, seatY: 0.42 },
+  // Bàn ăn tròn giữa cụm ăn; chỗ đứng ở phía bắc bàn (khoảng trống 1,35 m tới dãy bếp).
+  { id: 'ban-an', pos: [4, 0, 2], kind: 'desk', standAt: [4, 0, 0.4], facing: 0 },
+  // Bếp: đứng trước bếp nấu trên nhánh đông của chữ L.
+  { id: 'bep', pos: [6.5, 0, -2.5], kind: 'desk', standAt: [5.3, 0, -2.5], facing: 90 },
   { id: 'cua-so', pos: [-1, 0, 5], kind: 'door', standAt: [-1, 0, 3.8], facing: 0 },
 ] as const;
 
@@ -201,16 +213,17 @@ export function timPlace(id: string): DinhNghiaPlace | undefined {
 /* ------------------------------------------- C2 (#32) — tên gọi nhân vật */
 
 /**
- * TÊN HIỂN THỊ của nhân vật — Boss 26/10: **nhân vật nam tên Javis**.
+ * TÊN HIỂN THỊ của nhân vật — Boss 28/10: **đổi Gen → "Nhi", Javis → "Nam"**
+ * cho dễ gọi/nhận diện (trước đó 26/10 là "Javis").
  *
- * `id` giữ nguyên `owner` (không đổi) vì cả `controlledBy`, phím WASD, camera
- * `theo-owner`, nguồn `user.text` và MCP đều viết theo id đó — đổi id là phá
- * hợp đồng với agent. Chỉ **tên hiện trên bong bóng chữ và trong
- * `stage.describe().actors[].name`** đổi thành "Javis".
+ * `id` giữ nguyên `owner`/`gen` (KHÔNG đổi) vì cả `controlledBy`, phím WASD,
+ * camera `theo-owner`, nguồn `user.text` và MCP đều viết theo id đó — đổi id
+ * là phá hợp đồng với agent. Chỉ **tên hiện trên bong bóng chữ và trong
+ * `stage.describe().actors[].name`** đổi thành "Nam"/"Nhi".
  */
 export const TEN_HIEN_THI: Record<string, string> = {
-  owner: 'Javis',
-  gen: 'Gen',
+  owner: 'Nam',
+  gen: 'Nhi',
 };
 
 /**
@@ -219,8 +232,75 @@ export const TEN_HIEN_THI: Record<string, string> = {
  * Viết sẵn cả những cách STT tiếng Việt hay nghe sai: "Javis" rất dễ ra
  * "Ja-vít", "Gia vis", "Gia vít"; "Gen" ra "Ghen"/"Gien". Máy khớp còn cộng
  * thêm fuzzy ≤2 ký tự nên bảng này chỉ cần những biến thể **khác hẳn** chữ gốc.
+ *
+ * GIỮ nguyên mọi bí danh cũ (`javis`, `gen`, `david`…) — đổi tên hiển thị
+ * không được phá câu Sếp quen gọi theo tên cũ.
+ *
+ * **"Nam"/"Nhi" là từ tiếng Việt thường** ("phía nam", "nam châm", "nhí
+ * nhảnh", và cả số đếm — xem `SO_CHU` trong `ngu-phap.ts`: `nhi` = 2, `nam` =
+ * 5) nên KHÔNG khai bừa làm bí danh trần một từ: máy khớp (`timCum` trong
+ * `hieu-lenh.ts`) tìm cụm ở BẤT KỲ đâu trong câu, khai "nam" trần là "cục nam
+ * châm" cũng bị hiểu thành gọi tên. Chỉ khai **cụm có tín hiệu gọi tên rõ**
+ * (kèm "ơi"/"à", hoặc "anh"/"em" đứng trước) — những cụm này gần như không
+ * bao giờ xuất hiện tình cờ trong câu thường. Trường hợp gọi trần ở **đầu câu
+ * kèm dấu phẩy** ("Nam, mở đèn") được xử lý RIÊNG, có ràng buộc vị trí, ngay
+ * trong `tachNguoiNhan()` — xem chú thích ở đó.
  */
 export const BI_DANH_NHAN_VAT: Record<string, string[]> = {
-  owner: ['javis', 'ja vit', 'javit', 'gia vis', 'gia vit', 'giavis', 'jarvis', 'da vit'],
-  gen: ['gen', 'ghen', 'gien', 'jen', 'gel'],
+  /**
+   * E1 (#48) việc 6 — **cùng bộ đồng âm với `bridge/so-tu.ts`**.
+   *
+   * Hai lớp phải khớp nhau: `so-tu.ts` sửa chữ engine nghe được thành "Javis",
+   * còn bảng này tách người nhận ra khỏi câu. Engine nghe `david` mà bảng này
+   * không biết `david` thì câu vẫn chạy sang Gen — đúng lỗi đo được 26/10
+   * (*"Javis, chào"* → Gen chào). Thêm cách nghe mới thì sửa **cả hai chỗ**.
+   *
+   * `hieu-lenh.ts` chạy `boDau()` trước khi so, nên khai có dấu hay không đều
+   * khớp; giữ cả hai dạng cho người đọc dễ soi.
+   */
+  owner: [
+    'javis',
+    'ja vit',
+    'ja vít',
+    'javit',
+    'gia vis',
+    'gia vit',
+    'gia vít',
+    'gia viet',
+    'gia viết',
+    'gia việt',
+    'giavis',
+    'jarvis',
+    'ja vis',
+    'da vit',
+    'đa vít',
+    'david',
+    'davids',
+    // G2 (28/10) — "Nam" dễ trùng từ thường, chỉ khai cụm có tín hiệu gọi rõ.
+    'nam oi',
+    'nam ơi',
+    'nam a',
+    'nam à',
+    'anh nam',
+    'a nam',
+  ],
+  gen: [
+    'gen',
+    'ghen',
+    /*
+     * G3 (#67) — BỎ `gien`. Máy khớp cộng fuzzy ≤1 ký tự cho từ 4 ký tự
+     * (`nguong()` trong `ngu-phap.ts`), nên `gien` bắt luôn **`mien`**: đo thật
+     * trên bộ TTS bẩn thấy "**miền nam** …" bị hiểu thành gọi Nhi. "Gien" vốn
+     * chỉ là một cách viết của "Gen" mà `gen` + fuzzy đã phủ gần hết.
+     */
+    'jen',
+    'gel',
+    // G2 (28/10) — "Nhi" dễ trùng từ thường ("nhí", số đếm), chỉ khai cụm có
+    // tín hiệu gọi rõ.
+    'nhi oi',
+    'nhi ơi',
+    'nhi a',
+    'nhi à',
+    'em nhi',
+  ],
 };

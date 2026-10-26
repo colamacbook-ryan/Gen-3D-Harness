@@ -11,11 +11,6 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { VRMUtils } from '@pixiv/three-vrm';
 import type {
   Action,
@@ -32,8 +27,15 @@ import type {
   Vec3,
 } from '../api/types';
 import type { EventBus } from '../events';
-import { dungPhong, haiSuongBuc, KICH_THUOC_PHONG, KICH_THUOC_SAU, MAU_CAM, MAU_CYAN } from './phong';
-import { LOP_BLOOM } from './bloom-layer';
+import {
+  denDiem,
+  dungPhong,
+  KICH_THUOC_PHONG,
+  KICH_THUOC_SAU,
+  MAU_CAM,
+  MAU_CYAN,
+  MAU_DEN_AM,
+} from './phong';
 import { DoFps } from './do-fps';
 import { DT_TOI_DA_NEN, nenVeKhung, TY_LE_PIXEL_NEN, type RenderMode } from './che-do-nen';
 import { NhanVat, TOC_DO_DI, uocThoiLuongNoi } from './nhanvat';
@@ -76,11 +78,19 @@ const BAN_KINH_AT = 0.9;
  * `models/avatar.vrm` chứ không làm sập cảnh — xem `napCanh`.
  */
 // C2 (#32): tên hiển thị lấy từ BẢNG `TEN_HIEN_THI` trong `noi-dung.ts`
-// (Boss 26/10: nhân vật nam tên **Javis**); `id` vẫn là `owner`.
+// (G2, 28/10: Gen → "Nhi", Javis → "Nam"); `id` vẫn là `owner`/`gen`.
 export const OWNER = { id: 'owner', ten: TEN_HIEN_THI.owner, model: 'models/owner.vrm' } as const;
-export const GEN = { id: 'gen', ten: 'Gen', model: 'models/avatar.vrm' } as const;
+export const GEN = { id: 'gen', ten: TEN_HIEN_THI.gen, model: 'models/avatar.vrm' } as const;
 /** Giữ tên cũ cho mã/kịch bản A1–A3 còn tham chiếu: nay trỏ vào `gen`. */
 export const ACTOR_MAC_DINH = { id: GEN.id, ten: GEN.ten, model: GEN.model };
+
+/** Bóng đổ MẶC ĐỊNH — cố định, không gate theo `maxTextureSize` (PR #51 vòng 2). */
+const BONG_CO_BAN = 1024;
+/** Bóng đổ bản "máy khoẻ" — chỉ bật khi đo thật đạt mốc dưới đây. */
+const BONG_MANH = 2048;
+/** FPS phải đạt mức này LIÊN TỤC `BONG_CAN_MS` mới cho nâng bóng lên 2048. */
+const FPS_NANG_BONG = 50;
+const BONG_CAN_MS = 5000;
 
 interface DoVat {
   id: string;
@@ -94,31 +104,81 @@ interface DoVat {
 type GocMay = { vt: THREE.Vector3; tam: THREE.Vector3; fov: number };
 
 /**
- * Góc máy "toàn cảnh" cho CĂN NHÀ 14 × 10 m, trần 2,8 m (D1, Issue #43).
- * Máy đứng ngay trong hành lang trung tâm (x ≈ 0, luôn trống — xem
- * `bo-cuc.ts` `NUA_HANH_LANG`), sát trần để không chạm nội thất, nhìn dọc
- * theo hành lang vào phòng khách — thấy cả 3 khu trong một khung hình mà
- * không phải lùi ra ngoài tường.
+ * Góc máy "toàn cảnh" cho CĂN NHÀ 14 × 10 m, trần 2,8 m (D1 #43 → **F1 #56**).
+ *
+ * F1 đổi chỗ đứng: máy ở góc ĐÔNG-NAM trong nhà, nhìn chéo về tây-bắc. Bản
+ * D1b đứng ở góc TÂY-nam nhìn về đông-bắc → cả cụm phòng khách (và kệ TV sát
+ * tường tây) nằm **sau lưng camera**, Boss chỉ thấy sàn trống với mấy cái tủ
+ * bếp. Góc mới thấy **cả 3 cụm trong một khung**: bàn ăn + bếp chữ L bên phải,
+ * góc làm việc chính giữa phía xa, cụm sofa–thảm–kệ TV bên trái.
  */
 const MAY_NGANG: GocMay = {
-  vt: new THREE.Vector3(0, 2.25, -4.3),
-  tam: new THREE.Vector3(-1.2, 1.0, 1.3),
-  fov: 58,
+  vt: new THREE.Vector3(1.0, 1.92, 4.3),
+  tam: new THREE.Vector3(-0.5, 0.82, -3.9),
+  fov: 74,
 };
 /**
- * Khung dọc 390 × 844: hfov hẹp hơn — đứng gần hơn một chút, nhắm thẳng vào
- * khu trung tâm (hành lang + mép phòng khách) để nhân vật không còn vài pixel.
+ * Khung DỌC 390 × 844 (điện thoại): khung đứng thì hfov rất hẹp — ôm 3 cụm là
+ * bất khả. F1 đổi hẳn mục tiêu: nhắm vào **một cụm phòng khách** (sofa ↔ bàn
+ * trà ↔ kệ TV) để màn hình hẹp vẫn thấy một căn phòng có hồn, thay vì khung
+ * ngang bị cắt còn một dải sàn trống như bản D1b.
  */
 /**
  * Lệch camera so với chủ khi bám (`theo-owner`): chéo 3/4 sau-phải, cao 2 m
  * — nhà trần thấp (2,8 m) nên lệch thấp hơn hẳn bản lab.
  */
 const LECH_THEO_OWNER = /* @__PURE__ */ new THREE.Vector3(1.8, 2.0, 2.6);
+/**
+ * F2 (#56 mục 2) — **tần số riêng của lò xo camera bám** (rad/s).
+ *
+ * Bản B1 bám bằng `position.lerp(dich, min(1, dt*2,6))`. Hai tật:
+ *   1. `dt*k` không độc lập FPS (xem `heSoBam` trong `nhanvat.ts`), nên cùng
+ *      code cho cảm giác khác nhau giữa máy kiểm ~1 FPS và 60 FPS của Boss;
+ *   2. lọc bậc một thì **luôn trễ tỉ lệ với tốc độ**: đo trên Firefox GPU
+ *      thật, nhân vật đi 1,6 m/s thì camera tụt lại ~0,6 m so với vị trí lệch
+ *      mong muốn, và bám "đuổi theo" chứ không "đi cùng".
+ *
+ * Giờ dùng **lò xo giảm chấn tới hạn** (critically damped): tích phân nửa ẩn
+ * (semi-implicit) nên ổn định ở mọi `dt`, và vì damping = tới hạn nên KHÔNG
+ * bao giờ vọt quá rồi dội lại — tức không rung.
+ *
+ * Chọn ω = 9 rad/s bằng số, không bằng cảm giác: với lò xo tới hạn bám một
+ * mục tiêu chạy ĐỀU tốc độ `v`, độ trễ xác lập đúng bằng `2v/ω`. Nhân vật lái
+ * 1,6 m/s ⇒ trễ 0,36 m — camera đi *cùng* nhân vật (bản lerp cũ `dt·2,6` trễ
+ * `v/2,6` = 0,62 m, tức luôn *đuổi theo*). Tăng ω nữa thì camera bám cứng vào
+ * từng bước chân, lúc đó chính nhịp bước lại thành rung.
+ */
+export const OMEGA_MAY = 9;
+/** Trần `dt` cho lò xo camera (s) — tab bị ẩn quay lại thì bám chứ không nhảy. */
+const DT_MAY_TOI_DA = 1 / 15;
+
+/**
+ * Một bước lò xo giảm chấn tới hạn cho `v` tiến tới `muc`, có mang `vel`.
+ *
+ * Công thức semi-implicit (ổn định vô điều kiện):
+ *   `vel ← (vel + ω²·dt·(muc − v)) / (1 + 2ω·dt + ω²·dt²)`, rồi `v ← v + vel·dt`.
+ * Xuất ra ngoài để test đo được (`src/api/__tests__/f2-dieu-khien-muot.test.ts`).
+ */
+export function buocLoXo(
+  v: THREE.Vector3,
+  vel: THREE.Vector3,
+  muc: THREE.Vector3,
+  omega: number,
+  dt: number,
+): void {
+  if (!(dt > 0)) return;
+  const w2 = omega * omega;
+  const chia = 1 + 2 * omega * dt + w2 * dt * dt;
+  vel.x = (vel.x + w2 * dt * (muc.x - v.x)) / chia;
+  vel.y = (vel.y + w2 * dt * (muc.y - v.y)) / chia;
+  vel.z = (vel.z + w2 * dt * (muc.z - v.z)) / chia;
+  v.addScaledVector(vel, dt);
+}
 
 const MAY_DOC: GocMay = {
-  vt: new THREE.Vector3(0, 2.1, -4.0),
-  tam: new THREE.Vector3(-0.8, 1.1, 1.0),
-  fov: 68,
+  vt: new THREE.Vector3(-1.3, 1.62, 4.3),
+  tam: new THREE.Vector3(-4.9, 0.85, 0.9),
+  fov: 76,
 };
 
 export class World implements StageWorld {
@@ -135,6 +195,8 @@ export class World implements StageWorld {
 
   /* A3 — màn hình hologram, hiệu ứng kết tinh, fx ngắn */
   private screens = new Map<string, ManHinh>();
+  /** E2 — khối đỡ + mặt trên ĐO ĐƯỢC của từng màn hình (xem `ScreenSnapshot.restsOn`). */
+  private doDungManHinh = new Map<string, { block: string; surfaceY: number }>();
   private ketTinhDangChay = new Map<string, KetTinh>();
   private fxDangChay: HieuUng[] = [];
 
@@ -146,38 +208,35 @@ export class World implements StageWorld {
   private mayPreset = 'toan-canh';
 
   /*
-   * A3 — hậu kỳ (bloom) + tự tắt khi FPS thấp (spec mục 5).
+   * D1b (Issue #48) — **KHÔNG CÒN HẬU KỲ**. Boss 26/10: "tối ưu đồ hoạ, đừng
+   * đòi GPU lớn… đẹp đến từ ánh sáng + màu + chất liệu + bố cục, không từ hậu
+   * kỳ". Cả hai `EffectComposer` (bloom chọn lọc của C3 #40), `UnrealBloomPass`
+   * và lượt tô-đen-rồi-trả-lại vật liệu mỗi khung hình đã BỎ HẲN: giờ
+   * `renderer.render(scene, camera)` một lượt, không render target trung gian,
+   * không full-screen pass nào.
    *
-   * C3 (#40) — BLOOM CHỌN LỌC: Boss "nhân vật nam thấy ghê" vì bloom cũ chạy
-   * trên TOÀN CẢNH (một `composer` duy nhất) nên MToon sáng gần 1.0 của mặt/áo
-   * nhân vật bị bắt luôn. Kỹ thuật chuẩn three.js (webgl_postprocessing_
-   * unreal_bloom_selective): `bloomComposer` render cảnh với MỌI vật KHÔNG có
-   * bit layer `LOP_BLOOM` bị tô đen tạm (`toDarken`/`toRestore`), ra một
-   * texture chỉ chứa phần phát sáng thật; `finalComposer` render cảnh bình
-   * thường rồi `mixPass` CỘNG texture đó lên trên. Nhân vật/khối/sàn/tường/
-   * bàn/kệ không bao giờ gắn `LOP_BLOOM` (xem `batSang` ở `bloom-layer.ts`) →
-   * không bao giờ cháy trắng, kể cả khi bloom bật tối đa.
+   * Cái mất: viền sáng quanh chụp đèn. Cái được: 2 lượt render + 5 lượt blur
+   * mỗi khung hình biến mất, và `batSang()` trở thành vô hại (chỉ bật một bit
+   * layer, không ai đọc) nên `phong.ts`/`fx/*.ts` không phải sửa.
    */
-  private bloomComposer!: EffectComposer;
-  private finalComposer!: EffectComposer;
-  private bloom!: UnrealBloomPass;
-  private mixPass!: ShaderPass;
-  private bloomDangBat = true;
+  private daHaChatLuong = false;
+  /** ms FPS đã liên tục ≥ `FPS_NANG_BONG` (gate nâng bóng 1024 → 2048). */
+  private fpsCaoTu = 0;
+  /** Đã nâng bóng lên 2048 chưa — nâng MỘT LẦN, không nhảy qua nhảy lại. */
+  private daNangBong = false;
+  /** Đo FPS bằng đồng hồ thật (khoảng giữa hai khung VẼ), không bằng `dt` đã kẹp. */
   private doFps = new DoFps();
   /**
-   * V1 (INT-06) — chế độ vẽ. `nen`: ≤ FPS_NEN khung/giây, bloom tắt, pixel
-   * ratio 1. `bloomTruocNen` nhớ bloom LÚC VÀO nền (có thể đang tắt vì FPS
-   * thấp) để lúc ra trả đúng trạng thái đó, không bật nhầm.
+   * V1 (INT-06) — chế độ vẽ. `nen`: ≤ FPS_NEN khung/giây, pixel ratio 1, tắt bóng đổ
+   * (D1b đã bỏ bloom nên bóng đổ là thứ đắt nhất còn lại). Ra nền trả đúng như cũ.
    */
   private cheDoVe: RenderMode = 'full';
-  private bloomTruocNen: boolean | null = null;
   /** Mốc rAF (ms) của khung VẼ gần nhất — để bỏ khung khi nền. */
   private lanVeCuoi = -Infinity;
   /** Số khung đã vẽ thật (bằng chứng đo fps — `scripts/kiem-nen.mjs`). */
   private soKhungDaVe = 0;
-  private readonly matDen = new THREE.MeshBasicMaterial({ color: 0x000000 });
-  private readonly vatLieuDaThay = new Map<string, THREE.Material | THREE.Material[]>();
-  private readonly lopBloomKiemTra = new THREE.Layers();
+  /** Hai đèn điểm ấm (đèn sàn + đèn bàn) — D1b, không bóng đổ, tầm ngắn. */
+  private denAm: THREE.PointLight[] = [];
 
   private dongHo = new THREE.Timer();
   private chuotNDC = new THREE.Vector2(0, 0);
@@ -191,6 +250,19 @@ export class World implements StageWorld {
    * theo tới đó mà vẫn giữ đúng góc 3/4 nhìn xuống.
    */
   private theoOwner: string | null = null;
+  /* --- F2: trạng thái lò xo camera bám (xem `buocLoXo`) --- */
+  private readonly mayVel = new THREE.Vector3();
+  private readonly mayTamVel = new THREE.Vector3();
+  private readonly mayDich = new THREE.Vector3();
+  private readonly mayTam = new THREE.Vector3();
+  /**
+   * F2 — **sổ ghi từng khung của camera bám** (bằng chứng "không rung").
+   *
+   * `[t ms, dt s, cam.x, cam.z, |vel|]`. Ghi tại chỗ, không cấp phát; script
+   * bằng chứng đọc một lần qua `doHieuNang().soMay` thay vì lấy mẫu mỗi khung
+   * (lấy mẫu từ ngoài kéo FPS 60 → 8,5, tức làm hỏng đúng cái đang đo).
+   */
+  private soMay: Array<[number, number, number, number, number]> = [];
   private bossDaXoay = false;
   private lanCuoiBossHoatDong = Date.now();
 
@@ -199,13 +271,16 @@ export class World implements StageWorld {
     this.bongBongLop = bongBongLop;
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    // D1b: pixel ratio ≤ 1,5 (bản cũ ≤ 2 — trên điện thoại 3x là gấp đôi số
+    // điểm ảnh phải tô mà mắt gần như không thấy khác).
     this.renderer.setPixelRatio(this.tyLePixel());
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    // C3 (#40): Boss "chói mắt" — hạ exposure mặc định 1.1 → 1.0.
-    this.renderer.toneMappingExposure = 1.0;
+    // C3 (#40) hạ 1.1 → 1.0; D1b (#48) hạ tiếp 1.0 → 0.86: kiểm độc lập đo
+    // luma TOÀN CẢNH p95 246–250 (cháy mảng sáng), mốc đặt lại là 215–225.
+    this.renderer.toneMappingExposure = 0.86;
 
     this.scene.background = new THREE.Color(MAU_NEN_LAB);
     // fog rất nhẹ (0.015): cho chiều sâu, KHÔNG làm mờ khối ở cuối phòng 16 m
@@ -236,114 +311,15 @@ export class World implements StageWorld {
       this.lanCuoiBossHoatDong = Date.now();
     });
 
-    this.lopBloomKiemTra.set(LOP_BLOOM);
-    this.dungHauKy();
     this.dungAnhSang();
     this.datGocMay();
   }
 
   /* ------------------------------------------------------------ dựng cảnh */
 
-  /**
-   * Hậu kỳ C3 (#40) — BLOOM CHỌN LỌC, hai composer:
-   *   1. `bloomComposer` (không `renderToScreen`): render cảnh với mọi vật
-   *      KHÔNG mang `LOP_BLOOM` bị tô đen tạm (`toDarken`), qua
-   *      `UnrealBloomPass` nửa độ phân giải (hiệu năng, spec mục 5) → texture
-   *      `bloomComposer.renderTarget2.texture` chỉ chứa phần phát sáng thật.
-   *   2. `finalComposer`: render cảnh BÌNH THƯỜNG (không tô đen) rồi
-   *      `mixPass` CỘNG texture bloom lên trên, cuối cùng `OutputPass`.
-   * Nhờ tách hai lượt, nhân vật/khối/sàn/tường/bàn/kệ (không có `LOP_BLOOM`)
-   * không bao giờ tự phát sáng ra ngoài viền thật của nó, kể cả khi MToon của
-   * mặt/áo sáng gần 1.0 — khác bản cũ bloom thẳng lên ảnh cuối cùng (strength
-   * giảm ~40%: 0.34 → 0.20) theo yêu cầu "giảm chói" của Boss.
-   */
-  private dungHauKy(): void {
-    const kichThuoc = new THREE.Vector2(window.innerWidth, window.innerHeight);
-    const renderScene = new RenderPass(this.scene, this.camera);
-
-    this.bloomComposer = new EffectComposer(this.renderer);
-    this.bloomComposer.renderToScreen = false;
-    this.bloomComposer.addPass(renderScene);
-    // threshold cao + strength vừa phải: chỉ vật mang LOP_BLOOM mới còn hiện
-    // (mọi vật khác đã bị tô đen trước khi bloomComposer.render() chạy), nên
-    // threshold chỉ còn lọc giữa CÁC vật phát sáng với nhau.
-    this.bloom = new UnrealBloomPass(kichThuoc, 0.2, 0.4, 0.85);
-    this.bloom.resolution.set(
-      Math.max(1, Math.floor(kichThuoc.x / 2)),
-      Math.max(1, Math.floor(kichThuoc.y / 2)),
-    );
-    this.bloomComposer.addPass(this.bloom);
-
-    this.mixPass = new ShaderPass(
-      new THREE.ShaderMaterial({
-        uniforms: {
-          baseTexture: { value: null },
-          bloomTexture: { value: this.bloomComposer.renderTarget2.texture },
-        },
-        vertexShader: `
-          varying vec2 vUv;
-          void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `,
-        fragmentShader: `
-          uniform sampler2D baseTexture;
-          uniform sampler2D bloomTexture;
-          varying vec2 vUv;
-          void main() {
-            gl_FragColor = texture2D(baseTexture, vUv) + texture2D(bloomTexture, vUv);
-          }
-        `,
-      }),
-      'baseTexture',
-    );
-    this.mixPass.needsSwap = true;
-
-    this.finalComposer = new EffectComposer(this.renderer);
-    this.finalComposer.addPass(renderScene);
-    this.finalComposer.addPass(this.mixPass);
-    this.finalComposer.addPass(new OutputPass());
-  }
-
-  /** Tô đen tạm mọi vật KHÔNG mang `LOP_BLOOM` trước khi render pass bloom. */
-  private toDarken(obj: THREE.Object3D): void {
-    const m = obj as THREE.Mesh;
-    if (m.isMesh && this.lopBloomKiemTra.test(m.layers) === false) {
-      this.vatLieuDaThay.set(m.uuid, m.material);
-      m.material = this.matDen;
-    }
-  }
-
-  /** Trả lại vật liệu thật sau khi `bloomComposer.render()` xong. */
-  private toRestore(obj: THREE.Object3D): void {
-    const m = obj as THREE.Mesh;
-    const cu = this.vatLieuDaThay.get(m.uuid);
-    if (cu) {
-      m.material = cu;
-      this.vatLieuDaThay.delete(m.uuid);
-    }
-  }
-
-  /** Render một khung: bloom chọn lọc (2 lượt) hoặc chỉ `finalComposer` khi tắt. */
+  /** Render MỘT lượt thẳng ra màn hình — D1b bỏ hẳn hậu kỳ (xem ghi chú trên). */
   private veMotKhung(): void {
-    if (this.bloomDangBat) {
-      this.scene.traverse((o) => this.toDarken(o));
-      this.bloomComposer.render();
-      this.scene.traverse((o) => this.toRestore(o));
-    }
-    this.finalComposer.render();
-  }
-
-  /** Bật/tắt bloom (giữ composer, không dựng lại pass — rẻ hơn). Tắt thì
-   *  `veMotKhung` bỏ qua hẳn lượt `bloomComposer` (đỡ cả traverse tô đen lẫn
-   *  blur nhiều lượt của `UnrealBloomPass` — phần tốn hiệu năng nhất). */
-  private coBloom(bat: boolean): void {
-    if (this.bloomDangBat === bat) return;
-    this.bloomDangBat = bat;
-    // tắt mixPass khi tắt bloom: không thì ảnh cuối cộng texture bloom CŨ
-    // (khung hình cuối trước khi tắt) lên render thường, nhìn như bị "dính".
-    this.mixPass.enabled = bat;
+    this.renderer.render(this.scene, this.camera);
   }
 
   /**
@@ -359,20 +335,35 @@ export class World implements StageWorld {
    * đèn cảnh nên `scene.light` không đổi chúng.
    */
   private dungAnhSang(): void {
-    this.troi = new THREE.HemisphereLight(0xcfe3ef, 0x6b5a46, 1.1);
+    // D1b: hemisphere ẤM hẳn (trời vàng nhạt / sàn gỗ nâu) — bản D1 để trời
+    // xanh lạnh 0xcfe3ef nên mảng tối trong nhà ngả xanh, trái hẳn ảnh tham
+    // chiếu "nhà gỗ ấm, nắng chiều mềm".
+    this.troi = new THREE.HemisphereLight(0xffe9c8, 0x9c7f5c, 0.95);
     this.scene.add(this.troi);
 
     // "Nắng chiều": đặt phía NAM (z dương, phía cửa sổ) và cao, chiếu chếch
     // vào trong nhà — mô phỏng ánh nắng xiên qua cửa sổ lớn buổi chiều.
-    this.nang = new THREE.DirectionalLight(0xffe0b0, 1.0);
-    this.nang.position.set(-1.5, 7.0, 9.0);
+    this.nang = new THREE.DirectionalLight(0xffd79a, 1.15);
+    // Hạ thấp + đẩy chéo: mặt trời chiều xuống thấp thì VỆT NẮNG qua cửa sổ
+    // dài hẳn ra giữa sàn (bản D1 đèn cao 7 m gần như thẳng đứng, bóng ngắn
+    // cụt — đúng chỗ Boss kêu "thô").
+    this.nang.position.set(-4.5, 4.6, 11.0);
     this.nang.castShadow = true;
-    this.nang.shadow.mapSize.set(2048, 2048);
+    /*
+     * BÓNG CỐ ĐỊNH 1024 (Boss 27/10: "đừng đòi GPU lớn"; kiểm độc lập PR #51
+     * vòng 1 chặn đúng chỗ này). Bản cũ gate theo `maxTextureSize >= 8192` —
+     * vô dụng: swiftshader cũng báo 8192, GPU tích hợp báo 16384, nên nhánh
+     * 2048 LUÔN trúng và 1024 không bao giờ chạy.
+     *
+     * Chỉ nâng lên 2048 khi ĐO THẬT đạt ≥ 50 FPS liên tục 5 s (xem
+     * `theoDoiFps`) — tức máy thừa sức, không phải vì bảng thông số.
+     */
+    this.nang.shadow.mapSize.set(BONG_CO_BAN, BONG_CO_BAN);
     // Khoảng near/far PHẢI bó sát cảnh: phòng giờ chỉ 14×10 m (không còn
     // 16×16), đèn cách điểm xa nhất trong nhà ~18 m → 5…22 là vừa đủ, không
     // loãng depth (bài học 25/10, vẫn đúng với khung nhà mới).
-    this.nang.shadow.camera.near = 5;
-    this.nang.shadow.camera.far = 22;
+    this.nang.shadow.camera.near = 3;
+    this.nang.shadow.camera.far = 26;
     const nuaRong = KICH_THUOC_PHONG / 2 + 1.5;
     const nuaSau = KICH_THUOC_SAU / 2 + 1.5;
     this.nang.shadow.camera.left = -nuaRong;
@@ -384,9 +375,25 @@ export class World implements StageWorld {
     this.nang.shadow.radius = 2.5;
     this.scene.add(this.nang);
 
-    this.vien = new THREE.DirectionalLight(MAU_CAM, 0.18);
+    this.vien = new THREE.DirectionalLight(MAU_CAM, 0.22);
     this.vien.position.set(0, 4.2, -5.0);
     this.scene.add(this.vien);
+
+    /*
+     * Hai đèn ĐIỂM ẤM (D1b) — đúng hai chụp đèn có thật trong cảnh: đèn sàn
+     * phòng khách và đèn bàn làm việc. Tầm ngắn (4 m), cường độ thấp, KHÔNG
+     * đổ bóng: chúng chỉ để góc phòng xa cửa sổ không chết tối, không phải để
+     * chói. Hai point light không bóng gần như miễn phí trên GPU yếu.
+     */
+    this.denAm = [
+      // F1 (#56): hai chụp đèn CÓ THẬT trong cảnh đã dời theo bố cục mới —
+      // đèn sàn cạnh ghế đơn phòng khách (−5,5; −1,0) và đèn bàn làm việc
+      // (3,0; −4,5). Bản D1b vẫn chiếu vào chỗ cũ (−1,5; 1,0) tức giữa hành
+      // lang trống, nên phòng khách tối mà hành lang lại sáng vô cớ.
+      denDiem(MAU_DEN_AM, 6.5, 4.2, -5.5, 1.45, -1.0),
+      denDiem(MAU_DEN_AM, 5.0, 3.6, 3.0, 1.15, -4.3),
+    ];
+    for (const d of this.denAm) this.scene.add(d);
 
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -399,7 +406,6 @@ export class World implements StageWorld {
   async napCanh(tienTrinh?: (chu: string) => void): Promise<{ dungKenney: boolean }> {
     tienTrinh?.('Đang dựng căn nhà…');
     const phong = await dungPhong(this.scene);
-    haiSuongBuc(this.scene);
 
     tienTrinh?.('Đang nạp nhân vật…');
     // 1) Boss (nam) trên bục trung tâm, quay mặt về camera — phím WASD lái người này
@@ -455,59 +461,56 @@ export class World implements StageWorld {
     });
   }
 
-  /** Pixel ratio theo chế độ vẽ: nền = 1, thường = min(dpr, 2) (quy ước hiệu năng). */
+  /** Pixel ratio MỘT chỗ: nền = 1; thường ≤ 1,5 (D1b), hạ chất lượng = 1. */
   private tyLePixel(): number {
-    return this.cheDoVe === 'nen' ? TY_LE_PIXEL_NEN : Math.min(window.devicePixelRatio, 2);
+    if (this.cheDoVe === 'nen') return TY_LE_PIXEL_NEN;
+    return Math.min(window.devicePixelRatio, this.daHaChatLuong ? 1 : 1.5);
   }
 
-  /** Áp kích thước cửa sổ + pixel ratio cho renderer và cả hai composer. */
   private apKichThuoc(): void {
-    const pr = this.tyLePixel();
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    this.renderer.setPixelRatio(pr);
-    this.renderer.setSize(w, h);
-    this.bloomComposer.setPixelRatio(pr);
-    this.bloomComposer.setSize(w, h);
-    this.finalComposer.setPixelRatio(pr);
-    this.finalComposer.setSize(w, h);
-    this.bloom.resolution.set(Math.max(1, Math.floor(w / 2)), Math.max(1, Math.floor(h / 2)));
+    this.renderer.setPixelRatio(this.tyLePixel());
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  /** Bóng đổ bật khi không hạ chất lượng VÀ không ở nền. */
+  private apBong(): void {
+    const bat = !this.daHaChatLuong && this.cheDoVe !== 'nen';
+    this.nang.castShadow = bat;
+    this.renderer.shadowMap.enabled = bat;
   }
 
   /**
    * V1 (INT-06) — đổi chế độ vẽ. Gọi từ tầng lắp (`main.ts`) theo tín hiệu
    * focus/ẩn/vỏ VS Code; KHÔNG có lệnh nào trong registry gọi tới đây, nên
-   * MCP/não không chỉnh được fps.
+   * MCP/não không chỉnh được fps. `daHaChatLuong` (do FPS thấp) giữ nguyên qua
+   * nền nên ra nền trả đúng trạng thái cũ.
    */
   datCheDoVe(mode: RenderMode, lyDo = ''): void {
     if (mode === this.cheDoVe) return;
     this.cheDoVe = mode;
-    if (mode === 'nen') {
-      this.bloomTruocNen = this.bloomDangBat;
-      this.coBloom(false);
-    } else {
-      // trả bloom đúng như lúc vào nền — đang tắt vì FPS thấp thì vẫn tắt
-      this.coBloom(this.bloomTruocNen ?? this.bloomDangBat);
-      this.bloomTruocNen = null;
+    if (mode === 'full') {
       // khung đầu tiên sau nền có khoảng dài — đừng tính vào FPS thấp
       this.doFps.datLai();
       this.dongHo.update();
     }
+    this.apBong();
     this.apKichThuoc();
     this.bus.emit('stage.renderMode', {
       mode,
-      bloom: this.bloomDangBat,
+      bloom: false, // D1b đã bỏ hậu kỳ; giữ khoá cho hợp đồng sự kiện cũ
+      shadow: this.renderer.shadowMap.enabled,
       pixelRatio: this.renderer.getPixelRatio(),
       ...(lyDo ? { reason: lyDo } : {}),
     });
   }
 
   /** Số đo chế độ vẽ (bằng chứng `scripts/kiem-nen.mjs`). */
-  doVe(): { renderMode: RenderMode; soKhung: number; bloom: boolean; pixelRatio: number } {
+  doVe(): { renderMode: RenderMode; soKhung: number; bloom: boolean; shadow: boolean; pixelRatio: number } {
     return {
       renderMode: this.cheDoVe,
       soKhung: this.soKhungDaVe,
-      bloom: this.bloomDangBat,
+      bloom: false,
+      shadow: this.renderer.shadowMap.enabled,
       pixelRatio: this.renderer.getPixelRatio(),
     };
   }
@@ -543,13 +546,33 @@ export class World implements StageWorld {
         this.theoOwner = null;
       } else {
         const p = nv.goc.position;
-        const dich = new THREE.Vector3(p.x, 0, p.z).add(LECH_THEO_OWNER);
-        const tam = new THREE.Vector3(p.x, 1.1, p.z);
-        // lerp êm: 2,6/s đủ bám sát khi đi 1,6 m/s mà không rung theo bước chân
-        const k = Math.min(1, dt * 2.6);
-        this.camera.position.lerp(dich, k);
-        this.controls.target.lerp(tam, k);
+        this.mayDich.set(p.x, 0, p.z).add(LECH_THEO_OWNER);
+        this.mayTam.set(p.x, 1.1, p.z);
+        /**
+         * F2 — lò xo giảm chấn tới hạn cho CẢ vị trí và tâm ngắm, dùng **cùng
+         * một** `dt` và `omega` nên hiệu (vị trí − tâm) không bị méo giữa hai
+         * khung: đó mới là điều mắt đọc ra thành "rung". Xem `buocLoXo`.
+         */
+        const dtMay = Math.min(dt, DT_MAY_TOI_DA);
+        buocLoXo(this.camera.position, this.mayVel, this.mayDich, OMEGA_MAY, dtMay);
+        buocLoXo(this.controls.target, this.mayTamVel, this.mayTam, OMEGA_MAY, dtMay);
+        // Đầy thì NGỪNG ghi (xem ghi chú cùng loại ở `NhanVat.soLai`).
+        if (this.soMay.length < 900)
+        this.soMay.push([
+          +performance.now().toFixed(1),
+          +dtMay.toFixed(4),
+          +this.camera.position.x.toFixed(4),
+          +this.camera.position.z.toFixed(4),
+          +this.mayVel.length().toFixed(4),
+        ]);
       }
+    } else if (this.mayVel.lengthSq() > 0 || this.mayTamVel.lengthSq() > 0 || this.soMay.length) {
+      // rời preset `theo-owner` → bỏ quán tính, đừng để lò xo kéo thêm
+      this.mayVel.set(0, 0, 0);
+      this.mayTamVel.set(0, 0, 0);
+      // …và **xoá sổ**: `doHieuNang()` luôn trả `soMay`, để sổ cũ lại thì
+      // người đọc sau có thể chấm điểm camera trên một lượt bám khác hẳn.
+      this.soMay = [];
     }
 
     if (this.tamTuBay) {
@@ -572,11 +595,131 @@ export class World implements StageWorld {
     this.theoDoiFps();
   }
 
-  /** Hiệu năng (spec mục 5): FPS tụt dưới ngưỡng quá 2 s thì tự tắt bloom. Đo bằng đồng hồ thật (`do-fps.ts`), không bằng `dt` đã kẹp. */
+  /**
+   * Hiệu năng (spec mục 5, siết lại ở D1b): FPS tụt dưới ngưỡng quá 2 s thì
+   * **hạ chất lượng** — tắt bóng đổ của đèn nắng và hạ pixel ratio về 1. Lên
+   * lại quá ngưỡng + 8 thì trả về như cũ. Không còn bloom để mà tắt.
+   */
   private theoDoiFps(): void {
+    // V1: đo bằng ĐỒNG HỒ THẬT (`do-fps.ts`) — `1/dt` với `dt` đã kẹp 1/20 s báo
+    // ≥ 20 fps mãi, máy 2–4 fps phải chờ 10–20 s mới hạ chất lượng. Nền: không đo.
     const qd = this.doFps.capNhat(performance.now(), this.cheDoVe === 'nen');
-    if (qd === 'tat') this.coBloom(false);
-    else if (qd === 'bat') this.coBloom(true);
+    if (qd === 'tat') this.haChatLuong(true);
+    else if (qd === 'bat') this.haChatLuong(false);
+    const fps = this.doFps.fpsCuoi;
+    if (this.cheDoVe === 'nen' || fps === null) return;
+    const dtThat = 1 / fps;
+
+    /*
+     * Cổng NÂNG BÓNG (PR #51 vòng 2): 1024 là mặc định cho mọi máy. Chỉ khi
+     * khung hình thật đạt ≥ 50 FPS liên tục 5 s mới đổi sang 2048 — đo thật,
+     * không đoán theo `maxTextureSize`. Tụt xuống dưới mốc thì đồng hồ reset,
+     * nên máy yếu không bao giờ chạm tới nhánh này.
+     */
+    if (!this.daNangBong && !this.daHaChatLuong) {
+      if (fps >= FPS_NANG_BONG) {
+        this.fpsCaoTu += dtThat * 1000;
+        if (this.fpsCaoTu >= BONG_CAN_MS) {
+          this.daNangBong = true;
+          this.nang.shadow.mapSize.set(BONG_MANH, BONG_MANH);
+          // phải huỷ render target cũ, three mới cấp lại đúng kích thước mới
+          this.nang.shadow.map?.dispose();
+          this.nang.shadow.map = null;
+        }
+      } else {
+        this.fpsCaoTu = 0;
+      }
+    }
+  }
+
+  /** Kích thước shadow map đang dùng (bằng chứng số cho PR, không đoán). */
+  coBong(): number {
+    return this.nang.shadow.mapSize.x;
+  }
+
+  /** Bật/tắt chế độ tiết kiệm (bóng đổ + pixel ratio) — D1b. */
+  private haChatLuong(ha: boolean): void {
+    if (this.daHaChatLuong === ha) return;
+    this.daHaChatLuong = ha;
+    this.apBong();
+    this.apKichThuoc();
+  }
+
+  /**
+   * Chiếu một điểm thế giới ra toạ độ ĐIỂM ẢNH trên khung hình.
+   *
+   * D1b (#48): bằng chứng luma mặt phải đo **đúng vùng mặt**, không phải một
+   * ô vuông giữa ảnh đoán mò như bản D1 — cho script biết mặt nhân vật rơi
+   * vào đâu trên ảnh vừa chụp.
+   */
+  chieuDiem(p: Vec3): { x: number; y: number } {
+    const v = new THREE.Vector3(p[0], p[1], p[2]).project(this.camera);
+    return {
+      x: (v.x * 0.5 + 0.5) * window.innerWidth,
+      y: (-v.y * 0.5 + 0.5) * window.innerHeight,
+    };
+  }
+
+  /**
+   * Số lượt vẽ / tam giác — bằng chứng hiệu năng cho PR.
+   *
+   * PR #51 vòng 2: TÁCH phần **nhà** và phần **VRM**. Không ước lượng bằng
+   * công thức: vẽ một khung với VRM ẩn rồi đọc `renderer.info` → `callsNha`
+   * là số thật; phần VRM là hiệu số. Mốc tự áp: **nhà ≤ 120 lượt vẽ** (VRM là
+   * model người thật, nhiều mesh, không thuộc phần mỹ thuật căn nhà).
+   */
+  doHieuNang(): Record<string, unknown> {
+    const gocActor: THREE.Object3D[] = [];
+    this.scene.traverse((o) => {
+      if (o.name.startsWith('actor:')) gocActor.push(o);
+    });
+    this.renderer.render(this.scene, this.camera);
+    const tongCalls = this.renderer.info.render.calls;
+    const tongTri = this.renderer.info.render.triangles;
+    const hien = gocActor.map((o) => o.visible);
+    for (const o of gocActor) o.visible = false;
+    this.renderer.render(this.scene, this.camera);
+    const callsNha = this.renderer.info.render.calls;
+    const triNha = this.renderer.info.render.triangles;
+    gocActor.forEach((o, i) => (o.visible = hien[i]));
+    this.renderer.render(this.scene, this.camera);
+
+    const r = this.renderer.info.render;
+    let mesh = 0;
+    const theoGoc: Record<string, number> = {};
+    const vl = new Set<string>();
+    this.scene.traverse((o) => {
+      if (!(o as THREE.Mesh).isMesh) return;
+      mesh++;
+      const m = o as THREE.Mesh;
+      const ds = Array.isArray(m.material) ? m.material : [m.material];
+      for (const x of ds) {
+        if (!x) continue;
+        vl.add(x.uuid);
+      }
+      let p: THREE.Object3D | null = o;
+      let ten = o.name || '(không tên)';
+      while (p) {
+        if (p.name) ten = p.name;
+        p = p.parent;
+      }
+      theoGoc[ten] = (theoGoc[ten] ?? 0) + 1;
+    });
+    return {
+      calls: r.calls,
+      triangles: r.triangles,
+      callsNha,
+      callsVrm: Math.max(0, tongCalls - callsNha),
+      trianglesNha: triNha,
+      trianglesVrm: Math.max(0, tongTri - triNha),
+      coBong: this.coBong(),
+      pixelRatio: this.renderer.getPixelRatio(),
+      mesh,
+      vatLieu: vl.size,
+      theoGoc,
+      // F2 — sổ camera bám (xem `soMay`); rỗng khi không ở preset `theo-owner`
+      soMay: this.soMay,
+    };
   }
 
   private datGocMay(): void {
@@ -1056,8 +1199,8 @@ export class World implements StageWorld {
         this.nang.color.setHex(0xffe0b0);
         this.vien.intensity = 0.3;
         bg.setHex(MAU_NEN_LAB);
-        // C3 (#40): Boss "chói mắt" — hạ exposure 1.1 → 1.0.
-        this.renderer.toneMappingExposure = 1.0;
+        // C3 (#40) 1.1 → 1.0; D1b (#48) → 0.86 (xem constructor).
+        this.renderer.toneMappingExposure = 0.86;
         break;
       case 'toi':
         this.troi.intensity = 0.34;
@@ -1065,7 +1208,7 @@ export class World implements StageWorld {
         this.nang.color.setHex(0x6f9ec8);
         this.vien.intensity = 0.45;
         bg.setHex(0x060a0f);
-        this.renderer.toneMappingExposure = 0.92;
+        this.renderer.toneMappingExposure = 0.8;
         break;
       case 'am':
         this.troi.intensity = 0.8;
@@ -1073,7 +1216,7 @@ export class World implements StageWorld {
         this.nang.color.setHex(MAU_CAM);
         this.vien.intensity = 0.25;
         bg.setHex(0x1c1208);
-        this.renderer.toneMappingExposure = 1.0;
+        this.renderer.toneMappingExposure = 0.86;
         break;
     }
     if (this.scene.fog instanceof THREE.FogExp2) this.scene.fog.color.copy(bg);
@@ -1176,27 +1319,36 @@ export class World implements StageWorld {
      * camera xuyên ra ngoài tường. Toạ độ chọn tay, đứng trong nhà, nhìn
      * đúng hướng nội thất của khu đó.
      */
+    /*
+     * F1 (#56): 3 khung khu đóng lại cho ĐÚNG cụm mới (`docs/f1/so-do.md`).
+     * Bản D1b nhắm vào toạ độ D1: khung `bep` ngắm (4,5; 2,6) — nay là giữa
+     * cụm bàn ăn, bếp đã sang góc đông-bắc; khung `ban-lam-viec` ngắm x 4,3
+     * trong khi bàn đã dời về x 3.
+     */
     if (name === 'phong-khach') {
+      // đứng phía nam cụm, nhìn chéo tây-bắc: thấy trọn sofa ↔ bàn trà ↔ kệ TV
       this.bossDaXoay = true;
       this.tamTuBay = {
-        vt: new THREE.Vector3(-1.8, 1.7, 3.2),
-        tam: new THREE.Vector3(-4.5, 1.0, 1.6),
+        vt: new THREE.Vector3(-1.5, 1.9, 4.2),
+        tam: new THREE.Vector3(-4.9, 0.9, 0.9),
       };
       return;
     }
     if (name === 'ban-lam-viec') {
+      // kệ sách + bàn + ghế + bảng ghim trong một khung
       this.bossDaXoay = true;
       this.tamTuBay = {
-        vt: new THREE.Vector3(1.2, 1.8, -1.0),
-        tam: new THREE.Vector3(4.3, 1.1, -3.5),
+        vt: new THREE.Vector3(0.5, 1.7, -1.7),
+        tam: new THREE.Vector3(2.3, 1.0, -4.5),
       };
       return;
     }
     if (name === 'bep') {
+      // đứng trong lòng chữ L, nhìn chéo đông-bắc: thấy CẢ HAI nhánh + tủ lạnh
       this.bossDaXoay = true;
       this.tamTuBay = {
-        vt: new THREE.Vector3(1.4, 1.9, 1.7),
-        tam: new THREE.Vector3(4.5, 1.0, 2.6),
+        vt: new THREE.Vector3(4.0, 2.0, 1.1),
+        tam: new THREE.Vector3(6.3, 0.95, -3.3),
       };
       return;
     }
@@ -1234,6 +1386,24 @@ export class World implements StageWorld {
     }
 
     const mh = new ManHinh(p.id, p.size ?? mac?.size ?? 0.6, pos, rotY, p.tilt ?? 0);
+    /**
+     * E2 (#48 mục 3) — **đặt đúng lên mặt bàn**, không nổi không chìm.
+     *
+     * Toạ độ ngang vẫn lấy từ bảng bố cục (`bo-cuc.ts`), nhưng chiều cao mặt
+     * bàn thì KHÔNG đoán được từ bảng: model Kenney được chuẩn hoá theo
+     * `rong`/`cao` lúc dựng phòng, nên mặt trên thật chỉ biết sau khi đo khối
+     * trong cảnh. Đo xong thì hạ chân màn hình đúng lên mặt đó.
+     */
+    if (p.at === undefined && mac?.doTren) {
+      const mat = this.matTrenKhoi(mac.doTren);
+      if (mat !== null) {
+        mh.group.position.y = mat + mh.beDuoi();
+        this.doDungManHinh.set(p.id, { block: mac.doTren, surfaceY: tronMm(mat) });
+        // chỗ "đậu" cũng phải là chỗ ĐÃ hạ, không thì `screen.focus` bay về
+        // lại đúng cái độ cao lơ lửng cũ.
+        mh.docked.pos.y = mh.group.position.y;
+      }
+    }
     this.scene.add(mh.group);
     this.screens.set(p.id, mh);
     return this.snapScreen(mh);
@@ -1245,6 +1415,20 @@ export class World implements StageWorld {
     this.scene.remove(mh.group);
     mh.dispose();
     this.screens.delete(id);
+    this.doDungManHinh.delete(id);
+  }
+
+  /**
+   * Mặt TRÊN (y lớn nhất) của một khối nội thất đã dựng, tính bằng mét —
+   * `null` khi chưa dựng phòng (test chạy sân khấu giả) hoặc không có khối.
+   * `phong.ts` đặt tên nhóm mỗi khối là `khoi:<id>` (nguồn sự thật duy nhất).
+   */
+  private matTrenKhoi(id: string): number | null {
+    const g = this.scene.getObjectByName(`khoi:${id}`);
+    if (!g) return null;
+    const hop = new THREE.Box3().setFromObject(g);
+    if (hop.isEmpty()) return null;
+    return hop.max.y;
   }
 
   private manHinh(id: string): ManHinh {
@@ -1344,12 +1528,16 @@ export class World implements StageWorld {
   }
 
   private snapScreen(mh: ManHinh): ScreenSnapshot {
+    const do_ = this.doDungManHinh.get(mh.id) ?? null;
     return {
       id: mh.id,
       pos: [tron(mh.group.position.x), tron(mh.group.position.y), tron(mh.group.position.z)],
       showing: mh.kind,
       streaming: mh.streaming,
       lines: mh.soDong(),
+      chars: mh.noiDung.length,
+      bottomY: tronMm(mh.group.position.y - mh.beDuoi()),
+      restsOn: do_,
     };
   }
 
@@ -1428,6 +1616,16 @@ export class World implements StageWorld {
         huy = true;
         kt.huy();
         this.ketTinhDangChay.delete(p.id);
+        // E2 — huỷ giữa đường mà module đã vào tay ai thì phải trả tay người
+        // đó về rỗng, không để `dangCam` trỏ vào prop vừa bị xoá.
+        if (d.camBoi) {
+          const nv = this.actors.get(d.camBoi);
+          if (nv) {
+            nv.dangCam = null;
+            nv.objCam = null;
+          }
+          d.camBoi = null;
+        }
         this.scene.remove(obj);
         this.props.delete(p.id);
       },
@@ -1570,13 +1768,27 @@ export class World implements StageWorld {
       busy: nv.busy,
       mood: nv.mood,
       expression: nv.bieuCamHienTai,
-      holding: nv.dangCam,
+      /**
+       * E2 (#48 mục 3) — **một nguồn sự thật**: `holding` suy ra từ chính
+       * bảng prop (`camBoi`), không đọc `nv.dangCam`. Hai cờ song song từng
+       * lệch nhau (module bị `moduleBuild().cancel()` xoá khỏi bảng prop mà
+       * `dangCam` của nhân vật vẫn trỏ vào nó), nên `describe()` nói một đằng
+       * `props[].state.heldBy` nói một nẻo. Giờ hai trường LUÔN khớp vì cùng
+       * đọc một chỗ.
+       */
+      holding: this.propDangCam(nv.id),
       lookingAt: nv.nhinTen,
       distances,
       queued: 0,
       controlledBy: nv.dieuKhienBoi,
       facingTarget: nv.huongVe,
     };
+  }
+
+  /** Prop mà actor này đang cầm theo BẢNG PROP (`camBoi`) — nguồn sự thật. */
+  private propDangCam(actorId: string): string | null {
+    for (const d of this.props.values()) if (d.camBoi === actorId) return d.id;
+    return null;
   }
 
   private snapProp(d: DoVat): PropSnapshot {
@@ -1595,6 +1807,11 @@ export class World implements StageWorld {
 
 function tron(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+/** Tròn tới mm — chiều cao mặt bàn cần 3 số lẻ mới kiểm được "không nổi không chìm". */
+function tronMm(n: number): number {
+  return Math.round(n * 1000) / 1000;
 }
 
 /** Tên map chứa texture trên vật liệu — dọn hết để không rò GPU memory. */

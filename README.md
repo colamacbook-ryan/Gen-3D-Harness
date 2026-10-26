@@ -7,7 +7,26 @@ Sân khấu Gen-Stage + extension VS Code (đang làm). Nền nhập từ Gen-St
 Sân khấu 3D trong trình duyệt: văn phòng nhỏ + nhân vật VRM sinh động.
 Vite · TypeScript · Three.js · `@pixiv/three-vrm`.
 
+> **G2 (28/10):** tên hiển thị Gen → **Nhi**, Javis → **Nam** (id kỹ thuật vẫn
+> `gen`/`owner`, không đổi).
+
 ## Chạy thử
+
+Lần đầu trên máy mới — **một lệnh**, chạy một lần (tải asset 46 MB + bộ nhận
+giọng Việt ~930 MB, và tạo biểu tượng **Gen-Stage** trong danh sách ứng dụng):
+
+```bash
+pnpm cai-dat
+```
+
+Từ đó về sau — **một lệnh**, bật tất cả (cầu nối + sân khấu + não của Gen +
+mở trình duyệt), không tải gì nữa:
+
+```bash
+pnpm start       # bật · pnpm stop để tắt sạch
+```
+
+Chỉ muốn bản dev trần:
 
 ```bash
 pnpm install
