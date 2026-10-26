@@ -19,9 +19,11 @@ import {
   sinhToolLocal,
 } from '../nao-local.mjs';
 
-const CONG_BRIDGE = 8860;
-const CONG_OLLAMA = 8861;
-const CONG_TAT = 8862;
+// GEN_STAGE_TEST_CONG: đổi cổng gốc khi nhiều phiên cùng chạy test trên một máy
+const CONG_GOC = Number(process.env.GEN_STAGE_TEST_CONG ?? 8860);
+const CONG_BRIDGE = CONG_GOC;
+const CONG_OLLAMA = CONG_GOC + 1;
+const CONG_TAT = CONG_GOC + 2;
 const ngu = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* ------------------------------------------------------------ bridge giả */
@@ -29,6 +31,7 @@ const bridge = { wss: null, lenh: [], url: [], clients: new Set() };
 const ACTORS = [
   { id: 'owner', controlledBy: 'owner', pos: [0, 0, 0] },
   { id: 'gen', controlledBy: 'agent', pos: [1, 0, 1] },
+  { id: 'mai', controlledBy: 'agent', pos: [2, 0, 1] },
 ];
 function phat(event, data) {
   for (const c of bridge.clients) c.send(JSON.stringify({ event, data }));
@@ -342,3 +345,101 @@ describe('docPersona — id actor không được thoát khỏi thư mục perso
   });
 });
 
+
+/* ============================================== review 26/10 (V1, vòng sửa) */
+
+describe('nao-local — review: dò model treo, arguments lạ, câu trùng, gộp, daNoi', () => {
+  /** fetch giả: /v1/models treo (chỉ kết thúc khi signal huỷ) `soLanTreo` lần đầu, sau đó chuyển cho fetch thật. */
+  function fetchTreo(soLanTreo) {
+    let n = 0;
+    return (url, init = {}) => {
+      if (String(url).endsWith('/v1/models') && n++ < soLanTreo) {
+        return new Promise((_, rej) => {
+          init.signal?.addEventListener('abort', () => {
+            const e = new Error('aborted');
+            e.name = init.signal.reason?.name ?? 'AbortError';
+            rej(e);
+          });
+        });
+      }
+      return globalThis.fetch(url, init);
+    };
+  }
+
+  it('(1a) dò model treo → fetch có timeout, lượt không kẹt, lượt sau dò lại và trả lời được', async () => {
+    await bat({ fetch: fetchTreo(1), msDo: 80, msHan: 5000 });
+    phat('user.text', { actor: 'owner', text: 'câu một' });
+    await ngu(400);
+    expect(driver.hangDoi.dangChay()).toBe(false);
+    ollama.kichBan.push({ content: 'Dạ câu hai' });
+    await sepNoi({ text: 'câu hai' });
+    expect(lenhSay().at(-1).args.text).toBe('Dạ câu hai');
+  });
+
+  it('(1b) dò treo lâu hơn hạn lượt → hạn lượt bao cả bước dò: xin hỏi lại, không treo', async () => {
+    await bat({ fetch: fetchTreo(1), msDo: 5000, msHan: 150 });
+    phat('user.text', { actor: 'owner', text: 'câu một' });
+    await ngu(500);
+    expect(driver.hangDoi.dangChay()).toBe(false);
+    expect(lenhSay().some((l) => /lâu/.test(l.args.text))).toBe(true);
+  });
+
+  it('(3) arguments "null"/mảng/số/chuỗi → báo model như JSON không hợp lệ, không ném TypeError', async () => {
+    await bat();
+    for (const a of ['null', '[1,2]', '42', '"abc"']) {
+      ollama.yeuCau.length = 0;
+      ollama.kichBan.push({ tool_calls: [{ id: 'x', type: 'function', function: { name: 'actor_say', arguments: a } }] }, { content: 'Dạ ổn' });
+      await sepNoi({ text: `thử ${a}` });
+      const kq = driver.nhatKy.at(-1);
+      expect(kq.ok, a).toBe(true);
+      expect(kq.toolCalls[0].chan, a).toMatch(/không phải JSON/);
+      expect(JSON.parse(ollama.yeuCau[1].messages.at(-1).content).ok).toBe(false);
+    }
+  });
+
+  it('(4) user.text + user.speech cùng câu trong 1,5 s → MỘT lượt, prompt không lặp', async () => {
+    await bat({ msGop: 60 });
+    ollama.kichBan.push({ content: 'Dạ chào Sếp' });
+    phat('user.text', { actor: 'owner', text: 'xin chào', to: 'camera' });
+    phat('user.speech', { actor: 'owner', text: 'xin chào', to: 'camera' });
+    await ngu(200);
+    await driver.hangDoi.choHet();
+    expect(ollama.yeuCau).toHaveLength(1);
+    expect(ollama.yeuCau[0].messages[1].content).toMatch(/SẾP NÓI «xin chào» \|/);
+  });
+
+  it('(5a) cửa sổ gộp: hai câu gọi hai người khác nhau → hai lượt riêng, mỗi người một lượt', async () => {
+    await bat({ msGop: 100 });
+    ollama.kichBan.push({ content: 'Dạ Gen đây' }, { content: 'Dạ Mai đây' });
+    phat('user.text', { actor: 'owner', text: 'Gen ơi chào đi' });
+    phat('user.text', { actor: 'owner', text: 'Mai ơi chào đi' });
+    await ngu(300);
+    await driver.hangDoi.choHet();
+    await ngu(30);
+    expect(ollama.yeuCau).toHaveLength(2);
+    expect(ollama.yeuCau.map((y) => y.messages[0].content.match(/actor "(\w+)"/)[1]).sort()).toEqual(['gen', 'mai']);
+    expect(lenhSay().map((l) => l.args.actor).sort()).toEqual(['gen', 'mai']);
+  });
+
+  it('(5b) daNoi chỉ tính khi actor_say lên ĐÚNG người trả lời: model cho mai nói hộ gen → driver vẫn nói cho gen', async () => {
+    await bat();
+    ollama.kichBan.push({ tool_calls: [goiTool('actor_say', { actor: 'mai', text: 'Em là Mai' })] }, { content: '' });
+    await sepNoi({ text: 'Gen ơi, chào' });
+    const say = lenhSay();
+    expect(say.some((l) => l.args.actor === 'mai')).toBe(true);
+    expect(say.some((l) => l.args.actor === 'gen')).toBe(true);
+  });
+
+  it('(5c) log "BẮT ĐẦU NÓI" không tính câu "xin chờ"', async () => {
+    const cham = (url, init = {}) =>
+      String(url).endsWith('/v1/chat/completions')
+        ? ngu(350).then(() => globalThis.fetch(url, init))
+        : globalThis.fetch(url, init);
+    await bat({ fetch: cham, msXinCho: 60 });
+    ollama.kichBan.push({ tool_calls: [goiTool('actor_say', { actor: 'gen', text: 'Dạ xong rồi' })] }, { content: '' });
+    await sepNoi({ text: 'nghĩ chậm đi' });
+    const dong = ghiLai.filter((l) => /BẮT ĐẦU NÓI/.test(l));
+    expect(dong).toHaveLength(1);
+    expect(Number(dong[0].match(/sau (\d+) ms/)[1])).toBeGreaterThanOrEqual(300);
+  });
+});

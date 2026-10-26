@@ -1,9 +1,9 @@
 {
-  "batDau": "2026-10-26T06:39:47.224Z",
+  "batDau": "2026-10-26T06:50:44.320Z",
   "cong": {
-    "bridge": 8863,
-    "ollamaGia": 8867,
-    "ollamaTat": 8868
+    "bridge": 8890,
+    "ollamaGia": 8894,
+    "ollamaTat": 8895
   },
   "ca": {
     "a": {
@@ -47,8 +47,8 @@
           }
         }
       ],
-      "msPhanXa": 14,
-      "msTiengDau": 835
+      "msPhanXa": 6,
+      "msTiengDau": 816
     },
     "b": {
       "say": [
@@ -153,23 +153,37 @@
       "soLanThu": 5,
       "songSot": true,
       "log": [
-        "[nao-local] 06:40:09 driver não local · bridge 8863 · Ollama http://127.0.0.1:8868 · model (tự chọn)",
-        "[nao] 06:40:09 đã nối bridge ws://127.0.0.1:8863/?role=nao",
-        "[nao-local] 06:40:09 10 tool · đang nghe user.text/user.speech.",
-        "[nao-local] 06:40:09 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8868 (ECONNREFUSED)) — thử lại lần 1 sau 1000 ms.",
-        "[nao-local] 06:40:10 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8868 (ECONNREFUSED)) — thử lại lần 2 sau 2000 ms.",
-        "[nao-local] 06:40:12 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8868 (ECONNREFUSED)) — thử lại lần 3 sau 4000 ms.",
-        "[nao-local] 06:40:16 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8868 (ECONNREFUSED)) — thử lại lần 4 sau 8000 ms.",
-        "[nao-local] 06:40:17 SẾP → gen: «có ai không»",
-        "[nao-local] 06:40:17 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8868 (ECONNREFUSED)) — thử lại lần 5 sau 10000 ms.",
-        "[nao-local] 06:40:17 bỏ lượt: chưa có não local (đã báo Sếp: rồi)."
+        "[nao-local] 06:51:04 driver não local · bridge 8890 · Ollama http://127.0.0.1:8895 · model (tự chọn)",
+        "[nao] 06:51:04 đã nối bridge ws://127.0.0.1:8890/?role=nao",
+        "[nao-local] 06:51:04 10 tool · đang nghe user.text/user.speech.",
+        "[nao-local] 06:51:04 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 1 sau 1000 ms.",
+        "[nao-local] 06:51:05 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 2 sau 2000 ms.",
+        "[nao-local] 06:51:07 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 3 sau 4000 ms.",
+        "[nao-local] 06:51:11 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 4 sau 8000 ms.",
+        "[nao-local] 06:51:13 SẾP → gen: «có ai không»",
+        "[nao-local] 06:51:13 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 5 sau 10000 ms.",
+        "[nao-local] 06:51:13 bỏ lượt: chưa có não local (đã báo Sếp: rồi)."
       ]
     }
+  },
+  "khoa": {
+    "maThoat": 3,
+    "log": [
+      "[nao-local] 06:50:47 đang có driver não nao-local (pid 8011) — thoát (hai driver cùng chạy thì mỗi câu trả lời hai lần)."
+    ]
   },
   "ketQua": [
     {
       "ten": "driver dò được model qua /v1/models + /api/show",
       "ok": true
+    },
+    {
+      "ten": "khoá: driver thứ hai thoát mã 3 + log \"đang có driver não\"",
+      "ok": true,
+      "maThoat": 3,
+      "log": [
+        "[nao-local] 06:50:47 đang có driver não nao-local (pid 8011) — thoát (hai driver cùng chạy thì mỗi câu trả lời hai lần)."
+      ]
     },
     {
       "ten": "driver nối bridge bằng ?role=nao",
@@ -218,13 +232,13 @@
           }
         }
       ],
-      "msPhanXa": 14,
-      "msTiengDau": 835
+      "msPhanXa": 6,
+      "msTiengDau": 816
     },
     {
       "ten": "(a) phản xạ turnTo ≤ 300 ms",
       "ok": true,
-      "ms": 14
+      "ms": 6
     },
     {
       "ten": "(b) content thuần → driver tự actor.say",
@@ -349,16 +363,16 @@
       "soLanThu": 5,
       "songSot": true,
       "log": [
-        "[nao-local] 06:40:09 driver não local · bridge 8863 · Ollama http://127.0.0.1:8868 · model (tự chọn)",
-        "[nao] 06:40:09 đã nối bridge ws://127.0.0.1:8863/?role=nao",
-        "[nao-local] 06:40:09 10 tool · đang nghe user.text/user.speech.",
-        "[nao-local] 06:40:09 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8868 (ECONNREFUSED)) — thử lại lần 1 sau 1000 ms.",
-        "[nao-local] 06:40:10 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8868 (ECONNREFUSED)) — thử lại lần 2 sau 2000 ms.",
-        "[nao-local] 06:40:12 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8868 (ECONNREFUSED)) — thử lại lần 3 sau 4000 ms.",
-        "[nao-local] 06:40:16 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8868 (ECONNREFUSED)) — thử lại lần 4 sau 8000 ms.",
-        "[nao-local] 06:40:17 SẾP → gen: «có ai không»",
-        "[nao-local] 06:40:17 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8868 (ECONNREFUSED)) — thử lại lần 5 sau 10000 ms.",
-        "[nao-local] 06:40:17 bỏ lượt: chưa có não local (đã báo Sếp: rồi)."
+        "[nao-local] 06:51:04 driver não local · bridge 8890 · Ollama http://127.0.0.1:8895 · model (tự chọn)",
+        "[nao] 06:51:04 đã nối bridge ws://127.0.0.1:8890/?role=nao",
+        "[nao-local] 06:51:04 10 tool · đang nghe user.text/user.speech.",
+        "[nao-local] 06:51:04 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 1 sau 1000 ms.",
+        "[nao-local] 06:51:05 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 2 sau 2000 ms.",
+        "[nao-local] 06:51:07 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 3 sau 4000 ms.",
+        "[nao-local] 06:51:11 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 4 sau 8000 ms.",
+        "[nao-local] 06:51:13 SẾP → gen: «có ai không»",
+        "[nao-local] 06:51:13 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 5 sau 10000 ms.",
+        "[nao-local] 06:51:13 bỏ lượt: chưa có não local (đã báo Sếp: rồi)."
       ]
     },
     {
@@ -372,10 +386,11 @@
   ],
   "loi": [],
   "pgidDaDon": [
-    2976,
-    3013,
-    3045
+    7966,
+    7995,
+    8025,
+    8068
   ],
-  "xong": "2026-10-26T06:40:19.992Z",
+  "xong": "2026-10-26T06:51:15.265Z",
   "ghiChu": "Ollama GIẢ (kịch bản cố định) — chưa đo với model thật."
 }

@@ -56,6 +56,12 @@ if command -v agy >/dev/null; then
         echo "[watchdog $(date +%T)] bật driver não — scripts/nao-agy.mjs"
         node scripts/nao-agy.mjs
         ma=$?
+        # mã 3 = khoá driver (đã có driver não khác đang chạy, xem scripts/khoa-nao.mjs):
+        # bật lại cũng bị khoá tiếp → DỪNG vòng lặp, không quay vô hạn.
+        if [ "$ma" -eq 3 ]; then
+          echo "[watchdog $(date +%T)] driver não thoát vì BỊ KHOÁ (đã có driver khác, xem .cache/nao-driver.lock) — dừng watchdog, không bật lại"
+          break
+        fi
         echo "[watchdog $(date +%T)] driver não thoát (mã $ma) — bật lại sau 2 s"
         sleep 2
       done

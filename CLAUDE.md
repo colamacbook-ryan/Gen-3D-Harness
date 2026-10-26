@@ -49,7 +49,7 @@ node scripts/kiem-a2.mjs --chi-anh  # bản NHANH lúc đang làm (chỉ ảnh +
 node scripts/kiem-b1.mjs      # bằng chứng B1: bố cục 3 vùng + steer mượt + owner/gen vào docs/b1/ (CHẠY MỘT LẦN)
 node scripts/kiem-b3.mjs      # bằng chứng B3: Owner gõ → MCP → Gen diễn + nói, vào docs/b3/ (CHẠY MỘT LẦN)
 node scripts/kiem-nao.mjs     # bằng chứng DRIVER: Sếp gõ → driver → agy thật → Gen nói, đo độ trễ, vào docs/nao/ (CHẠY MỘT LẦN)
-node scripts/kiem-nao-local.mjs  # bằng chứng V1: bridge thật + Ollama GIẢ + driver thật (cổng 8863–8868), vào docs/v1/nhat-ky-kiem-nao-local.json
+node scripts/kiem-nao-local.mjs  # bằng chứng V1: bridge thật + Ollama GIẢ + driver thật (cổng 8863–8868, đổi bằng `GEN_STAGE_KIEM_CONG`), vào docs/v1/nhat-ky-kiem-nao-local.json
 node scripts/kiem-mo-phong-loi-cu.mjs  # mô phỏng nguyên nhân gốc #37 (naoHttpDen hết hạn, ws không hề rớt) vào docs/nao/mo-phong-loi-cu.*
 node scripts/kiem-reconnect.mjs        # bằng chứng heartbeat + backoff + watchdog (#37): driver sống 10 phút, giết bridge giữa chừng, vào docs/nao/reconnect.* (CHẠY MỘT LẦN)
 node scripts/kiem-c0.mjs      # bằng chứng C0: phản xạ xã hội + nhân vật nam anime, vào docs/c0/ (CHẠY MỘT LẦN)
@@ -647,7 +647,33 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
 - **LLM local = Ollama** (Ryan chốt), API OpenAI-compatible `POST /v1/chat/completions`
   với `tools`. "Local" chỉ áp cho não — TTS vẫn Edge. Driver nằm ở `scripts/`
   (`pnpm nao-local`), chạy được khi không có VS Code; extension chỉ khởi động nó.
-  Chỉ chạy **một** driver não một lúc (`nao` hoặc `nao-local`).
+  Chỉ chạy **một** driver não một lúc (`nao` hoặc `nao-local`) — **được ép bằng
+  khoá driver** (xem dưới), không chỉ dặn miệng.
+- **Khoá driver `.cache/nao-driver.lock`** (`scripts/khoa-nao.mjs`, dùng chung
+  `nao-agy.mjs` + `nao-local.mjs`): hai driver cùng nghe thì mỗi câu trả lời hai
+  lần. KHÔNG chặn ở bridge — tiến trình MCP stdio của agy cũng nối `?role=nao`,
+  chặn ở đó là phá agy. Khoá tạo nguyên tử (`openSync` cờ `wx`), JSON
+  `{pid, starttime, ten}` (starttime = field 22 `/proc/<pid>/stat`, để phân biệt
+  pid bị hệ điều hành cấp lại). Khoá của tiến trình đã chết (pid mất hoặc
+  starttime khác) hoặc file hỏng → chiếm lại. Driver mới gặp khoá của driver
+  đang sống: log "đang có driver não X (pid N) — thoát" rồi thoát **mã 3**; thoát
+  bình thường/SIGINT/SIGTERM thì tự dọn (`kill -9` để lại khoá mồ côi — lần sau
+  tự chiếm). `scripts/chay.sh` watchdog đọc mã 3 → **dừng** vòng lặp, không bật
+  lại vô hạn. Biến `GEN_STAGE_NAO_KHOA` đổi đường dẫn khoá (bằng chứng/test dùng).
+- **Lọc câu trùng `taoLocTrung`** (`nao-agy.mjs`, dùng cả hai driver): câu nói
+  bằng mic tới driver hai lần (`user.text` + `user.speech`) → khoá `to|text`
+  trong 1,5 s, lần hai bị bỏ — không còn prompt "xin chào. xin chào". Đường agy
+  nằm trong `gannNgheCau` (tách khỏi `chay()` để test được).
+- **Cửa sổ gộp 800 ms của nao-local tách THEO NGƯỜI NHẬN** (mỗi người một
+  `taoGop`): "Gen ơi…" + "Mai ơi…" sát nhau thành hai lượt, mỗi người đúng một
+  lượt. Chọn cách này vì lấy người của câu đầu/cuối cho cả cụm luôn bỏ rơi hoặc
+  nhét nhầm câu của một người. `daNoi` chỉ tính khi `actor_say` lên ĐÚNG người trả
+  lời; log "BẮT ĐẦU NÓI" bỏ qua câu "xin chờ".
+- **Dò Ollama có hạn**: `/v1/models` + `/api/show` có `AbortSignal.timeout(5 s)`
+  (`msDo`); hẹn "xin chờ" + hạn lượt chạy TRƯỚC `doNao.lay()` nên bao cả bước dò;
+  dò hỏng thì trả lỗi, lượt sau dò lại (không giữ promise treo). `arguments` của
+  tool_call phải là object — `"null"`/mảng/số/chuỗi = JSON không hợp lệ (trả lỗi
+  cho model như nhánh sẵn có).
 - **Khung dùng lại, không chép**: `laCauCuaSep`, `taoGop` (800 ms), `taoHangDoi`
   (1 lượt), `phanXa` (nay nhận tham số `actor`, mặc định `gen`), `noiSanKhau`
   (`?role=nao` + heartbeat 15 s + backoff 1→10 s + log lý do, không `unref` — #37),
@@ -686,6 +712,7 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
   `GEN_STAGE_OLLAMA_MODEL`, `GEN_STAGE_NAO_LOCAL_HAN`, `GEN_STAGE_NAO_LOCAL_XIN_CHO`,
   cộng `GEN_STAGE_PORT`/`TOKEN`/`NAO_GOP`/`NAO_NHIP_TIM`/`NAO_QUA_HAN_TIM` như `nao-agy`.
 - Kiểm: `scripts/__tests__/nao-local.test.mjs` (bridge giả ws 8860 + Ollama giả
-  8861, cổng 8862 làm "Ollama tắt") và `node scripts/kiem-nao-local.mjs` (bridge
-  THẬT 8863–8866, Ollama giả 8867, 8868 tắt) → `docs/v1/nhat-ky-kiem-nao-local.json`.
+  8861, cổng 8862 làm "Ollama tắt"; đổi cổng gốc bằng `GEN_STAGE_TEST_CONG`),
+  `khoa-nao.test.mjs` và `node scripts/kiem-nao-local.mjs` (bridge
+  THẬT 8863–8866, Ollama giả 8867, 8868 tắt; đổi bằng `GEN_STAGE_KIEM_CONG`) → `docs/v1/nhat-ky-kiem-nao-local.json`.
   **Chưa đo với Ollama + model thật.**

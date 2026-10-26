@@ -19,7 +19,9 @@ import {
   phanXa,
   promptDau,
   rutGonSkill,
+  gannNgheCau,
   taoGop,
+  taoLocTrung,
   taoHangDoi,
   taoLuot,
   taoNaoAm,
@@ -554,5 +556,31 @@ describe('noiSanKhau — heartbeat 2 chiều + backoff + báo nối lại 1 lầ
     const san = await p;
     san.dong();
     vi.useRealTimers();
+  });
+});
+
+describe('taoLocTrung + gannNgheCau — text/speech cùng câu mic (review 26/10)', () => {
+  it('cùng to|text trong 1,5 s là trùng; quá hạn hoặc khác to thì không', () => {
+    let t = 0;
+    const trung = taoLocTrung({ ms: 1500, now: () => t });
+    expect(trung({ text: 'Xin chào', to: 'camera' })).toBe(false);
+    t = 100;
+    expect(trung({ text: 'xin  chào ', to: 'camera' })).toBe(true);
+    expect(trung({ text: 'xin chào', to: 'gen' })).toBe(false);
+    t = 1700;
+    expect(trung({ text: 'xin chào', to: 'camera' })).toBe(false);
+  });
+
+  it('đường nao-agy: user.text + user.speech cùng nhịp → một lượt, một phản xạ, không "xin chào. xin chào"', async () => {
+    let nghe;
+    const lenh = [];
+    const san = { khiSuKien: (f) => (nghe = f), goi: async (c, a) => (lenh.push(c), { ok: true }) };
+    const luot = [];
+    gannNgheCau({ san, msGop: 20, themLuot: (x) => luot.push(x) });
+    nghe('user.text', { actor: 'owner', text: 'xin chào', to: 'camera' });
+    nghe('user.speech', { actor: 'owner', text: 'xin chào', to: 'camera' });
+    await new Promise((r) => setTimeout(r, 80));
+    expect(luot.map((x) => x.cau)).toEqual(['xin chào']);
+    expect(lenh.filter((c) => c === 'actor.turnTo')).toHaveLength(1);
   });
 });

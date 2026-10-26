@@ -9,7 +9,7 @@
  *     (g) tối đa 3 vòng · (f) Ollama tắt → báo đúng MỘT lần, driver không chết.
  * Ghi: docs/v1/nhat-ky-kiem-nao-local.json
  *
- * Cổng 8863–8868 (KHÔNG đụng 8787–8790 của Sếp, 8860–8862 của vitest):
+ * Cổng gốc `GEN_STAGE_KIEM_CONG` (mặc định 8863) +0…+5 — mặc định 8863–8868 (KHÔNG đụng 8787–8790 của Sếp, 8860–8862 của vitest):
  *   8863 ws bridge · 8864 TTS · 8865 MCP · 8866 STT · 8867 Ollama giả · 8868 bỏ trống (Ollama tắt)
  * Mọi tiến trình con spawn `detached`, giết bằng PGID (tsx sinh thêm node con — bài học #37).
  */
@@ -21,9 +21,13 @@ import { fileURLToPath } from 'node:url';
 import WebSocket from 'ws';
 
 const GOC = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const CONG = 8863;
-const CONG_OLLAMA = 8867;
-const CONG_TAT = 8868;
+// Cổng gốc đổi được bằng GEN_STAGE_KIEM_CONG (mặc định 8863) — nhiều phiên cùng máy chạy song song được.
+const GOC_CONG = Number(process.env.GEN_STAGE_KIEM_CONG ?? 8863);
+const CONG = GOC_CONG;
+const CONG_OLLAMA = GOC_CONG + 4;
+const CONG_TAT = GOC_CONG + 5;
+// khoá driver riêng của bằng chứng — không chạm .cache/nao-driver.lock của Sếp
+const KHOA = resolve(GOC, `.cache/nao-driver-kiem-${GOC_CONG}.lock`);
 const RA = resolve(GOC, 'docs/v1/nhat-ky-kiem-nao-local.json');
 const ngu = (ms) => new Promise((r) => setTimeout(r, ms));
 const nhom = []; // PGID đã bật
@@ -126,9 +130,9 @@ try {
   await new Promise((r) => svOllama.listen(CONG_OLLAMA, '127.0.0.1', r));
   bridge = bat('node_modules/.bin/tsx', ['bridge/server.ts'], {
     GEN_STAGE_PORT: String(CONG),
-    GEN_STAGE_TTS_PORT: '8864',
-    GEN_STAGE_MCP_PORT: '8865',
-    GEN_STAGE_STT_PORT: '8866',
+    GEN_STAGE_TTS_PORT: String(GOC_CONG + 1),
+    GEN_STAGE_MCP_PORT: String(GOC_CONG + 2),
+    GEN_STAGE_STT_PORT: String(GOC_CONG + 3),
   });
   for (let i = 0; i < 60 && !sanKhau; i++) {
     try {
@@ -143,9 +147,20 @@ try {
     GEN_STAGE_PORT: String(CONG),
     GEN_STAGE_OLLAMA_URL: `http://127.0.0.1:${CONG_OLLAMA}`,
     GEN_STAGE_NAO_LOCAL_XIN_CHO: '30000',
+    GEN_STAGE_NAO_KHOA: KHOA,
   }, 'driver');
   for (let i = 0; i < 60 && !driver.dong.some((d) => /não local sẵn sàng/.test(d)); i++) await ngu(250);
   kiem('driver dò được model qua /v1/models + /api/show', driver.dong.some((d) => /model qwen-gia:7b/.test(d)));
+
+  // khoá driver: driver thứ hai khi driver đầu còn sống phải tự thoát mã 3
+  const thu2 = bat('node_modules/.bin/tsx', ['scripts/nao-local.mjs'], {
+    GEN_STAGE_PORT: String(CONG),
+    GEN_STAGE_OLLAMA_URL: `http://127.0.0.1:${CONG_OLLAMA}`,
+    GEN_STAGE_NAO_KHOA: KHOA,
+  }, 'driver-2');
+  for (let i = 0; i < 40 && thu2.exitCode === null; i++) await ngu(250);
+  nhatKy.khoa = { maThoat: thu2.exitCode, log: thu2.dong.slice(-3) };
+  kiem('khoá: driver thứ hai thoát mã 3 + log "đang có driver não"', thu2.exitCode === 3 && thu2.dong.some((d) => /đang có driver não/.test(d)), nhatKy.khoa);
   await choYen(800);
 
   // brainConnected: bridge đếm driver vì nó xưng ?role=nao
@@ -230,6 +245,7 @@ try {
   driverTat = bat('node_modules/.bin/tsx', ['scripts/nao-local.mjs'], {
     GEN_STAGE_PORT: String(CONG),
     GEN_STAGE_OLLAMA_URL: `http://127.0.0.1:${CONG_TAT}`,
+    GEN_STAGE_NAO_KHOA: KHOA,
   }, 'driver-tat');
   await ngu(9000); // backoff 1+2+4 s → ≥ 3 lần thử
   t0 = sepNoi({ text: 'có ai không' });

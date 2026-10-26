@@ -58,8 +58,10 @@ import {
   phanXa,
   taoGop,
   taoHangDoi,
+  taoLocTrung,
   tinhBackoff,
 } from './nao-agy.mjs';
+import { giuKhoaHoacThoat } from './khoa-nao.mjs';
 import { cuaBossTuDescribe, lyDoCamNao, toolTuLenh } from '../bridge/mcp.ts';
 import { taoRegistry } from '../src/api/commands/index.ts';
 import { danhSachThamSo } from '../src/api/registry.ts';
@@ -73,6 +75,8 @@ export const OLLAMA_MAC_DINH = 'http://127.0.0.1:11434';
 export const MS_HAN_LOCAL = 60_000;
 /** Tối đa bấy nhiêu lần gọi model trong một lượt. */
 export const VONG_TOI_DA = 3;
+/** Hạn một lần dò Ollama (`/v1/models`, `/api/show`) — Ollama treo không được giữ cả hàng đợi. */
+export const MS_DO_MODEL = 5_000;
 /** Persona dài quá thì model nhỏ đọc chậm — cắt ở đây. */
 const PERSONA_TOI_DA_DONG = 40;
 
@@ -190,14 +194,15 @@ class LoiOllama extends Error {
 }
 
 /** Client Ollama mỏng: `/v1/models`, `/api/show`, `/v1/chat/completions`. `fetch` truyền vào được để test. */
-export function taoOllama({ url = OLLAMA_MAC_DINH, fetch: f = globalThis.fetch } = {}) {
+export function taoOllama({ url = OLLAMA_MAC_DINH, fetch: f = globalThis.fetch, msDo = MS_DO_MODEL } = {}) {
   const goc = String(url).replace(/\/+$/, '');
   async function goi(duong, init = {}) {
     let res;
     try {
-      res = await f(`${goc}${duong}`, init);
+      // mọi lần gọi đều có hạn: dò model mặc định `msDo`; chat dùng signal của lượt
+      res = await f(`${goc}${duong}`, { ...init, signal: init.signal ?? AbortSignal.timeout(msDo) });
     } catch (e) {
-      if (e?.name === 'AbortError') throw new LoiOllama('quá hạn', { quaHan: true });
+      if (e?.name === 'AbortError' || e?.name === 'TimeoutError') throw new LoiOllama('quá hạn', { quaHan: true });
       throw new LoiOllama(`không tới được Ollama ${goc} (${e?.cause?.code ?? e?.message ?? e})`, { tatHan: true });
     }
     const chu = await res.text();
@@ -344,9 +349,13 @@ export function taoDoNao({ ollama, muon = '', bao, ghi = console.log, backoff = 
 
 /** Đọc `arguments` của tool_call (Ollama trả chuỗi JSON; vài bản trả object). */
 function docArgs(a) {
-  if (a && typeof a === 'object') return a;
-  if (typeof a !== 'string' || !a.trim()) return {};
-  return JSON.parse(a);
+  const laObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+  if (laObj(a)) return a;
+  if (a === undefined || a === null || (typeof a === 'string' && !a.trim())) return {};
+  const j = typeof a === 'string' ? JSON.parse(a) : a;
+  // "null"/mảng/số/chuỗi parse được nhưng KHÔNG phải object tham số → coi là JSON không hợp lệ
+  if (!laObj(j)) throw new Error('arguments không phải object');
+  return j;
 }
 
 /**
@@ -369,11 +378,11 @@ export function taoLuotLocal({
   msXinCho = MS_XIN_CHO,
   vongToiDa = VONG_TOI_DA,
 }) {
-  /** Ai đang chờ `actor.sayStart` của nhân vật nào. */
+  /** Ai đang chờ `actor.sayStart` của nhân vật nào (nhận cả `data` để lọc câu "xin chờ"). */
   const choNoi = new Set();
   san.khiSuKien((event, data) => {
     if (event !== 'actor.sayStart') return;
-    for (const f of Array.from(choNoi)) f(String(data?.actor ?? ''));
+    for (const f of Array.from(choNoi)) f(String(data?.actor ?? ''), data);
   });
 
   return async function luot({ cau, nguoiTraLoi = 'gen', t0 = Date.now() }) {
@@ -381,17 +390,12 @@ export function taoLuotLocal({
     const nhat = { cau, nguoiTraLoi, model: null, vong: 0, toolCalls: [], tuNoi: null, ok: false, lyDo: '' };
     ghi(`[nao-local] ${gio()} SẾP → ${nguoiTraLoi}: «${cau}»`);
 
-    const model = await doNao.lay();
-    if (!model) {
-      nhat.lyDo = 'chua-co-nao';
-      ghi(`[nao-local] ${gio()} bỏ lượt: chưa có não local (đã báo Sếp: ${doNao.daBao() ? 'rồi' : 'chưa'}).`);
-      return nhat;
-    }
-    nhat.model = model;
-
+    // Hẹn "xin chờ" + hạn lượt chạy NGAY, bao cả bước dò model (`doNao.lay()`):
+    // Ollama treo ở dò thì Sếp vẫn nghe "đang nghĩ" rồi "nghĩ lâu quá", hàng đợi không kẹt.
     let moMieng = false;
-    const thoi = (id) => {
+    const thoi = (id, data) => {
       if (id !== nguoiTraLoi || moMieng) return;
+      if (data?.text === CAU_XIN_CHO) return; // câu "xin chờ" không phải câu trả lời
       moMieng = true;
       ghi(`[nao-local] ${gio()} ${nguoiTraLoi} BẮT ĐẦU NÓI sau ${Date.now() - t0} ms (từ lúc Sếp gõ)`);
     };
@@ -401,10 +405,19 @@ export function taoLuotLocal({
     }, msXinCho);
     const ac = new AbortController();
     const henHan = setTimeout(() => ac.abort(), msHan);
+    const huyLuon = new Promise((_, rej) => ac.signal.addEventListener('abort', () => rej(new LoiOllama('quá hạn', { quaHan: true }))));
+    huyLuon.catch(() => {}); // tránh unhandledRejection khi lượt xong trước hạn
 
     let daNoi = false;
     let noiDung = '';
     try {
+      const model = await Promise.race([doNao.lay(), huyLuon]);
+      if (!model) {
+        nhat.lyDo = 'chua-co-nao';
+        ghi(`[nao-local] ${gio()} bỏ lượt: chưa có não local (đã báo Sếp: ${doNao.daBao() ? 'rồi' : 'chưa'}).`);
+        return nhat;
+      }
+      nhat.model = model;
       const mt = await san.goi('stage.describe', {});
       const cuaBoss = cuaBossTuDescribe(mt.ok ? mt.result : undefined);
       if (mt.ok) capNhatActors(mt.result?.actors);
@@ -426,7 +439,7 @@ export function taoLuotLocal({
           const id = c.id ?? `call_${v}_${i}`;
           const kq = await thucThi(c, { cuaBoss, nguoiTraLoi });
           nhat.toolCalls.push(kq.nhat);
-          if (kq.nhat.cmd === 'actor.say' && kq.ok && !cuaBoss.has(String(kq.nhat.args?.actor))) daNoi = true;
+          if (kq.nhat.cmd === 'actor.say' && kq.ok && String(kq.nhat.args?.actor) === nguoiTraLoi) daNoi = true; // đúng người trả lời mới tính
           messages.push({ role: 'tool', tool_call_id: id, content: JSON.stringify(kq.traModel).slice(0, 2000) });
         }
       }
@@ -520,6 +533,7 @@ export async function batDriver({
   msGop = MS_GOP_MAC_DINH,
   msHan = MS_HAN_LOCAL,
   msXinCho = MS_XIN_CHO,
+  msDo = MS_DO_MODEL,
   msNhipTim = MS_NHIP_TIM_MAC_DINH,
   msQuaHanTim = MS_QUA_HAN_TIM_MAC_DINH,
   backoff = { min: MS_BACKOFF_MIN, max: MS_BACKOFF_MAX },
@@ -527,7 +541,7 @@ export async function batDriver({
   layPersona = docPersona,
 }) {
   const san = await noiSanKhau({ WebSocket, cong, token, ghi, msNhipTim, msQuaHanTim, backoff });
-  const ollama = taoOllama({ url: ollamaUrl, fetch: f });
+  const ollama = taoOllama({ url: ollamaUrl, fetch: f, msDo });
   const { tools, banDo } = sinhToolLocal({ ghi });
   let actors = ACTOR_MAC_DINH;
   const capNhatActors = (ds) => {
@@ -552,15 +566,26 @@ export async function batDriver({
       khiXongLuot(kq);
     },
   });
-  let tDau = null;
-  let nguoiDangGop = 'gen';
-  const gop = taoGop({
-    msGop,
-    xong: (cau) => {
-      hangDoi.them({ cau, nguoiTraLoi: nguoiDangGop, t0: tDau ?? Date.now() });
-      tDau = null;
-    },
-  });
+  // Cửa sổ gộp 800 ms tách THEO NGƯỜI NHẬN: hai câu gọi hai người khác nhau ("Gen ơi…",
+  // "Mai ơi…") thành hai lượt riêng, mỗi người một lượt. Cách khác (lấy người của câu
+  // đầu/cuối cho cả cụm) luôn bỏ rơi hoặc nhét nhầm câu của một trong hai người.
+  const gopTheoNguoi = new Map(); // id → { gop, tDau }
+  const gopCua = (ng) => {
+    let g = gopTheoNguoi.get(ng);
+    if (!g) {
+      g = { tDau: null, gop: null };
+      g.gop = taoGop({
+        msGop,
+        xong: (cau) => {
+          hangDoi.them({ cau, nguoiTraLoi: ng, t0: g.tDau ?? Date.now() });
+          g.tDau = null;
+        },
+      });
+      gopTheoNguoi.set(ng, g);
+    }
+    return g;
+  };
+  const trung = taoLocTrung();
 
   san.khiSuKien((event, data) => {
     if (event === 'bridge.stageOnline') void lamMoiActors();
@@ -572,12 +597,13 @@ export async function batDriver({
       ghi(`[nao-local] ${gio()} bỏ qua «${data.text}» — người nhận là nhân vật của Sếp (lớp hiểu lệnh lo).`);
       return;
     }
-    if (gop.dangCho() === 0) {
-      tDau = Date.now();
+    if (trung(data)) return; // text + speech cùng một câu mic → chỉ nghe một lần
+    const g = gopCua(ng);
+    if (g.gop.dangCho() === 0) {
+      g.tDau = Date.now();
       phanXa(san, ng);
     }
-    nguoiDangGop = ng;
-    gop.nhan(data.text);
+    g.gop.nhan(data.text);
   });
 
   async function lamMoiActors() {
@@ -602,6 +628,7 @@ export async function batDriver({
 }
 
 export async function chay() {
+  giuKhoaHoacThoat({ ten: 'nao-local', tienTo: `[nao-local] ${gio()}` });
   const { default: WebSocket } = await import('ws');
   const cong = process.env.GEN_STAGE_PORT ?? '8787';
   const ollamaUrl = process.env.GEN_STAGE_OLLAMA_URL ?? OLLAMA_MAC_DINH;

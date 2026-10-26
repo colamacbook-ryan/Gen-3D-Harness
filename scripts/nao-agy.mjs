@@ -53,6 +53,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { giuKhoaHoacThoat } from './khoa-nao.mjs';
 
 const GOC = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -90,6 +91,24 @@ export function laCauCuaSep(event, data = {}) {
   if (data.handled === true) return false;
   if (String(data.actor ?? 'owner') === 'gen') return false;
   return typeof data.text === 'string' && data.text.trim().length > 0;
+}
+
+/**
+ * Lọc câu trùng: một câu nói bằng mic tới driver HAI lần (`user.text` rồi
+ * `user.speech`, cùng nhịp) → không được thành "xin chào. xin chào". Khoá theo
+ * `to|text` (chuẩn hoá chữ thường, gọn khoảng trắng) trong `ms` (mặc định 1,5 s).
+ * Dùng chung cho cả hai driver. Trả hàm `(data) => boolean` — true = trùng, bỏ.
+ */
+export function taoLocTrung({ ms = 1500, now = () => Date.now() } = {}) {
+  const thay = new Map();
+  return (data = {}) => {
+    const t = now();
+    for (const [k, v] of thay) if (t - v > ms) thay.delete(k);
+    const khoa = `${String(data.to ?? 'camera')}|${String(data.text ?? '').toLowerCase().replace(/\s+/g, ' ').trim()}`;
+    if (thay.has(khoa)) return true;
+    thay.set(khoa, t);
+    return false;
+  };
 }
 
 /* ======================================================= 2. gộp câu 800 ms */
@@ -515,6 +534,32 @@ export function phanXa(san, actor = 'gen') {
   void san.goi('actor.emote', { actor, emote: 'suy-nghi' });
 }
 
+/**
+ * Gắn tai nghe cho driver agy: lọc câu (`laCauCuaSep`) → lọc trùng → phản xạ →
+ * gộp 800 ms → `themLuot({ cau, t0 })`. Tách khỏi `chay()` để test được.
+ */
+export function gannNgheCau({ san, msGop = MS_GOP_MAC_DINH, themLuot }) {
+  /** Mốc "Sếp gõ" của lượt đang gộp — để đo đúng độ trễ Sếp cảm nhận được. */
+  let tDau = null;
+  const gop = taoGop({
+    msGop,
+    xong: (cau) => {
+      themLuot({ cau, t0: tDau ?? Date.now() });
+      tDau = null;
+    },
+  });
+  const trung = taoLocTrung();
+  san.khiSuKien((event, data) => {
+    if (!laCauCuaSep(event, data)) return;
+    if (trung(data)) return; // text + speech cùng một câu mic → chỉ nghe một lần
+    if (gop.dangCho() === 0) {
+      tDau = Date.now();
+      phanXa(san); // ≤300 ms: Sếp thấy Gen quay sang và nghĩ ngay
+    }
+    gop.nhan(data.text);
+  });
+}
+
 /* ============================================================ 8. nối bridge */
 
 /** Nhịp tim: driver gửi {ping}, bridge trả {pong} — hai chiều, mỗi 15 s. */
@@ -758,6 +803,7 @@ export async function noiSanKhau({
 /* ================================================================= 9. main */
 
 export async function chay() {
+  giuKhoaHoacThoat({ ten: 'nao-agy', tienTo: `[nao] ${gio()}` });
   const { default: WebSocket } = await import('ws');
   const cong = process.env.GEN_STAGE_PORT ?? '8787';
   const token = process.env.GEN_STAGE_TOKEN ?? '';
@@ -802,24 +848,7 @@ export async function chay() {
 
   const luot = taoLuot({ san, skill, tenMcp, nghi, cheDo: naoTmux ? 'tmux' : 'print' });
   const hangDoi = taoHangDoi({ chay: (x) => luot(x.cau, { t0: x.t0 }) });
-  /** Mốc "Sếp gõ" của lượt đang gộp — để đo đúng độ trễ Sếp cảm nhận được. */
-  let tDau = null;
-  const gop = taoGop({
-    msGop,
-    xong: (cau) => {
-      hangDoi.them({ cau, t0: tDau ?? Date.now() });
-      tDau = null;
-    },
-  });
-
-  san.khiSuKien((event, data) => {
-    if (!laCauCuaSep(event, data)) return;
-    if (gop.dangCho() === 0) {
-      tDau = Date.now();
-      phanXa(san); // ≤300 ms: Sếp thấy Gen quay sang và nghĩ ngay
-    }
-    gop.nhan(data.text);
-  });
+  gannNgheCau({ san, msGop, themLuot: (x) => hangDoi.them(x) });
 
   console.log(`[nao] ${gio()} đang nghe user.text/user.speech — Sếp gõ trong Firefox là em nghe.`);
   for (const tin of ['SIGINT', 'SIGTERM']) {
