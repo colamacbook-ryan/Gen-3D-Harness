@@ -86,6 +86,24 @@ export class SoChatroom {
     this.dong = themDong(this.dong, { t, loai: 'he-thong', ai: '', text }, this.dongToiDa);
   }
 
+  private daVe: string | null = null;
+
+  /**
+   * Mô hình nếu khác lần đã trả gần nhất, không thì null — để host chỉ
+   * `postMessage` khi trạng thái thật sự đổi. `quenDaVe()` khi webview dựng lại.
+   */
+  moHinhNeuDoi(soDong = 50): MoHinhChatroom | null {
+    const mh = this.moHinh(soDong);
+    const json = JSON.stringify(mh);
+    if (json === this.daVe) return null;
+    this.daVe = json;
+    return mh;
+  }
+
+  quenDaVe(): void {
+    this.daVe = null;
+  }
+
   moHinh(soDong = 50): MoHinhChatroom {
     return {
       bridgeNoi: this.bridgeNoi,

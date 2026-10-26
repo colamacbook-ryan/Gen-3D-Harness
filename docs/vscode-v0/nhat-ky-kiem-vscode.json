@@ -1,26 +1,30 @@
 {
-  "batDau": "2026-10-26T05:49:36.446Z",
+  "batDau": "2026-10-26T06:11:11.688Z",
   "cong": {
-    "bridge": 8827,
-    "tts": 8828,
-    "mcp": 8829,
-    "stt": 8830,
-    "dev": 5193,
-    "tinh": 5199
+    "bridge": 8850,
+    "tts": 8851,
+    "mcp": 8852,
+    "stt": 8853,
+    "dev": 5203,
+    "tinh": 8854
   },
   "buoc": [
     "dò vite trước khi bật: khong-co",
     "bridge + vite đã lên; dò vite: gen-stage",
-    "[cầu nối] đã nối ws://127.0.0.1:8827/",
+    "[cầu nối] đã nối ws://127.0.0.1:8850/",
     "nhân vật từ stage.describe: [{\"id\":\"owner\",\"name\":\"Javis\",\"controlledBy\":\"owner\"},{\"id\":\"gen\",\"name\":\"Gen\",\"controlledBy\":\"agent\"}]",
+    "sandbox iframe: {\"thuocTinh\":\"allow-scripts allow-same-origin allow-forms allow-downloads\",\"trongKhung\":{\"webgl\":true,\"audio\":true,\"localStorage\":true,\"fetchTrang\":200,\"origin\":\"http://127.0.0.1:5203\",\"wsSanKhau\":true},\"formOChat\":true,\"voBoQuaTinIframe\":true}",
     "[chatroom] chọn người nghe: gen",
     "[chatroom] → actor.say {\"actor\":\"owner\",\"text\":\"Gen ơi, chào em\",\"to\":\"gen\",\"interrupt\":true}",
-    "\"Gen ơi, chào em\" → user.text sau 202 ms",
+    "\"Gen ơi, chào em\" → user.text sau 203 ms",
     "[chatroom] → actor.say {\"actor\":\"owner\",\"text\":\"hôm nay mình làm gì?\",\"to\":\"gen\",\"interrupt\":true}",
-    "\"hôm nay mình làm gì?\" → user.text sau 199 ms"
+    "\"hôm nay mình làm gì?\" → user.text sau 200 ms"
   ],
   "loiConsole": [
     "[panel.html] Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "[panel.html] Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "[panel.html] Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "[panel.html] Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
     "[panel.html] Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
     "[panel.html] Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
     "[panel.html] Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
@@ -29,16 +33,19 @@
   ],
   "taiNguyenLoi": [
     "[panel.html] net::ERR_CONNECTION_REFUSED http://127.0.0.1:8790/stt/khoe",
-    "[panel.html] 502 http://127.0.0.1:8828/tts?text=D%E1%BA%A1%2C+ch%C3%A0o&voice=nu&rate=0&pitch=0",
-    "[panel.html] 502 http://127.0.0.1:8828/tts?text=Gen+%C6%A1i%2C+ch%C3%A0o+em&voice=nam&rate=0&pitch=0",
-    "[panel.html] 502 http://127.0.0.1:8828/tts?text=h%C3%B4m+nay+m%C3%ACnh+l%C3%A0m+g%C3%AC%3F&voice=nam&rate=0&pitch=0",
-    "[panel.html] 502 http://127.0.0.1:8828/tts?text=D%E1%BA%A1%2C+S%E1%BA%BFp%3F&voice=nu&rate=0&pitch=0",
-    "[panel.html] 502 http://127.0.0.1:8828/tts?text=Em+ch%C6%B0a+c%C3%B3+n%C3%A3o%2C+S%E1%BA%BFp+b%E1%BA%ADt+agy+nh%C3%A9.&voice=nu&rate=0&pitch=0"
+    "[panel.html] 502 http://127.0.0.1:8851/tts?text=th%E1%BB%AD+%C3%B4+chat+trong+iframe+sandbox&voice=nam&rate=0&pitch=0",
+    "[panel.html] 502 http://127.0.0.1:8851/tts?text=Em+nghe+%E1%BA%A1&voice=nu&rate=0&pitch=0",
+    "[panel.html] 502 http://127.0.0.1:8851/tts?text=Em+ch%C6%B0a+c%C3%B3+n%C3%A3o%2C+S%E1%BA%BFp+b%E1%BA%ADt+agy+nh%C3%A9.&voice=nu&rate=0&pitch=0",
+    "[panel.html] 502 http://127.0.0.1:8851/tts?text=D%E1%BA%A1%2C+ch%C3%A0o&voice=nu&rate=0&pitch=0",
+    "[panel.html] 502 http://127.0.0.1:8851/tts?text=Gen+%C6%A1i%2C+ch%C3%A0o+em&voice=nam&rate=0&pitch=0",
+    "[panel.html] 502 http://127.0.0.1:8851/tts?text=h%C3%B4m+nay+m%C3%ACnh+l%C3%A0m+g%C3%AC%3F&voice=nam&rate=0&pitch=0",
+    "[panel.html] 502 http://127.0.0.1:8851/tts?text=D%E1%BA%A1+em+%C4%91%C3%A2y&voice=nu&rate=0&pitch=0",
+    "[panel.html] 502 http://127.0.0.1:8851/tts?text=Em+ch%C6%B0a+c%C3%B3+n%C3%A3o%2C+S%E1%BA%BFp+b%E1%BA%ADt+agy+nh%C3%A9.&voice=nu&rate=0&pitch=0"
   ],
   "viPhamCsp": [],
   "suKien": [
     {
-      "t": 1792993778743,
+      "t": 1792995073906,
       "event": "bridge.hello",
       "data": {
         "stageOnline": false,
@@ -46,12 +53,12 @@
       }
     },
     {
-      "t": 1792993786618,
+      "t": 1792995081627,
       "event": "bridge.stageOnline",
       "data": {}
     },
     {
-      "t": 1792993786619,
+      "t": 1792995081628,
       "event": "bridge.brain",
       "data": {
         "count": 0,
@@ -59,7 +66,85 @@
       }
     },
     {
-      "t": 1792993821455,
+      "t": 1792995098929,
+      "event": "user.text",
+      "data": {
+        "actor": "owner",
+        "text": "thử ô chat trong iframe sandbox",
+        "to": "camera"
+      }
+    },
+    {
+      "t": 1792995099178,
+      "event": "actor.sayStart",
+      "data": {
+        "actor": "owner",
+        "text": "thử ô chat trong iframe sandbox"
+      }
+    },
+    {
+      "t": 1792995099737,
+      "event": "actor.emoteDone",
+      "data": {
+        "actor": "gen",
+        "emote": "chu-y"
+      }
+    },
+    {
+      "t": 1792995100647,
+      "event": "actor.sayStart",
+      "data": {
+        "actor": "gen",
+        "text": "Em nghe ạ"
+      }
+    },
+    {
+      "t": 1792995100828,
+      "event": "cmd.queued",
+      "data": {
+        "cmd": "actor.say",
+        "actor": "gen",
+        "position": 1,
+        "dangChay": "actor.say"
+      }
+    },
+    {
+      "t": 1792995101940,
+      "event": "actor.sayDone",
+      "data": {
+        "actor": "gen",
+        "text": "Em nghe ạ",
+        "to": "camera"
+      }
+    },
+    {
+      "t": 1792995102071,
+      "event": "actor.sayStart",
+      "data": {
+        "actor": "gen",
+        "text": "Em chưa có não, Sếp bật agy nhé."
+      }
+    },
+    {
+      "t": 1792995102163,
+      "event": "actor.sayDone",
+      "data": {
+        "actor": "owner",
+        "text": "thử ô chat trong iframe sandbox",
+        "to": "camera"
+      }
+    },
+    {
+      "t": 1792995114120,
+      "event": "actor.sayDone",
+      "data": {
+        "actor": "gen",
+        "text": "Em chưa có não, Sếp bật agy nhé.",
+        "to": "camera"
+      }
+    },
+    {
+      "t": 1792995122008,
       "event": "user.command",
       "data": {
         "text": "Gen ơi, chào em",
@@ -77,7 +162,7 @@
       }
     },
     {
-      "t": 1792993821460,
+      "t": 1792995122012,
       "event": "user.text",
       "data": {
         "actor": "owner",
@@ -87,7 +172,7 @@
       }
     },
     {
-      "t": 1792993821720,
+      "t": 1792995122287,
       "event": "actor.sayStart",
       "data": {
         "actor": "gen",
@@ -95,7 +180,7 @@
       }
     },
     {
-      "t": 1792993821728,
+      "t": 1792995122307,
       "event": "cmd.queued",
       "data": {
         "cmd": "actor.emote",
@@ -105,7 +190,7 @@
       }
     },
     {
-      "t": 1792993821731,
+      "t": 1792995122352,
       "event": "actor.sayStart",
       "data": {
         "actor": "owner",
@@ -113,7 +198,7 @@
       }
     },
     {
-      "t": 1792993822935,
+      "t": 1792995123502,
       "event": "actor.sayDone",
       "data": {
         "actor": "gen",
@@ -122,7 +207,7 @@
       }
     },
     {
-      "t": 1792993823484,
+      "t": 1792995124102,
       "event": "actor.sayDone",
       "data": {
         "actor": "owner",
@@ -131,7 +216,7 @@
       }
     },
     {
-      "t": 1792993824949,
+      "t": 1792995125513,
       "event": "actor.emoteDone",
       "data": {
         "actor": "gen",
@@ -139,7 +224,7 @@
       }
     },
     {
-      "t": 1792993825194,
+      "t": 1792995125752,
       "event": "user.text",
       "data": {
         "actor": "owner",
@@ -148,7 +233,7 @@
       }
     },
     {
-      "t": 1792993825315,
+      "t": 1792995125992,
       "event": "actor.sayStart",
       "data": {
         "actor": "owner",
@@ -156,7 +241,7 @@
       }
     },
     {
-      "t": 1792993825994,
+      "t": 1792995126555,
       "event": "actor.emoteDone",
       "data": {
         "actor": "gen",
@@ -164,15 +249,15 @@
       }
     },
     {
-      "t": 1792993826898,
+      "t": 1792995127430,
       "event": "actor.sayStart",
       "data": {
         "actor": "gen",
-        "text": "Dạ, Sếp?"
+        "text": "Dạ em đây"
       }
     },
     {
-      "t": 1792993827095,
+      "t": 1792995127653,
       "event": "cmd.queued",
       "data": {
         "cmd": "actor.say",
@@ -182,7 +267,7 @@
       }
     },
     {
-      "t": 1792993827453,
+      "t": 1792995128150,
       "event": "actor.sayDone",
       "data": {
         "actor": "owner",
@@ -191,16 +276,16 @@
       }
     },
     {
-      "t": 1792993828113,
+      "t": 1792995128721,
       "event": "actor.sayDone",
       "data": {
         "actor": "gen",
-        "text": "Dạ, Sếp?",
+        "text": "Dạ em đây",
         "to": "owner"
       }
     },
     {
-      "t": 1792993828279,
+      "t": 1792995128831,
       "event": "actor.sayStart",
       "data": {
         "actor": "gen",
@@ -208,7 +293,7 @@
       }
     },
     {
-      "t": 1792993831342,
+      "t": 1792995131891,
       "event": "actor.sayDone",
       "data": {
         "actor": "gen",
@@ -219,12 +304,12 @@
   ],
   "lenhGui": [
     {
-      "t": 1792993821437,
+      "t": 1792995121999,
       "loai": "gui",
       "text": "Gen ơi, chào em"
     },
     {
-      "t": 1792993825177,
+      "t": 1792995125741,
       "loai": "gui",
       "text": "hôm nay mình làm gì?"
     }
@@ -238,13 +323,13 @@
         "loai": "taiLai"
       }
     ],
-    "dongTrangThai": "Vite chưa chạy ở http://127.0.0.1:5193."
+    "dongTrangThai": "Vite chưa chạy ở http://127.0.0.1:5203."
   },
-  "cspPanel": "default-src 'none'; frame-src http://127.0.0.1:5193; style-src http://127.0.0.1:5199 'nonce-Ae8cGO16ZEDAkLXpFwQ7vKmBo1ltlyam'; script-src 'nonce-Ae8cGO16ZEDAkLXpFwQ7vKmBo1ltlyam'",
-  "urlIframe": "http://127.0.0.1:5193/?bridge=1&bridgePort=8827&ttsPort=8828",
+  "cspPanel": "default-src 'none'; frame-src http://127.0.0.1:5203; style-src http://127.0.0.1:8854 'nonce-5wXz5WCQmAKxm-vpSBe4Ig'; script-src 'nonce-5wXz5WCQmAKxm-vpSBe4Ig'",
+  "urlIframe": "http://127.0.0.1:5203/?bridge=1&bridgePort=8850&ttsPort=8851",
   "tinNenToiIframe": [
     {
-      "origin": "http://127.0.0.1:5199",
+      "origin": "http://127.0.0.1:8854",
       "data": {
         "nguon": "gen-stage-vscode",
         "loai": "nen",
@@ -253,13 +338,26 @@
       }
     }
   ],
+  "sandbox": {
+    "thuocTinh": "allow-scripts allow-same-origin allow-forms allow-downloads",
+    "trongKhung": {
+      "webgl": true,
+      "audio": true,
+      "localStorage": true,
+      "fetchTrang": 200,
+      "origin": "http://127.0.0.1:5203",
+      "wsSanKhau": true
+    },
+    "formOChat": true,
+    "voBoQuaTinIframe": true
+  },
   "panel": {
     "tinLen": [
       {
         "loai": "sanSang"
       }
     ],
-    "khungUrl": "http://127.0.0.1:5193/?bridge=1&bridgePort=8827&ttsPort=8828"
+    "khungUrl": "http://127.0.0.1:5203/?bridge=1&bridgePort=8850&ttsPort=8851"
   },
   "chatroom": {
     "nhanVat": [
@@ -277,51 +375,75 @@
     "dangChon": "gen",
     "dong": [
       {
-        "t": 1792993786618,
+        "t": 1792995081627,
         "loai": "he-thong",
         "ai": "",
         "text": "Sân khấu đã nối bridge"
       },
       {
-        "t": 1792993821455,
+        "t": 1792995098929,
+        "loai": "sep",
+        "ai": "owner",
+        "text": "thử ô chat trong iframe sandbox",
+        "toi": "camera"
+      },
+      {
+        "t": 1792995100647,
+        "loai": "nhan-vat",
+        "ai": "gen",
+        "text": "Em nghe ạ"
+      },
+      {
+        "t": 1792995102071,
+        "loai": "nhan-vat",
+        "ai": "gen",
+        "text": "Em chưa có não, Sếp bật agy nhé."
+      },
+      {
+        "t": 1792995122008,
         "loai": "lenh",
         "ai": "",
         "text": "Hiểu lệnh: actor.emote → gen"
       },
       {
-        "t": 1792993821460,
+        "t": 1792995122012,
         "loai": "sep",
         "ai": "owner",
         "text": "Gen ơi, chào em",
         "toi": "gen"
       },
       {
-        "t": 1792993821720,
+        "t": 1792995122287,
         "loai": "nhan-vat",
         "ai": "gen",
         "text": "Dạ, chào"
       },
       {
-        "t": 1792993825194,
+        "t": 1792995125752,
         "loai": "sep",
         "ai": "owner",
         "text": "hôm nay mình làm gì?",
         "toi": "gen"
       },
       {
-        "t": 1792993826898,
+        "t": 1792995127430,
         "loai": "nhan-vat",
         "ai": "gen",
-        "text": "Dạ, Sếp?"
+        "text": "Dạ em đây"
       },
       {
-        "t": 1792993828279,
+        "t": 1792995128831,
         "loai": "nhan-vat",
         "ai": "gen",
         "text": "Em chưa có não, Sếp bật agy nhé."
       }
     ],
     "userText": [
+      {
+        "actor": "owner",
+        "text": "thử ô chat trong iframe sandbox",
+        "to": "camera"
+      },
       {
         "actor": "owner",
         "text": "Gen ơi, chào em",
@@ -336,34 +458,34 @@
     ],
     "lenhDaGui": [
       {
-        "t": 1792993821437,
+        "t": 1792995121999,
         "loai": "gui",
         "text": "Gen ơi, chào em"
       },
       {
-        "t": 1792993825177,
+        "t": 1792995125741,
         "loai": "gui",
         "text": "hôm nay mình làm gì?"
       }
     ]
   },
   "bridgeLog": [
-    "[bridge 05:49:38] sân khấu nối vào  ws://127.0.0.1:8827/?role=stage  (mở app với ?bridge=1)",
-    "[bridge 05:49:38] client ra lệnh    ws://127.0.0.1:8827/",
-    "[bridge 05:49:38] client nối. Tổng: 1 ",
-    "[bridge 05:49:38] client nối. Tổng: 2 ",
-    "[bridge 05:49:46] sân khấu đã nối. Client đang chờ: 2",
-    "[bridge 05:49:46] → stage.describe {}",
-    "[bridge 05:50:21] → actor.say {\"actor\":\"owner\",\"text\":\"Gen ơi, chào em\",\"to\":\"gen\",\"interrupt\":true}",
-    "[bridge 05:50:25] → actor.say {\"actor\":\"owner\",\"text\":\"hôm nay mình làm gì?\",\"to\":\"gen\",\"interrupt\":true}"
+    "[bridge 06:11:13] sân khấu nối vào  ws://127.0.0.1:8850/?role=stage  (mở app với ?bridge=1)",
+    "[bridge 06:11:13] client ra lệnh    ws://127.0.0.1:8850/",
+    "[bridge 06:11:13] client nối. Tổng: 1 ",
+    "[bridge 06:11:13] client nối. Tổng: 2 ",
+    "[bridge 06:11:21] sân khấu đã nối. Client đang chờ: 2",
+    "[bridge 06:11:21] → stage.describe {}",
+    "[bridge 06:12:02] → actor.say {\"actor\":\"owner\",\"text\":\"Gen ơi, chào em\",\"to\":\"gen\",\"interrupt\":true}",
+    "[bridge 06:12:05] → actor.say {\"actor\":\"owner\",\"text\":\"hôm nay mình làm gì?\",\"to\":\"gen\",\"interrupt\":true}"
   ],
   "viteLoi": [],
-  "ketThuc": "2026-10-26T05:51:03.929Z",
+  "ketThuc": "2026-10-26T06:12:47.783Z",
   "thanhCong": true,
   "tomTat": {
     "viPhamCsp": 0,
-    "loiConsole": 6,
-    "suKien": 20,
+    "loiConsole": 9,
+    "suKien": 29,
     "lenhGui": 2
   }
 }

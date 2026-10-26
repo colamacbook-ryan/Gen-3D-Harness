@@ -34,19 +34,25 @@ export class ChatroomProvider implements vscode.WebviewViewProvider {
     });
     view.webview.onDidReceiveMessage((m: TinTuChatroom) => void this.nhan(m));
     view.onDidChangeVisibility(() => {
-      if (view.visible) this.ve();
+      if (view.visible) this.ve(true);
     });
+    // document mới chưa có gì — lần vẽ đầu phải gửi đủ dù mô hình không đổi
+    this.so.quenDaVe();
     view.onDidDispose(() => {
       if (this.view === view) this.view = undefined;
     });
   }
 
-  /** Gửi mô hình hiện tại xuống webview (nếu đang mở). */
-  ve(): void {
-    void this.view?.webview.postMessage({ lenh: 'moHinh', moHinh: this.so.moHinh() });
+  /** Gửi mô hình xuống webview (nếu đang mở) — chỉ khi nó đổi, trừ khi `epBuoc`. */
+  ve(epBuoc = false): void {
+    if (!this.view) return;
+    if (epBuoc) this.so.quenDaVe();
+    const mh = this.so.moHinhNeuDoi();
+    if (mh) void this.view.webview.postMessage({ lenh: 'moHinh', moHinh: mh });
   }
 
   private async nhan(m: TinTuChatroom): Promise<void> {
-    if (await xuLyTinChatroom(m, this.so, this.cauNoi, this.ghi)) this.ve();
+    // sanSang = document vừa nạp xong script: luôn gửi đủ
+    if (await xuLyTinChatroom(m, this.so, this.cauNoi, this.ghi)) this.ve(m?.loai === 'sanSang');
   }
 }

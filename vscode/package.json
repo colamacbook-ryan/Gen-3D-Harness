@@ -14,6 +14,16 @@
   ],
   "main": "./out/extension.js",
   "activationEvents": [],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Restricted Mode: xem sân khấu + chatroom với bridge/vite có sẵn; KHÔNG tự bật tiến trình nào. genStage.pnpm/genStage.root không đọc từ workspace.",
+      "restrictedConfigurations": [
+        "genStage.pnpm",
+        "genStage.root"
+      ]
+    }
+  },
   "contributes": {
     "commands": [
       {
@@ -61,7 +71,8 @@
         "genStage.root": {
           "type": "string",
           "default": "",
-          "description": "Thư mục repo Gen-Stage (có bridge/server.ts). Bỏ trống = tự tìm trong workspace, rồi thư mục cha của extension."
+          "description": "Thư mục repo Gen-Stage (có bridge/server.ts) — chỉ đặt được ở User settings (scope machine). Bỏ trống = tự tìm trong workspace, rồi thư mục cha của extension; root tự dò phải được Sếp xác nhận một lần (nhớ theo workspace) trước khi tự bật tiến trình.",
+          "scope": "machine"
         },
         "genStage.bridgePort": {
           "type": "number",
@@ -81,12 +92,13 @@
         "genStage.tuBat": {
           "type": "boolean",
           "default": true,
-          "description": "Cổng chưa có ai nghe thì tự bật `pnpm bridge` + vite (127.0.0.1). Tiến trình có sẵn thì luôn dùng lại, không bao giờ tắt."
+          "description": "Cổng chưa có ai nghe thì tự bật `pnpm bridge` + vite (127.0.0.1) — chỉ trong workspace đã tin cậy. Tiến trình có sẵn thì luôn dùng lại, không bao giờ tắt."
         },
         "genStage.pnpm": {
           "type": "string",
           "default": "pnpm",
-          "description": "Lệnh pnpm (đường dẫn tuyệt đối nếu PATH của VS Code không thấy nvm/corepack)."
+          "description": "Lệnh pnpm: tên lệnh tìm trong PATH (chỉ các thư mục tuyệt đối) hoặc đường dẫn tuyệt đối — đường dẫn tương đối bị từ chối. Chỉ đặt được ở User settings (scope machine).",
+          "scope": "machine"
         }
       }
     }

@@ -107,3 +107,27 @@ test('CauNoi: nhịp tim — bridge không trả pong thì tự đóng để n�
   await new Promise((r) => { for (const c of wss.clients) c.terminate(); wss.close(() => r()); });
   assert.equal(trangThai[0], true);
 });
+
+test('CauNoi: nhịp tim quá hạn mà close() không bao giờ bắn onclose → tự dọn + nối lại ngay', async () => {
+  const tao = [];
+  // ws giả "OPEN treo": close() không làm gì, không bao giờ gọi onclose
+  const taoWs = () => {
+    const ws = { readyState: 0, dong: 0, send: () => undefined, close() { this.dong++; }, onopen: null, onmessage: null, onclose: null, onerror: null };
+    tao.push(ws);
+    setTimeout(() => { ws.readyState = 1; ws.onopen?.({}); }, 5);
+    return ws;
+  };
+  const trangThai = [];
+  const cn = new CauNoi({ url: 'ws://gia/', taoWs, khiTrangThai: (n) => trangThai.push(n), nhipTimMs: 30, quaHanTimMs: 100 });
+  cn.bat();
+  await doiDen(() => cn.noi);
+  const cho = cn.goi('treo');
+  await doiDen(() => tao.length >= 2, 3000); // backoff 1 s rồi nối lại, không đợi onclose
+  assert.equal(tao[0].dong, 1, 'đã gọi close() đúng một lần');
+  assert.match((await cho).error, /Quá hạn nhịp tim/);
+  assert.deepEqual(trangThai.slice(0, 2), [true, false]);
+  tao[0].onclose?.({ code: 1006 }); // onclose tới muộn: bị bỏ qua, không nối thêm
+  await doiDen(() => cn.noi);
+  cn.tat();
+  assert.equal(tao.length, 2);
+});

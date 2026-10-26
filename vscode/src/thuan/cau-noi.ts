@@ -185,6 +185,17 @@ export class CauNoi {
         } catch {
           /* bỏ qua */
         }
+        // Không chờ `onclose`: kết nối "OPEN giả" có thể không bao giờ bắn close
+        // (close handshake treo). Tự dọn + hẹn nối lại ngay; onclose tới muộn
+        // thấy `this.ws !== ws` nên bỏ qua.
+        if (this.ws === ws) {
+          this.ws = null;
+          ws.onmessage = null;
+          this.dungTim();
+          this.huyDangCho('Quá hạn nhịp tim bridge');
+          this.o.khiTrangThai?.(false);
+          this.henLai();
+        }
         return;
       }
       try {

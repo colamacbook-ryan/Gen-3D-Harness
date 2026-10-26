@@ -5,9 +5,9 @@
  * Chạy:  pnpm -C vscode build && node scripts/kiem-vscode.mjs
  *
  * Dựng thật, chỉ giả đúng một thứ là "VS Code":
- *   bridge thật (`bridge/server.ts`)  ← cổng RIÊNG 8827-8830, không đụng 8787 của Sếp
- *   vite thật  127.0.0.1:5193 --strictPort
- *   server tĩnh 127.0.0.1:5199        ← đóng vai origin `vscode-webview://` (cspSource)
+ *   bridge thật (`bridge/server.ts`)  ← cổng RIÊNG 8850-8853, không đụng 8787 của Sếp
+ *   vite thật  127.0.0.1:5203 --strictPort
+ *   server tĩnh 127.0.0.1:8854        ← đóng vai origin `vscode-webview://` (cspSource)
  *   Playwright Chromium                ← đóng vai khung webview; `acquireVsCodeApi` giả
  *   "extension host" = CHÍNH code đã build trong `vscode/out/thuan/*` (CauNoi, SoChatroom,
  *   xuLyTinChatroom, taoHtml*) — không viết lại logic nào trong script này.
@@ -43,9 +43,9 @@ const html = require(path.join(VS, 'out/thuan/html.js'));
 const ch = require(path.join(VS, 'out/thuan/cau-hinh.js'));
 const dc = require(path.join(VS, 'out/thuan/do-cong.js'));
 
-// Cổng RIÊNG, khác bộ 8797-8799 mà các script kiem-* khác (và builder khác chạy song song) hay dùng —
+// Cổng RIÊNG, khác bộ 8797-8830 mà các script kiem-* khác (và builder khác chạy song song) hay dùng —
 // lượt đầu dùng 8797 đã bị một sân khấu lạ nối vào giữa chừng.
-const CONG = { bridge: 8827, tts: 8828, mcp: 8829, stt: 8830, dev: 5193, tinh: 5199 };
+const CONG = { bridge: 8850, tts: 8851, mcp: 8852, stt: 8853, dev: 5203, tinh: 8854 };
 const CFG = { devPort: CONG.dev, bridgePort: CONG.bridge, ttsPort: CONG.tts };
 const ORIGIN_TINH = `http://127.0.0.1:${CONG.tinh}`;
 
@@ -246,6 +246,44 @@ try {
   await panel.page.evaluate(() => window.postMessage({ lenh: 'hienAn', visible: true, active: false }, '*'));
   await doi(300);
   nhatKy.tinNenToiIframe = await khung.evaluate(() => window.__tinNen);
+  // iframe có sandbox: WebGL, Web Audio, localStorage, fetch, ws (đã thấy ở trên), form ô chat vẫn phải chạy
+  nhatKy.sandbox = { thuocTinh: await panel.page.getAttribute('#san-khau', 'sandbox') };
+  nhatKy.sandbox.trongKhung = await khung.evaluate(async () => {
+    const c = document.createElement('canvas');
+    const webgl = !!(c.getContext('webgl2') || c.getContext('webgl'));
+    let audio = false;
+    try {
+      const a = new AudioContext();
+      audio = a.state === 'running' || a.state === 'suspended';
+      void a.close();
+    } catch { /* bị chặn */ }
+    let localStorageOk = false;
+    try {
+      localStorage.setItem('__kiem', '1');
+      localStorageOk = localStorage.getItem('__kiem') === '1';
+      localStorage.removeItem('__kiem');
+    } catch { /* bị chặn */ }
+    const fetchTrang = await fetch('/').then((r) => r.status).catch((e) => String(e));
+    return { webgl, audio, localStorage: localStorageOk, fetchTrang, origin: location.origin, wsSanKhau: window.stage?.san === true };
+  });
+  {
+    const cau = 'thử ô chat trong iframe sandbox';
+    const truoc = nhatKy.suKien.length;
+    await khung.fill('#o-chat-nhap', cau);
+    await khung.press('#o-chat-nhap', 'Enter');
+    await doiDen(() => nhatKy.suKien.slice(truoc).some((e) => e.event === 'user.text' && e.data.text === cau), 15000, 'form ô chat trong iframe gửi được');
+    nhatKy.sandbox.formOChat = true;
+  }
+  // tin giả mạo từ iframe gửi lên vỏ phải bị bỏ qua
+  await khung.evaluate(() => window.parent.postMessage({ lenh: 'trangThai', chu: 'GIA-MAO-TU-IFRAME', loi: true }, '*'));
+  await doi(300);
+  nhatKy.sandbox.voBoQuaTinIframe = !(await panel.page.textContent('#trang-thai')).includes('GIA-MAO');
+  ghi('sandbox iframe:', JSON.stringify(nhatKy.sandbox));
+  const sb = nhatKy.sandbox.trongKhung;
+  if (!sb.webgl || !sb.audio || !sb.localStorage || sb.fetchTrang !== 200 || !nhatKy.sandbox.voBoQuaTinIframe) {
+    throw new Error('sandbox iframe phá chức năng sân khấu hoặc vỏ nhận tin giả: ' + JSON.stringify(nhatKy.sandbox));
+  }
+  await doi(3000);
   await panel.page.screenshot({ path: path.join(RA, '01-panel-san-khau.png') });
   nhatKy.panel = { tinLen: tinPanel, khungUrl: khung.url() };
 

@@ -62,7 +62,9 @@ test('taoHtmlSanKhau: CSP trong meta, mọi <script>/<style> mang nonce, iframe 
   const styles = h.match(/<style[^>]*>/g) ?? [];
   assert.ok(scripts.length >= 1 && scripts.every((s) => s.includes('nonce="abc123"')));
   assert.ok(styles.every((s) => s.includes('nonce="abc123"')));
-  assert.match(h, /<iframe[^>]*allow="autoplay"/);
+  assert.match(h, /<iframe[^>]*allow="autoplay[;"]/);
+  assert.match(h, /<iframe[^>]*sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"/);
+  assert.ok(!/allow-top-navigation|allow-popups|allow-modals/.test(h), 'iframe không được điều hướng vỏ / mở popup');
   assert.ok(!/<iframe[^>]* src=/.test(h), 'iframe chỉ nạp khi host dò thấy vite');
   assert.ok(h.includes('&quot;&lt;&gt;'), 'url được thoát');
   assert.ok(h.includes('Tải lại'));
@@ -74,10 +76,41 @@ test('taoHtmlChatroom: script module có nonce + nguồn từ asWebviewUri', () 
   assert.match(h, /<link rel="stylesheet" href="https:\/\/x\/c.css">/);
 });
 
-test('taoNonce: 32 ký tự chữ số', () => {
+test('taoNonce: 128 bit CSPRNG, base64url 22 ký tự (hợp lệ cho CSP nonce)', () => {
   const n = html.taoNonce();
-  assert.match(n, /^[A-Za-z0-9]{32}$/);
+  assert.match(n, /^[A-Za-z0-9_-]{22}$/);
+  assert.equal(Buffer.from(n, 'base64url').length, 16);
   assert.notEqual(n, html.taoNonce());
+});
+
+test('vỏ panel: bỏ qua tin postMessage đến từ chính iframe sân khấu', () => {
+  const h = html.taoHtmlSanKhau({ url: 'http://127.0.0.1:5173/?bridge=1', origin: 'http://127.0.0.1:5173', cspSource: 'c', nonce: 'n' });
+  const js = h.split('<script nonce="n">')[1].split('</script>')[0];
+  // chạy script vỏ trong DOM giả tối thiểu
+  const nghe = [];
+  const khung = { contentWindow: { postMessage: () => undefined }, dataset: { url: 'u0' }, src: '' };
+  const el = () => ({ textContent: '', classList: { toggle: () => undefined }, addEventListener: () => undefined });
+  const phan = { 'san-khau': khung, 'trang-thai': el(), che: el(), 'tai-lai': el() };
+  const win = { addEventListener: (_t, f) => nghe.push(f) };
+  const doc = { getElementById: (id) => phan[id] };
+  new Function('window', 'document', 'acquireVsCodeApi', js)(win, doc, () => ({ postMessage: () => undefined }));
+  assert.equal(nghe.length, 1);
+  nghe[0]({ source: khung.contentWindow, data: { lenh: 'napLai', url: 'http://evil/' } });
+  assert.equal(khung.src, '', 'tin từ iframe không được đổi src');
+  nghe[0]({ source: null, data: { lenh: 'napLai', url: 'http://127.0.0.1:5173/?bridge=1' } });
+  assert.equal(khung.src, 'http://127.0.0.1:5173/?bridge=1', 'tin từ host vẫn chạy');
+});
+
+test('SoChatroom.moHinhNeuDoi: chỉ trả khi mô hình đổi; quenDaVe thì gửi lại', () => {
+  const so = new SoChatroom(null);
+  assert.ok(so.moHinhNeuDoi());
+  assert.equal(so.moHinhNeuDoi(), null);
+  so.datBridge(false); // không đổi gì
+  assert.equal(so.moHinhNeuDoi(), null);
+  so.datBridge(true);
+  assert.equal(so.moHinhNeuDoi().bridgeNoi, true);
+  so.quenDaVe();
+  assert.ok(so.moHinhNeuDoi());
 });
 
 test('docGoiBridge: phân loại sự kiện / kết quả / pong / lạ', () => {
