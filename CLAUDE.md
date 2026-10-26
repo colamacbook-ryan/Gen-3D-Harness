@@ -10,7 +10,7 @@
 > **Đồng bộ định kỳ (Ryan 28/10: "lâu lâu bạn có thể kiểm tra lấy về ứng dụng thêm")**: đầu mỗi phiên làm Gen-3D-Harness
 > chạy `git fetch genstage main && git log --oneline HEAD..genstage/main`; có commit mới thì gộp vào nhánh đang làm
 > (merge, giữ cả hai phía — Gen-Stage gốc vẫn là nơi Ryan phát triển lõi sân khấu), chạy đủ test + build rồi mới đẩy.
-> Lần gộp gần nhất: `genstage/main @e2a8366` (D1b, E1, E2, F1–F3, G2, G3) — 28/10.
+> Lần gộp gần nhất: `genstage/main @1de53f4` (H1 kiểm toán skill: phím lặp, đèn một nguồn, moveTo va chạm, camera kẹp, bước cố định) — 26/10 23h UTC; trước đó @e2a8366.
 > **License:** © 2026 Gen Labs — All rights reserved (xem `LICENSE`).
 > **Thư mục `vscode/`** (đang làm): extension VS Code — sân khấu trong tab editor + chatroom cột phải + não LLM local.
 
@@ -1306,5 +1306,5 @@ và cách tái hiện: **`docs/f2/GOC-DIEU-KHIEN-LOAN.md`**.
 
 ## Quy tắc đo trên Firefox thật (Boss 27/10: "bị gì mà cứ mở tắt trình duyệt hoài vậy")
 - Mỗi lượt đo mở Firefox **đúng một lần** (một browser/context/page), tải lại bằng `reload/goto`, đóng khi xong hẳn. Không chạy lặp script "cho chắc".
-- **Một lúc chỉ một agent** dùng Firefox thật: trước khi mở, `pgrep -f firefox-1543` phải trống; phần không cần trình duyệt (đọc code, test, build, merge-tree, viết script) làm trước trong lúc chờ.
+- **Một lúc chỉ một agent** dùng Firefox thật: trước khi mở, `pgrep -f '^[^ ]*firefox-1543/firefox/firefox'` (NEO ĐẦU DÒNG vào argv[0] — mọi mẫu không neo như `pgrep -f firefox-1543` hay `pgrep -f 'firefox-1543/firefox/firefox'` đều tự khớp chính vòng chờ `bash -c` của mình và của agent khác → cả đội chờ nhau mãi, đã xảy ra 2 lần 27/10) phải trống; phần không cần trình duyệt (đọc code, test, build, merge-tree, viết script) làm trước trong lúc chờ.
 - Lý do: cửa sổ nhấp nháy làm phiền Boss, và nouveau gãy (`kernel rejected pushbuf`) khi ≥3 phiên Firefox GPU cùng lúc.
