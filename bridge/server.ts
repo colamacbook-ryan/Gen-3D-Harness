@@ -59,6 +59,8 @@ interface Cho {
   /** Mã client đặt, trả lại y nguyên. */
   idGoc: string | undefined;
   hen: NodeJS.Timeout;
+  /** Sân khấu đã nhận lệnh này — nó đóng thì lệnh phải trả lỗi ngay. */
+  sanKhau: WebSocket;
 }
 
 const wss = new WebSocketServer({ port: CONG, host: HOST });
@@ -144,6 +146,7 @@ wss.on('connection', (ws, req) => {
       ghi('sân khấu mới kết nối — đóng bản cũ (tab cũ sẽ KHÔNG tự nối lại)');
       // Mã 4001 = "bị thay thế": tab cũ đọc mã này và ngừng nối lại, không thì
       // hai tab đá nhau mỗi 2 s, sự kiện rơi hết (Boss 26/10: "chưa có não").
+      huyLenhCho(sanKhau, 'Sân khấu bị thay bằng tab mới — lệnh bị hủy');
       sanKhau.close(4001, 'thay-the');
     }
     sanKhau = ws;
@@ -154,7 +157,13 @@ wss.on('connection', (ws, req) => {
 
     ws.on('message', (tho) => tuSanKhau(String(tho)));
     ws.on('close', () => {
-      if (sanKhau === ws) sanKhau = null;
+      // CNS-002 — lệnh đang chờ của sân khấu này sẽ không bao giờ có kết quả.
+      huyLenhCho(ws, 'Sân khấu đã ngắt hoặc bị thay thế — lệnh bị hủy');
+      if (sanKhau !== ws) {
+        ghi('sân khấu cũ đóng (đã có bản mới thay) — không báo offline');
+        return;
+      }
+      sanKhau = null;
       ghi('sân khấu ngắt kết nối');
       phatChoClient({ event: 'bridge.stageOffline', data: {} });
     });
@@ -183,6 +192,18 @@ wss.on('connection', (ws, req) => {
   });
   ws.on('error', (e) => ghi('lỗi client:', e.message));
 });
+
+/** Trả lỗi ngay cho mọi lệnh đang chờ của một sân khấu (không để treo tới HAN_MS). */
+function huyLenhCho(sk: WebSocket, lyDo: string): void {
+  for (const [id, cho] of dangCho) {
+    if (cho.sanKhau !== sk) continue;
+    dangCho.delete(id);
+    clearTimeout(cho.hen);
+    if (cho.client.readyState === WebSocket.OPEN) {
+      cho.client.send(JSON.stringify({ id: cho.idGoc, ok: false, error: lyDo }));
+    }
+  }
+}
 
 /** Số não đang nối = tiến trình MCP stdio + bản HTTP còn trong hạn. */
 function soNao(): number {
@@ -280,7 +301,7 @@ function tuClient(ws: WebSocket, tho: string): void {
     );
   }, HAN_MS);
 
-  dangCho.set(idBridge, { client: ws, idGoc, hen });
+  dangCho.set(idBridge, { client: ws, idGoc, hen, sanKhau });
   sanKhau.send(JSON.stringify({ id: idBridge, cmd: goi.cmd, args: goi.args ?? {} }));
   ghi('→', goi.cmd, JSON.stringify(goi.args ?? {}));
 }

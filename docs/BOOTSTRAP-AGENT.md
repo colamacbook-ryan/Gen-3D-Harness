@@ -81,7 +81,7 @@ loop:
 
 ## 5. Bộ tool
 
-42 tool, **sinh tự động** từ sổ lệnh (`src/api/commands/`): mỗi lệnh `a.b` →
+43 tool (= 42 lệnh + `stage_events`; số đếm từ registry 26/10, test `b3-mcp` giữ công thức "số lệnh + 1"), **sinh tự động** từ sổ lệnh (`src/api/commands/`): mỗi lệnh `a.b` →
 tool `a_b` (`stage_bootstrap`, `stage_describe`, `actor_say`, `actor_emote`,
 `actor_steer`, `screen_stream`, `module_build`, `fx_play`, `script_run`…),
 cộng **`stage_events`** để nghe. Thêm lệnh vào Actor API là có tool mới ngay,

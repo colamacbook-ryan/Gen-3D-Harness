@@ -198,7 +198,7 @@ biết registry, **giao diện** không gọi thẳng vào sân khấu.
   điều khiển), `stage.describe` thêm **`controlledBy`**, và chibi hoá xương raw
   (Issue #17 — tỉ lệ đầu/người đo thật ~1/2,5–1/2,8).
 
-- **B3 (xong, #21)**: `bridge/mcp.ts` — **42 tool = 41 lệnh + `stage_events`**,
+- **B3 (xong, #21)**: `bridge/mcp.ts` — **số tool = số lệnh + 1** (đếm từ registry 26/10: 42 lệnh → 43 tool; test b3-mcp giữ công thức, đừng viết cứng số),
   sinh thẳng từ registry nên thêm lệnh là có tool mới; `stage_bootstrap` qua MCP
   trả thêm `huongDanAgent` (vai diễn của Gen); `actor.say` lên nhân vật
   `controlledBy: "owner"` bắn **`user.text`** → vòng hội thoại Owner ⇄ Gen;
@@ -382,6 +382,17 @@ lệnh mới cho các đợt sau — `stage.bootstrap` vẫn liệt kê đủ b�
   `user.command`. "Javis, đi tới bàn điều khiển" → lớp lệnh lo, tốn 0 token;
   "Gen, hôm nay làm gì" → không lệnh nào khớp, đến lượt agy. Driver nghe
   `user.speech` (C1 — nói bằng miệng) y hệt `user.text`.
+- **Người nhận câu nói (CNS-001, Ryan chốt 26/10)**: tên gọi trong câu thắng;
+  câu không gọi tên thì người nhận là nhân vật đích `to` trong dữ liệu
+  `user.text`/`user.speech` (chatroom gửi `actor.say` owner kèm `to`); `to`
+  vắng, = `"camera"` hoặc không phải actor thì giữ cũ (Gen). Cài ở
+  `phanTich(text, bc, to)`; `to` đọc từ `d.to` trong `nghe()`. Chọn Javis mà
+  nói câu không khớp lệnh → Javis trả "chưa hiểu" (cơ chế C2). Test:
+  `cns001-nguoi-nhan.test.ts`.
+- **Bridge thay/ngắt sân khấu (CNS-002)**: tab cũ bị đóng bằng mã `4001`; lệnh
+  đang chờ của sân khấu đó trả lỗi NGAY (không treo `HAN_MS`); `bridge.stageOffline`
+  chỉ phát khi không còn sân khấu nào. Kiểm: `node scripts/kiem-bridge-thay-san-khau.mjs`
+  (cổng 8797–8800).
 - **Ba cái chặn vòng lặp**: (1) bỏ `user.text` của `gen`; (2) hàng đợi tối đa
   **một** lượt agy cùng lúc; (3) gộp câu 800 ms. Thiếu cái nào cũng ra hai bong
   bóng chen nhau và hai lần tốn quota.

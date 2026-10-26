@@ -55,5 +55,5 @@ Những chốt chặn đã trả giá bằng code thật, ghi lại để đợt
 
 - **Tên hiển thị đổi, `id` không đổi.** Nhân vật nam tên **Javis** nhưng `id`
   vẫn là `owner`: `controlledBy`, phím WASD, camera `theo-owner`, nguồn
-  `user.text` và 42 tool MCP đều viết theo id đó. Bảng tên nằm trong
+  `user.text` và mọi tool MCP đều viết theo id đó. Bảng tên nằm trong
   `src/stage/noi-dung.ts` (`TEN_HIEN_THI`), `world.ts` chỉ đọc bảng.

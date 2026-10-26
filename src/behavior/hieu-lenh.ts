@@ -125,6 +125,7 @@ function bangBiDanh(bc: BoiCanh): { id: string; cum: string[][] }[] {
 export function tachNguoiNhan(
   cau: { goc: string[]; sach: string[] },
   bc: BoiCanh,
+  to?: string,
 ): TachNguoiNhan {
   const ds = bangBiDanh(bc);
   const idOwner = bc.actors.find((a) => a.controlledBy === 'owner')?.id ?? 'owner';
@@ -169,7 +170,14 @@ export function tachNguoiNhan(
     };
   }
 
-  // 3) không gọi tên → Gen
+  // 3) không gọi tên → nhân vật đích `to` mà người nói chỉ định (CNS-001,
+  //    Ryan chốt 26/10: tên trong câu thắng; không có `to` hợp lệ — hoặc
+  //    `to` = "camera" — thì giữ hành vi cũ: Gen)
+  if (to && to !== 'camera' && bc.actors.some((a) => a.id === to)) {
+    return { nguoiNhan: [to], coGoiTen: false, moiNguoi: false, conLai: cau };
+  }
+
+  // 4) không có `to` hợp lệ → Gen
   const mac = bc.actors.some((a) => a.id === NGUOI_NHAN_MAC_DINH)
     ? NGUOI_NHAN_MAC_DINH
     : idGen;
@@ -386,9 +394,9 @@ function diemThat(x: { diem: number; boQua: number }): number {
 /* ---------------------------------------------------------------- phân tích */
 
 /** Đọc một câu của Sếp → người nhận + lệnh. Hàm **thuần**, test gọi trực tiếp. */
-export function phanTich(text: string, bc: BoiCanh): KetQuaHieu {
+export function phanTich(text: string, bc: BoiCanh, to?: string): KetQuaHieu {
   const cau = tach(text);
-  const nn = tachNguoiNhan(cau, bc);
+  const nn = tachNguoiNhan(cau, bc, to);
   const chung = {
     text,
     nguoiNhan: nn.nguoiNhan,
@@ -458,7 +466,7 @@ export interface HieuLenh {
   /** Nạp lại danh sách place/emote/màn hình/module từ `stage.bootstrap`. */
   lamMoi(): Promise<void>;
   /** Xử lý một câu như vừa nghe được (bằng chứng Playwright dùng). */
-  nghe(text: string, nguon?: string): Promise<KetQuaHieu>;
+  nghe(text: string, nguon?: string, to?: string): Promise<KetQuaHieu>;
   thao(): void;
 }
 
@@ -581,8 +589,12 @@ export function batHieuLenh(
   }
 
   /** Một câu đã nghe: quyết định ĐỒNG BỘ, chạy lệnh thì không đồng bộ. */
-  function xuLy(text: string, data: Record<string, unknown> | null): KetQuaHieu {
-    const kq = phanTich(text, bc);
+  function xuLy(
+    text: string,
+    data: Record<string, unknown> | null,
+    to?: string,
+  ): KetQuaHieu {
+    const kq = phanTich(text, bc, to);
     lenhCuoiBan = {
       text,
       actor: kq.nguoiNhan[0] ?? '',
@@ -671,7 +683,7 @@ export function batHieuLenh(
     }
     ganDay.set(sach, now);
     for (const [k, t] of ganDay) if (now - t > CUA_SO_LAP * 5) ganDay.delete(k);
-    xuLy(text, d);
+    xuLy(text, d, typeof d.to === 'string' ? d.to : undefined);
   }
 
   huy.push(bus.on('user.text', nghe));
@@ -692,8 +704,8 @@ export function batHieuLenh(
   return {
     boiCanh: () => bc,
     lamMoi,
-    nghe: async (text: string) => {
-      const kq = xuLy(text, null);
+    nghe: async (text: string, _nguon?: string, to?: string) => {
+      const kq = xuLy(text, null, to);
       await new Promise((r) => setTimeout(r, 0));
       return kq;
     },
