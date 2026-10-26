@@ -769,15 +769,21 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
 
 - **Một tiến trình một lượt, CLI là hợp đồng** với extension (`vscode/` spawn nó):
   `node scripts/tai-nghe.mjs --port --stt-port --to [--nguon] [--toi-da-ms 15000]
-  [--im-lang-ms 1200] [--khong-gui] [--token]`. stdout chỉ có JSON lines
+  [--im-lang-ms 1200] [--khong-gui]`; **token đọc từ env `GEN_STAGE_TOKEN`** (ưu tiên;
+  `--token` vẫn nhận nhưng ghi cảnh báo stderr "token trên argv lộ trong ps"). stdout chỉ có JSON lines
   (`bat-dau` · `muc` ≤ 10 lần/s · `dang-nhan-dang` · `ket-qua {…, daGui}` ·
-  `bo-qua {lyDo: gen-dang-noi|im-lang|rong}` · `loi {ma: thiet-bi|stt|bridge|tham-so}`),
+  `bo-qua {lyDo: gen-dang-noi|im-lang|rong|huy}` · `loi {ma: thiet-bi|stt|bridge|tham-so}`),
   log người đọc ra stderr. Mã thoát 0 / 2 thiết bị / 4 STT-bridge / 64 tham số
   (130 = tín hiệu lần hai lúc chờ STT). Dừng: stdin `dung`, SIGINT/SIGTERM (dừng
   thu rồi VẪN nhận dạng phần đã thu), VAD im ≥ `--im-lang-ms` sau khi có tiếng,
-  hoặc `--toi-da-ms`. EOF stdin KHÔNG dừng.
+  hoặc `--toi-da-ms`. EOF stdin KHÔNG dừng. **stdin `huy`** = bỏ hẳn: dừng thu, KHÔNG
+  gọi STT, KHÔNG `stage.hear`, in `bo-qua huy`, thoát 0; đang chờ STT thì abort fetch
+  và bỏ kết quả (`dung` giữ nguyên nghĩa: vẫn nhận dạng phần đã thu).
 - **Bán song công (CNS-004)**: hỏi `stage.describe` TRƯỚC khi mở mic — actor
   `controlledBy:"agent"` đang `speaking` ⇒ `bo-qua gen-dang-noi`, không mở mic.
+  Listener `actor.sayStart` gắn NGAY khi nối bridge (trước khi gửi describe, đệm tới khi
+  biết owner) và ghi cờ `genChen` từ đó: `ws` có thể giao kết quả describe + sayStart
+  trong cùng một chunk TCP, gắn sau `await` thì sayStart rơi (khe bán song công).
   Trong lúc thu, `actor.sayStart` của bất kỳ actor nào KHÔNG phải owner ⇒ dừng,
   vứt âm, không gọi STT (kể cả khi sự kiện tới đúng lúc vừa dừng vì lý do khác;
   tới trong lúc STT đang chạy thì không gửi `stage.hear`). Không hỏi được sân
@@ -799,7 +805,8 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
   `--nguon` có `/` hoặc đuôi âm thanh ⇒ file, đọc `-re` (tốc độ thật, như mic).
   Không có ffmpeg / không mở được nguồn nào / nguồn không ra âm trong `--toi-da-ms`
   ⇒ `loi thiet-bi` mã 2.
-- **Tin cậy < 0,6 ⇒ `daGui:false`** (cùng `TIN_DU` của mic trình duyệt); extension
+- **Tin cậy < 0,6 ⇒ `daGui:false`**, và confidence không phải số hữu hạn (chuỗi/null/thiếu/NaN/Infinity)
+  coi là 0 — điều kiện viết `!(conf >= TIN_DU)`, không fail-open (cùng `TIN_DU` của mic trình duyệt); extension
   hỏi Sếp rồi tự gửi `stage.hear`. `stage.hear` lỗi ⇒ vẫn phát `ket-qua daGui:false`
   (giữ chữ) rồi `loi bridge` mã 4.
 - Kiểm: `scripts/__tests__/tai-nghe.test.mjs` (CLI thật + ffmpeg thật, bridge giả

@@ -16,12 +16,15 @@
  *
  *   node scripts/tai-nghe.mjs --port <8787> --stt-port <8790> --to <actorId>
  *        [--nguon <thiết bị | đường dẫn .wav>] [--toi-da-ms 15000]
- *        [--im-lang-ms 1200] [--khong-gui] [--token <t>]
+ *        [--im-lang-ms 1200] [--khong-gui]
+ *   Token bridge: biến môi trường GEN_STAGE_TOKEN (ưu tiên). `--token <t>` vẫn nhận
+ *   để tương thích nhưng lộ trong `ps` nên có cảnh báo stderr.
+ *   stdin: `dung` = dừng thu rồi nhận dạng · `huy` = bỏ hẳn (không STT, không stage.hear).
  *
  *   stdout = JSON lines (một sự kiện mỗi dòng), stderr = log người đọc.
  *     {"su":"bat-dau"} · {"su":"muc","rms":0..1} · {"su":"dang-nhan-dang"}
  *     {"su":"ket-qua","text","confidence","durationMs","goiGen","daGui"}
- *     {"su":"bo-qua","lyDo":"gen-dang-noi"|"im-lang"|"rong"}
+ *     {"su":"bo-qua","lyDo":"gen-dang-noi"|"im-lang"|"rong"|"huy"}
  *     {"su":"loi","ma":"thiet-bi"|"stt"|"bridge"|"tham-so","chu":"…"}
  *   Mã thoát: 0 có kết quả / bỏ qua · 2 lỗi thiết bị · 4 lỗi STT/bridge · 64 sai tham số
  *   (130 = Ctrl+C lần HAI trong lúc chờ STT — thoát cứng, không kết quả).
@@ -103,10 +106,10 @@ export class LoiTaiNghe extends Error {
 
 const HUONG_DAN =
   'Dùng: node scripts/tai-nghe.mjs --port <8787> --stt-port <8790> --to <actorId> ' +
-  '[--nguon <thiết bị|file.wav>] [--toi-da-ms 15000] [--im-lang-ms 1200] [--khong-gui] [--token <t>]';
+  '[--nguon <thiết bị|file.wav>] [--toi-da-ms 15000] [--im-lang-ms 1200] [--khong-gui] (token: env GEN_STAGE_TOKEN)';
 
 /** Đọc argv (không gồm `node script`). Sai → ném `LoiTaiNghe('tham-so')`. */
-export function docThamSo(argv) {
+export function docThamSo(argv, env = process.env) {
   const ts = {
     port: 8787,
     sttPort: 8790,
@@ -116,6 +119,7 @@ export function docThamSo(argv) {
     imLangMs: 1200,
     khongGui: false,
     token: '',
+    tokenTuArgv: false,
   };
   const so = (ten, x, min) => {
     const n = Number(x);
@@ -145,10 +149,15 @@ export function docThamSo(argv) {
       case '--toi-da-ms': ts.toiDaMs = so(k, v(), 1); break;
       case '--im-lang-ms': ts.imLangMs = so(k, v(), 0); break;
       case '--khong-gui': ts.khongGui = true; break;
-      case '--token': ts.token = chu(k, v()); break;
+      case '--token': ts.token = chu(k, v()); ts.tokenTuArgv = true; break;
       default:
         throw new LoiTaiNghe('tham-so', `Tham số lạ "${k}". ${HUONG_DAN}`);
     }
+  }
+  // Env thắng argv: token trên argv lộ trong `ps`.
+  if (env.GEN_STAGE_TOKEN) {
+    ts.token = env.GEN_STAGE_TOKEN;
+    ts.tokenTuArgv = false;
   }
   if (!ts.to) throw new LoiTaiNghe('tham-so', `Thiếu --to <actorId>. ${HUONG_DAN}`);
   return ts;
@@ -252,12 +261,14 @@ export function catIm(pcm, rms) {
 /* ---------------------------------------------------------------- bridge */
 
 /** Nối bridge vai client (KHÔNG `role=nao` — tai không phải não). */
-export function noiBridge({ port, token, hanMs = 5000 }) {
+export function noiBridge({ port, token, hanMs = 5000, khiSuKien }) {
   const url = `ws://127.0.0.1:${port}/` + (token ? `?token=${encodeURIComponent(token)}` : '');
   return new Promise((giai, tuChoi) => {
     const ws = new WebSocket(url);
     const dangCho = new Map();
     const nghe = new Set();
+    // Gắn TRƯỚC khi mở: sự kiện tới cùng chunk với kết quả lệnh đầu tiên không được rơi.
+    if (khiSuKien) nghe.add(khiSuKien);
     let dem = 0;
     const hen = setTimeout(() => {
       ws.terminate();
@@ -344,14 +355,14 @@ export function phanVai(st) {
 
 /* ------------------------------------------------------------------- STT */
 
-export async function goiStt({ sttPort, wav, hanMs = 130_000 }) {
+export async function goiStt({ sttPort, wav, hanMs = 130_000, signal }) {
   let r;
   try {
     r = await fetch(`http://127.0.0.1:${sttPort}/stt`, {
       method: 'POST',
       headers: { 'Content-Type': 'audio/wav' },
       body: wav,
-      signal: AbortSignal.timeout(hanMs),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(hanMs)]) : AbortSignal.timeout(hanMs),
     });
   } catch (e) {
     throw new LoiTaiNghe('stt', `Không gọi được STT 127.0.0.1:${sttPort}/stt: ${e.cause?.code ?? e.message}`);
@@ -366,7 +377,7 @@ export async function goiStt({ sttPort, wav, hanMs = 130_000 }) {
     throw new LoiTaiNghe('stt', `STT trả HTTP ${r.status}: ${g?.error ?? 'gói lạ'}`);
   return {
     text: g.text.trim(),
-    confidence: Number(g.confidence ?? 0),
+    confidence: Number.isFinite(Number(g.confidence ?? 0)) ? Number(g.confidence ?? 0) : 0,
     durationMs: Number(g.durationMs ?? 0),
     goiGen: Boolean(g.goiGen),
   };
@@ -498,24 +509,48 @@ export async function chay(ts, { phat, ghi, dieuKhien = {} }) {
     const cach = cachMoNguon(ts.nguon);
 
     // CNS-004 — hỏi sân khấu TRƯỚC khi mở mic.
-    br = await noiBridge({ port: ts.port, token: ts.token });
+    // Listener gắn ngay lúc nối (trước khi gửi describe): `ws` có thể giao kết quả
+    // describe + `actor.sayStart` trong cùng một chunk TCP. Chưa biết ai là owner thì
+    // đệm; có `vai` rồi thì ghi cờ `genChen` ngay.
+    let vai = null;
+    let genChen = '';
+    const dem = [];
+    const xetSayStart = (actor) => {
+      if (vai.owner.has(actor) || genChen) return;
+      genChen = actor;
+      ghi(`${genChen} bắt đầu nói giữa lúc thu — dừng, vứt âm đã thu`);
+      dieuKhien.dung?.('gen-dang-noi');
+    };
+    br = await noiBridge({
+      port: ts.port,
+      token: ts.token,
+      khiSuKien: (ev, d) => {
+        if (ev !== 'actor.sayStart') return;
+        const a = String(d.actor ?? '?');
+        if (vai) xetSayStart(a);
+        else dem.push(a);
+      },
+    });
     const ds = await br.goi('stage.describe');
     if (!ds.ok) throw new LoiTaiNghe('bridge', `stage.describe lỗi: ${ds.error ?? '?'}`);
-    const vai = phanVai(ds.result);
-    if (vai.dangNoi.length) {
-      ghi(`${vai.dangNoi.join(', ')} đang nói — không thu (bán song công)`);
+    vai = phanVai(ds.result);
+    for (const a of dem) xetSayStart(a);
+    if (dieuKhien.daHuy) {
+      phat({ su: 'bo-qua', lyDo: 'huy' });
+      return MA_THOAT.ok;
+    }
+    if (vai.dangNoi.length || genChen) {
+      ghi(`${vai.dangNoi.join(', ') || genChen} đang nói — không thu (bán song công)`);
       phat({ su: 'bo-qua', lyDo: 'gen-dang-noi' });
       return MA_THOAT.ok;
     }
-    let genChen = '';
-    br.nghe((ev, d) => {
-      if (ev !== 'actor.sayStart' || vai.owner.has(d.actor) || genChen) return;
-      genChen = String(d.actor ?? '?');
-      ghi(`${genChen} bắt đầu nói giữa lúc thu — dừng, vứt âm đã thu`);
-      dieuKhien.dung?.('gen-dang-noi');
-    });
 
     const kq = await thu({ cach, imLangMs: ts.imLangMs, toiDaMs: ts.toiDaMs, phat, ghi, dieuKhien });
+    if (kq.lyDo === 'huy' || dieuKhien.daHuy) {
+      ghi('huỷ — bỏ âm đã thu, không nhận dạng');
+      phat({ su: 'bo-qua', lyDo: 'huy' });
+      return MA_THOAT.ok;
+    }
     // sayStart có thể tới đúng lúc vừa dừng vì lý do khác — vẫn không gửi STT
     if (kq.lyDo === 'gen-dang-noi' || genChen) {
       phat({ su: 'bo-qua', lyDo: 'gen-dang-noi' });
@@ -529,7 +564,22 @@ export async function chay(ts, { phat, ghi, dieuKhien = {} }) {
     }
 
     phat({ su: 'dang-nhan-dang' });
-    const stt = await goiStt({ sttPort: ts.sttPort, wav: taoWav(cat.pcm) });
+    const huyStt = new AbortController();
+    dieuKhien.huyStt = () => huyStt.abort();
+    if (dieuKhien.daHuy) huyStt.abort();
+    let stt;
+    try {
+      stt = await goiStt({ sttPort: ts.sttPort, wav: taoWav(cat.pcm), signal: huyStt.signal });
+    } catch (e) {
+      if (!dieuKhien.daHuy) throw e;
+    } finally {
+      dieuKhien.huyStt = null;
+    }
+    if (dieuKhien.daHuy) {
+      ghi('huỷ lúc chờ STT — bỏ kết quả');
+      phat({ su: 'bo-qua', lyDo: 'huy' });
+      return MA_THOAT.ok;
+    }
     if (genChen) {
       // đã gửi rồi thì thôi — nhưng không gửi stage.hear một câu thu lẫn tiếng loa
       phat({ su: 'bo-qua', lyDo: 'gen-dang-noi' });
@@ -541,7 +591,7 @@ export async function chay(ts, { phat, ghi, dieuKhien = {} }) {
     }
     ghi(`nghe được: "${stt.text}" (tin cậy ${stt.confidence})`);
     const ket = { su: 'ket-qua', ...stt, daGui: false };
-    if (ts.khongGui || stt.confidence < TIN_DU) {
+    if (ts.khongGui || !(stt.confidence >= TIN_DU)) {
       if (!ts.khongGui) ghi(`tin cậy < ${TIN_DU} — không tự gửi, để Sếp quyết`);
       phat(ket);
       return MA_THOAT.ok;
@@ -579,7 +629,8 @@ async function main() {
     return thoat(MA_THOAT.thamSo);
   }
 
-  const dieuKhien = { dung: null, choDung: null };
+  if (ts.tokenTuArgv) ghi('CẢNH BÁO: token trên argv lộ trong ps — dùng biến môi trường GEN_STAGE_TOKEN');
+  const dieuKhien = { dung: null, choDung: null, daHuy: false, huyStt: null };
   let daXinDung = false;
   const xinDung = (vi) => {
     if (dieuKhien.dung) {
@@ -597,7 +648,14 @@ async function main() {
   // stdin: dòng "dung" = dừng tay. EOF KHÔNG dừng (extension có thể đóng stdin).
   const rl = createInterface({ input: process.stdin });
   rl.on('line', (dong) => {
-    if (dong.trim() === 'dung') xinDung('stdin');
+    const l = dong.trim();
+    if (l === 'dung') xinDung('stdin');
+    else if (l === 'huy') {
+      ghi('stdin huy — bỏ, không nhận dạng');
+      dieuKhien.daHuy = true;
+      dieuKhien.dung?.('huy');
+      dieuKhien.huyStt?.();
+    }
   });
   process.on('SIGINT', () => xinDung('SIGINT'));
   process.on('SIGTERM', () => xinDung('SIGTERM'));

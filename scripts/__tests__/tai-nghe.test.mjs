@@ -58,7 +58,7 @@ function phat(event, data) {
 }
 
 /* ------------------------------------------------------------------ STT giả */
-const stt = { sv: null, yeuCau: [], traLoi: null };
+const stt = { sv: null, yeuCau: [], traLoi: null, raw: null, treMs: 0 };
 
 beforeAll(async () => {
   br.wss = new WebSocketServer({ host: '127.0.0.1', port: C_BRIDGE });
@@ -80,8 +80,12 @@ beforeAll(async () => {
     req.on('end', () => {
       const than = Buffer.concat(manh);
       stt.yeuCau.push({ url: req.url, type: req.headers['content-type'], byte: than.length, riff: than.subarray(0, 4).toString() });
-      res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify(stt.traLoi));
+      const tra = () => {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(stt.raw ?? JSON.stringify(stt.traLoi));
+      };
+      if (stt.treMs) setTimeout(tra, stt.treMs);
+      else tra();
     });
   });
   await new Promise((r) => stt.sv.listen(C_STT, '127.0.0.1', r));
@@ -96,14 +100,16 @@ beforeEach(() => {
   br.url = [];
   br.actors = ACTORS_RANH;
   stt.yeuCau = [];
+  stt.raw = null;
+  stt.treMs = 0;
   stt.traLoi = { text: 'Gen ơi mở màn hình', confidence: 0.9, durationMs: 321, goiGen: true };
 });
 
 /** Chạy CLI; `khiBatDau(con)` gọi lúc thấy {"su":"bat-dau"}. */
-function chayCli(args, { khiBatDau } = {}) {
+function chayCli(args, { khiBatDau, khiSu, env } = {}) {
   return new Promise((giai) => {
     const t0 = Date.now();
-    const con = spawn(process.execPath, ['scripts/tai-nghe.mjs', ...args], { cwd: GOC, stdio: ['pipe', 'pipe', 'pipe'] });
+    const con = spawn(process.execPath, ['scripts/tai-nghe.mjs', ...args], { cwd: GOC, stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, GEN_STAGE_TOKEN: '', ...env } });
     const su = [];
     let du = '';
     let loiChu = '';
@@ -117,6 +123,7 @@ function chayCli(args, { khiBatDau } = {}) {
         g.t = Date.now() - t0;
         su.push(g);
         if (g.su === 'bat-dau') khiBatDau?.(con);
+        khiSu?.(g, con);
       }
     });
     con.stderr.on('data', (d) => (loiChu += d));
@@ -128,10 +135,11 @@ const coBan = (them = []) => ['--port', String(C_BRIDGE), '--stt-port', String(C
 /* ------------------------------------------------------------- hàm thuần */
 describe('tai-nghe — hàm thuần', () => {
   it('docThamSo: mặc định, đủ cờ, sai thì tham-so', () => {
-    expect(docThamSo(['--to', 'gen'])).toMatchObject({ port: 8787, sttPort: 8790, toiDaMs: 15000, imLangMs: 1200, khongGui: false });
+    expect(docThamSo(['--to', 'gen'], {})).toMatchObject({ port: 8787, sttPort: 8790, toiDaMs: 15000, imLangMs: 1200, khongGui: false });
     expect(
-      docThamSo(['--port', '1', '--stt-port', '2', '--to', 'x', '--nguon', 'a.wav', '--toi-da-ms', '5', '--im-lang-ms', '0', '--khong-gui', '--token', 't']),
-    ).toEqual({ port: 1, sttPort: 2, to: 'x', nguon: 'a.wav', toiDaMs: 5, imLangMs: 0, khongGui: true, token: 't' });
+      docThamSo(['--port', '1', '--stt-port', '2', '--to', 'x', '--nguon', 'a.wav', '--toi-da-ms', '5', '--im-lang-ms', '0', '--khong-gui', '--token', 't'], {}),
+    ).toEqual({ port: 1, sttPort: 2, to: 'x', nguon: 'a.wav', toiDaMs: 5, imLangMs: 0, khongGui: true, token: 't', tokenTuArgv: true });
+    expect(docThamSo(['--to', 'x', '--token', 't'], { GEN_STAGE_TOKEN: 'e' })).toMatchObject({ token: 'e', tokenTuArgv: false });
     for (const sai of [[], ['--to'], ['--to', 'g', '--port', 'abc'], ['--to', 'g', '--port', '70000'], ['--to', 'g', '--la'], ['--to', 'g', '--toi-da-ms', '0']])
       expect(() => docThamSo(sai)).toThrow(expect.objectContaining({ ma: 'tham-so' }));
   });
@@ -211,10 +219,87 @@ describe('tai-nghe — CLI thật', { timeout: 20_000 }, () => {
     expect(muc.every((x) => x.rms >= 0 && x.rms <= 1)).toBe(true);
   });
 
-  it('(a2) --token đi trên URL ws', async () => {
+  it('(a2) --token (argv, tương thích) đi trên URL ws + cảnh báo lộ trong ps', async () => {
     const r = await chayCli(coBan(['--nguon', WAV_NOI, '--im-lang-ms', '600', '--token', 'b m']));
     expect(r.ma).toBe(0);
     expect(br.url[0]).toBe('/?token=b%20m');
+    expect(r.loiChu).toMatch(/token trên argv lộ trong ps/);
+  });
+
+  it('(a3) GEN_STAGE_TOKEN từ env: đi trên URL ws, không cảnh báo; env thắng --token', async () => {
+    const r = await chayCli(coBan(['--nguon', WAV_NOI, '--im-lang-ms', '600']), { env: { GEN_STAGE_TOKEN: 'tu env' } });
+    expect(r.ma).toBe(0);
+    expect(br.url[0]).toBe('/?token=tu%20env');
+    expect(r.loiChu).not.toMatch(/lộ trong ps/);
+    const r2 = await chayCli(coBan(['--nguon', WAV_NOI, '--im-lang-ms', '600', '--token', 'argv']), { env: { GEN_STAGE_TOKEN: 'env' } });
+    expect(r2.ma).toBe(0);
+    expect(br.url[1]).toBe('/?token=env');
+  });
+
+  it('(b3) confidence không hợp lệ (chuỗi/null/thiếu/NaN/Infinity) → coi là 0, daGui:false', async () => {
+    const ca = [
+      JSON.stringify({ text: 'a b', confidence: 'abc', durationMs: 1 }),
+      JSON.stringify({ text: 'a b', confidence: null, durationMs: 1 }),
+      JSON.stringify({ text: 'a b', durationMs: 1 }),
+      JSON.stringify({ text: 'a b', confidence: 'NaN', durationMs: 1 }),
+      '{"text":"a b","confidence":1e999,"durationMs":1}',
+      JSON.stringify({ text: 'a b', confidence: 'Infinity', durationMs: 1 }),
+    ];
+    for (const raw of ca) {
+      stt.raw = raw;
+      br.lenh = [];
+      const r = await chayCli(coBan(['--nguon', WAV_NOI, '--im-lang-ms', '600']));
+      expect(r.cuoi, raw).toMatchObject({ su: 'ket-qua', confidence: 0, daGui: false });
+      expect(br.lenh.map((l) => l.cmd), raw).toEqual(['stage.describe']);
+    }
+  });
+
+  it('(d3) KHE: describe(gen idle) + actor.sayStart gen cùng một chunk TCP → bo-qua gen-dang-noi, không STT', async () => {
+    const cong = CONG + 4;
+    const wss = new WebSocketServer({ host: '127.0.0.1', port: cong });
+    wss.on('connection', (ws) =>
+      ws.on('message', (tho) => {
+        const g = JSON.parse(String(tho));
+        if (g.cmd !== 'stage.describe') return;
+        ws._socket.cork();
+        ws.send(JSON.stringify({ id: g.id, ok: true, result: { actors: ACTORS_RANH } }));
+        ws.send(JSON.stringify({ event: 'actor.sayStart', data: { actor: 'gen' } }));
+        process.nextTick(() => ws._socket.uncork());
+      }),
+    );
+    try {
+      const r = await chayCli(['--port', String(cong), '--stt-port', String(C_STT), '--to', 'gen', '--nguon', WAV_NOI, '--im-lang-ms', '600']);
+      expect(r.ma).toBe(0);
+      expect(r.cuoi).toEqual(expect.objectContaining({ su: 'bo-qua', lyDo: 'gen-dang-noi' }));
+      expect(stt.yeuCau).toHaveLength(0);
+    } finally {
+      wss.close();
+    }
+  });
+
+  it('(k) stdin "huy" lúc đang thu → bo-qua huy, không STT, không stage.hear, mã 0', async () => {
+    const r = await chayCli(coBan(['--nguon', WAV_DAI, '--im-lang-ms', '0']), {
+      khiBatDau: (con) => setTimeout(() => con.stdin.write('huy\n'), 800),
+    });
+    expect(r.ma).toBe(0);
+    expect(r.cuoi).toEqual({ su: 'bo-qua', lyDo: 'huy', t: expect.any(Number) });
+    expect(r.ms).toBeLessThan(2800);
+    expect(stt.yeuCau).toHaveLength(0);
+    expect(br.lenh.map((l) => l.cmd)).toEqual(['stage.describe']);
+  });
+
+  it('(k2) stdin "huy" lúc đang chờ STT → bỏ kết quả, không stage.hear, mã 0', async () => {
+    stt.treMs = 5000;
+    const r = await chayCli(coBan(['--nguon', WAV_NOI, '--im-lang-ms', '600']), {
+      khiSu: (g, con) => {
+        if (g.su === 'dang-nhan-dang') setTimeout(() => con.stdin.write('huy\n'), 300);
+      },
+    });
+    expect(r.ma).toBe(0);
+    expect(r.cuoi).toMatchObject({ su: 'bo-qua', lyDo: 'huy' });
+    expect(r.su.some((x) => x.su === 'ket-qua' || x.su === 'loi')).toBe(false);
+    expect(r.ms).toBeLessThan(4500); // không chờ STT trả
+    expect(br.lenh.map((l) => l.cmd)).toEqual(['stage.describe']);
   });
 
   it('(b) confidence 0,4 → daGui:false, không stage.hear', async () => {
