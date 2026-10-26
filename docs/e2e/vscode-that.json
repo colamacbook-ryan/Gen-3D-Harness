@@ -1,6 +1,6 @@
 {
-  "batDau": "2026-10-26T14:21:30.852Z",
-  "msTong": 92652,
+  "batDau": "2026-10-26T15:53:56.403Z",
+  "msTong": 119111,
   "vscodeExe": "/tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/vsc/.vscode-test/vscode-linux-x64-1.143.1/code",
   "maThoat": 0,
   "loiChay": null,
@@ -40,7 +40,7 @@
         "ten": "activate() không ném lỗi",
         "ok": true,
         "chiTiet": {
-          "ms": 327
+          "ms": 2472
         }
       },
       {
@@ -68,7 +68,7 @@
         "ten": "extension tự bật bridge + vite trên cổng cấu hình",
         "ok": true,
         "chiTiet": {
-          "ms": 3621,
+          "ms": 6122,
           "bridge": 9012,
           "tts": 9013,
           "dev": 9014,
@@ -80,7 +80,7 @@
         "ten": "sân khấu trong webview nối bridge (stage.describe có actor)",
         "ok": true,
         "chiTiet": {
-          "ms": 39425,
+          "ms": 30721,
           "actors": [
             "owner",
             "gen"
@@ -99,7 +99,7 @@
         "ten": "V3 lưu file → ide.event save (gộp 5 s)",
         "ok": true,
         "chiTiet": {
-          "ms": 5240,
+          "ms": 5195,
           "level": "info",
           "summary": "Lưu 1 file: .cache/e2e-v3/luu.txt",
           "data": {
@@ -114,7 +114,7 @@
         "ten": "V3 lỗi biên dịch 0 → >0 → ide.event diag bad",
         "ok": true,
         "chiTiet": {
-          "ms": 4034,
+          "ms": 3694,
           "level": "bad",
           "summary": "Có 1 lỗi biên dịch",
           "data": {
@@ -126,7 +126,7 @@
         "ten": "V3 hết lỗi >0 → 0 → ide.event diag good",
         "ok": true,
         "chiTiet": {
-          "ms": 3418,
+          "ms": 3566,
           "level": "good",
           "summary": "Hết lỗi biên dịch",
           "data": {
@@ -139,7 +139,7 @@
         "ten": "V3 task \"test e2e\" exit 3 → ide.event test bad (mã thoát 3)",
         "ok": true,
         "chiTiet": {
-          "ms": 1829,
+          "ms": 1343,
           "level": "bad",
           "summary": "Test \"test e2e\" fail (mã 3)",
           "data": {
@@ -152,7 +152,7 @@
         "ten": "V3 task \"build e2e\" exit 0 → ide.event task good",
         "ok": true,
         "chiTiet": {
-          "ms": 515,
+          "ms": 460,
           "level": "good",
           "summary": "Task \"build e2e\" xong",
           "data": {
@@ -165,11 +165,11 @@
         "ten": "V3 git commit (cha = HEAD cũ) → ide.event git good",
         "ok": true,
         "chiTiet": {
-          "ms": 1150,
+          "ms": 1159,
           "level": "good",
-          "summary": "Commit 9dd287a: thêm dòng hai",
+          "summary": "Commit 33fff83: thêm dòng hai",
           "data": {
-            "commit": "9dd287a"
+            "commit": "33fff83"
           }
         }
       },
@@ -250,61 +250,26 @@
       {
         "event": "ide.event",
         "kind": "git"
+      },
+      {
+        "event": "ide.event",
+        "kind": "git"
       }
     ]
   },
   "soiWebviewQuaCdp": {
     "frames": [
       "vscode-file://vscode-app/tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/vsc/.vscode-test/vscode-linux-x64-1.143.1/resources/app/out/vs/code/electron-browser/workbench/workbench.html",
-      "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s/index.html?id=7a0a8221-736a-4fcc-be73-2138a541895d&parentId=1&origin=015b8bcb-e447-4ba5-9572-7c024d50b55f&swVersion=6&extensionId=gen-labs.gen-stage-vscode&platform=electron&vscode-resource-base-authority=vscode-resource.vscode-cdn.net&parentOrigin=vscode-file%3A%2F%2Fvscode-app&mountId=1036dccf-0423-417d-b765-eba140538b71&purpose=webviewView",
-      "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0/index.html?id=54026065-f70b-4461-8a39-2b5921727a04&parentId=1&origin=d2f8ed04-39c3-489b-afdd-b7c07c937ad8&swVersion=6&extensionId=gen-labs.gen-stage-vscode&platform=electron&vscode-resource-base-authority=vscode-resource.vscode-cdn.net&parentOrigin=vscode-file%3A%2F%2Fvscode-app&mountId=8b373224-fb80-44a0-8430-fe5e1cc9ea0f",
-      "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s/fake.html?id=7a0a8221-736a-4fcc-be73-2138a541895d",
-      "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0/fake.html?id=54026065-f70b-4461-8a39-2b5921727a04",
+      "vscode-webview://082edor1rdf2hmu17ehk5pmqf48vpaflqqchhnstds82v6j77m3e/index.html?id=767f4a6c-a198-4899-858f-17f6a1a437fc&parentId=1&origin=593274a3-d852-490c-8140-f466ca767434&swVersion=6&extensionId=gen-labs.gen-stage-vscode&platform=electron&vscode-resource-base-authority=vscode-resource.vscode-cdn.net&parentOrigin=vscode-file%3A%2F%2Fvscode-app&mountId=3288909d-5ddc-457e-82cf-468a526a16c3&purpose=webviewView",
+      "about:blank",
+      "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba/index.html?id=cda548e6-8a7a-4f1b-8c8d-123eff2bde19&parentId=1&origin=a9f4e940-939b-42cb-b438-8ffc343fa624&swVersion=6&extensionId=gen-labs.gen-stage-vscode&platform=electron&vscode-resource-base-authority=vscode-resource.vscode-cdn.net&parentOrigin=vscode-file%3A%2F%2Fvscode-app&mountId=b7e86cdb-8028-4be8-b27a-4e361383ad1f",
+      "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba/fake.html?id=cda548e6-8a7a-4f1b-8c8d-123eff2bde19",
+      "vscode-webview://082edor1rdf2hmu17ehk5pmqf48vpaflqqchhnstds82v6j77m3e/fake.html?id=767f4a6c-a198-4899-858f-17f6a1a437fc",
       "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015"
     ],
     "vo": [
       {
-        "t": 10521,
-        "title": "Chatroom",
-        "trangThai": "\n  Bridge: chưa nối\n  Sân khấu: chưa nối\n  Não: ?\n",
-        "iframe": null,
-        "csp": "default-src 'none'; style-src 'self' https://*.vscode-cdn.net; script-src 'nonce-_LkmZ7VLTyBx9Oj4-wTT6w' 'self' https://*.vscode-cdn.net",
-        "soScript": 2,
-        "coAcquire": "function",
-        "tinDaNhan": [],
-        "daGanBoGhi": true
-      },
-      {
-        "t": 13641,
-        "title": "Chatroom",
-        "trangThai": "\n  Bridge: chưa nối\n  Sân khấu: chưa nối\n  Não: ?\n",
-        "iframe": null,
-        "csp": "default-src 'none'; style-src 'self' https://*.vscode-cdn.net; script-src 'nonce-_LkmZ7VLTyBx9Oj4-wTT6w' 'self' https://*.vscode-cdn.net",
-        "soScript": 2,
-        "coAcquire": "function",
-        "tinDaNhan": [
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          }
-        ]
-      },
-      {
-        "t": 13669,
+        "t": 46649,
         "title": "Sân khấu",
         "trangThai": "Đang dò bridge + vite…",
         "iframe": {
@@ -312,18 +277,229 @@
           "dataUrl": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
           "sandbox": "allow-scripts allow-same-origin allow-forms allow-downloads"
         },
-        "csp": "default-src 'none'; frame-src http://127.0.0.1:9014; style-src 'self' https://*.vscode-cdn.net 'nonce-EuGnRoh0YSnFGTE3Byan2Q'; script-src 'nonce-EuGnRoh0YSnFGTE3Byan2Q'",
+        "csp": "default-src 'none'; frame-src http://127.0.0.1:9014; style-src 'self' https://*.vscode-cdn.net 'nonce-zlWK2XGx0mZEfJUWqlOg6w'; script-src 'nonce-zlWK2XGx0mZEfJUWqlOg6w'",
         "soScript": 2,
         "coAcquire": "function",
         "tinDaNhan": [],
         "daGanBoGhi": true
       },
       {
-        "t": 21125,
+        "t": 47236,
+        "title": "Chatroom",
+        "trangThai": "\n  Bridge: chưa nối\n  Sân khấu: chưa nối\n  Não: ?\n",
+        "iframe": null,
+        "csp": "default-src 'none'; style-src 'self' https://*.vscode-cdn.net; script-src 'nonce-E4TWudWUhuIm3tUsfBH1kg' 'self' https://*.vscode-cdn.net",
+        "soScript": 2,
+        "coAcquire": "function",
+        "tinDaNhan": [],
+        "daGanBoGhi": true
+      },
+      {
+        "t": 50260,
+        "title": "Sân khấu",
+        "trangThai": "Sân khấu: http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
+        "iframe": {
+          "src": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
+          "dataUrl": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
+          "sandbox": "allow-scripts allow-same-origin allow-forms allow-downloads"
+        },
+        "csp": "default-src 'none'; frame-src http://127.0.0.1:9014; style-src 'self' https://*.vscode-cdn.net 'nonce-zlWK2XGx0mZEfJUWqlOg6w'; script-src 'nonce-zlWK2XGx0mZEfJUWqlOg6w'",
+        "soScript": 2,
+        "coAcquire": "function",
+        "tinDaNhan": [
+          {
+            "sourceLaParent": false,
+            "sourceNull": false,
+            "sourceLaChinhNo": false,
+            "sourceLaTop": false,
+            "parentLaTop": false,
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
+            "lenh": "napLai"
+          },
+          {
+            "sourceLaParent": false,
+            "sourceNull": false,
+            "sourceLaChinhNo": false,
+            "sourceLaTop": false,
+            "parentLaTop": false,
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
+            "lenh": "hienAn"
+          },
+          {
+            "sourceLaParent": false,
+            "sourceNull": false,
+            "sourceLaChinhNo": false,
+            "sourceLaTop": false,
+            "parentLaTop": false,
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
+            "lenh": "trangThai"
+          },
+          {
+            "sourceLaParent": false,
+            "sourceNull": false,
+            "sourceLaChinhNo": false,
+            "sourceLaTop": false,
+            "parentLaTop": false,
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
+            "lenh": "napLai"
+          },
+          {
+            "sourceLaParent": false,
+            "sourceNull": false,
+            "sourceLaChinhNo": false,
+            "sourceLaTop": false,
+            "parentLaTop": false,
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
+            "lenh": "hienAn"
+          }
+        ]
+      },
+      {
+        "t": 50283,
+        "title": "Chatroom",
+        "trangThai": "\n  Bridge: chưa nối\n  Sân khấu: chưa nối\n  Não: ?\n",
+        "iframe": null,
+        "csp": "default-src 'none'; style-src 'self' https://*.vscode-cdn.net; script-src 'nonce-E4TWudWUhuIm3tUsfBH1kg' 'self' https://*.vscode-cdn.net",
+        "soScript": 2,
+        "coAcquire": "function",
+        "tinDaNhan": []
+      },
+      {
+        "t": 54111,
+        "title": "Sân khấu",
+        "trangThai": "Sân khấu: http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
+        "iframe": {
+          "src": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
+          "dataUrl": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
+          "sandbox": "allow-scripts allow-same-origin allow-forms allow-downloads"
+        },
+        "csp": "default-src 'none'; frame-src http://127.0.0.1:9014; style-src 'self' https://*.vscode-cdn.net 'nonce-zlWK2XGx0mZEfJUWqlOg6w'; script-src 'nonce-zlWK2XGx0mZEfJUWqlOg6w'",
+        "soScript": 2,
+        "coAcquire": "function",
+        "tinDaNhan": [
+          {
+            "sourceLaParent": false,
+            "sourceNull": false,
+            "sourceLaChinhNo": false,
+            "sourceLaTop": false,
+            "parentLaTop": false,
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
+            "lenh": "napLai"
+          },
+          {
+            "sourceLaParent": false,
+            "sourceNull": false,
+            "sourceLaChinhNo": false,
+            "sourceLaTop": false,
+            "parentLaTop": false,
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
+            "lenh": "hienAn"
+          },
+          {
+            "sourceLaParent": false,
+            "sourceNull": false,
+            "sourceLaChinhNo": false,
+            "sourceLaTop": false,
+            "parentLaTop": false,
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
+            "lenh": "trangThai"
+          },
+          {
+            "sourceLaParent": false,
+            "sourceNull": false,
+            "sourceLaChinhNo": false,
+            "sourceLaTop": false,
+            "parentLaTop": false,
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
+            "lenh": "napLai"
+          },
+          {
+            "sourceLaParent": false,
+            "sourceNull": false,
+            "sourceLaChinhNo": false,
+            "sourceLaTop": false,
+            "parentLaTop": false,
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
+            "lenh": "hienAn"
+          }
+        ]
+      },
+      {
+        "t": 54116,
+        "title": "Chatroom",
+        "trangThai": "\n  Bridge: chưa nối\n  Sân khấu: chưa nối\n  Não: ?\n",
+        "iframe": null,
+        "csp": "default-src 'none'; style-src 'self' https://*.vscode-cdn.net; script-src 'nonce-E4TWudWUhuIm3tUsfBH1kg' 'self' https://*.vscode-cdn.net",
+        "soScript": 2,
+        "coAcquire": "function",
+        "tinDaNhan": []
+      },
+      {
+        "t": 60201,
+        "title": "Sân khấu",
+        "trangThai": "Sân khấu: http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
+        "iframe": {
+          "src": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
+          "dataUrl": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
+          "sandbox": "allow-scripts allow-same-origin allow-forms allow-downloads"
+        },
+        "csp": "default-src 'none'; frame-src http://127.0.0.1:9014; style-src 'self' https://*.vscode-cdn.net 'nonce-zlWK2XGx0mZEfJUWqlOg6w'; script-src 'nonce-zlWK2XGx0mZEfJUWqlOg6w'",
+        "soScript": 2,
+        "coAcquire": "function",
+        "tinDaNhan": [
+          {
+            "sourceLaParent": false,
+            "sourceNull": false,
+            "sourceLaChinhNo": false,
+            "sourceLaTop": false,
+            "parentLaTop": false,
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
+            "lenh": "napLai"
+          },
+          {
+            "sourceLaParent": false,
+            "sourceNull": false,
+            "sourceLaChinhNo": false,
+            "sourceLaTop": false,
+            "parentLaTop": false,
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
+            "lenh": "hienAn"
+          },
+          {
+            "sourceLaParent": false,
+            "sourceNull": false,
+            "sourceLaChinhNo": false,
+            "sourceLaTop": false,
+            "parentLaTop": false,
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
+            "lenh": "trangThai"
+          },
+          {
+            "sourceLaParent": false,
+            "sourceNull": false,
+            "sourceLaChinhNo": false,
+            "sourceLaTop": false,
+            "parentLaTop": false,
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
+            "lenh": "napLai"
+          },
+          {
+            "sourceLaParent": false,
+            "sourceNull": false,
+            "sourceLaChinhNo": false,
+            "sourceLaTop": false,
+            "parentLaTop": false,
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
+            "lenh": "hienAn"
+          }
+        ]
+      },
+      {
+        "t": 60212,
         "title": "Chatroom",
         "trangThai": "\n  Bridge: đã nối\n  Sân khấu: chưa nối\n  Não: ?\n",
         "iframe": null,
-        "csp": "default-src 'none'; style-src 'self' https://*.vscode-cdn.net; script-src 'nonce-_LkmZ7VLTyBx9Oj4-wTT6w' 'self' https://*.vscode-cdn.net",
+        "csp": "default-src 'none'; style-src 'self' https://*.vscode-cdn.net; script-src 'nonce-E4TWudWUhuIm3tUsfBH1kg' 'self' https://*.vscode-cdn.net",
         "soScript": 2,
         "coAcquire": "function",
         "tinDaNhan": [
@@ -333,31 +509,13 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
+            "origin": "vscode-webview://082edor1rdf2hmu17ehk5pmqf48vpaflqqchhnstds82v6j77m3e",
             "lenh": "moHinh"
           }
         ]
       },
       {
-        "t": 21144,
+        "t": 63722,
         "title": "Sân khấu",
         "trangThai": "Sân khấu: http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
         "iframe": {
@@ -365,7 +523,7 @@
           "dataUrl": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
           "sandbox": "allow-scripts allow-same-origin allow-forms allow-downloads"
         },
-        "csp": "default-src 'none'; frame-src http://127.0.0.1:9014; style-src 'self' https://*.vscode-cdn.net 'nonce-EuGnRoh0YSnFGTE3Byan2Q'; script-src 'nonce-EuGnRoh0YSnFGTE3Byan2Q'",
+        "csp": "default-src 'none'; frame-src http://127.0.0.1:9014; style-src 'self' https://*.vscode-cdn.net 'nonce-zlWK2XGx0mZEfJUWqlOg6w'; script-src 'nonce-zlWK2XGx0mZEfJUWqlOg6w'",
         "soScript": 2,
         "coAcquire": "function",
         "tinDaNhan": [
@@ -375,7 +533,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
             "lenh": "napLai"
           },
           {
@@ -384,7 +542,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
             "lenh": "hienAn"
           },
           {
@@ -393,7 +551,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
             "lenh": "trangThai"
           },
           {
@@ -402,7 +560,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
             "lenh": "napLai"
           },
           {
@@ -411,213 +569,17 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
             "lenh": "hienAn"
           }
         ]
       },
       {
-        "t": 26972,
-        "title": "Chatroom",
-        "trangThai": "\n  Bridge: đã nối\n  Sân khấu: chưa nối\n  Não: ?\n",
-        "iframe": null,
-        "csp": "default-src 'none'; style-src 'self' https://*.vscode-cdn.net; script-src 'nonce-_LkmZ7VLTyBx9Oj4-wTT6w' 'self' https://*.vscode-cdn.net",
-        "soScript": 2,
-        "coAcquire": "function",
-        "tinDaNhan": [
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          }
-        ]
-      },
-      {
-        "t": 26978,
-        "title": "Sân khấu",
-        "trangThai": "Sân khấu: http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
-        "iframe": {
-          "src": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
-          "dataUrl": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
-          "sandbox": "allow-scripts allow-same-origin allow-forms allow-downloads"
-        },
-        "csp": "default-src 'none'; frame-src http://127.0.0.1:9014; style-src 'self' https://*.vscode-cdn.net 'nonce-EuGnRoh0YSnFGTE3Byan2Q'; script-src 'nonce-EuGnRoh0YSnFGTE3Byan2Q'",
-        "soScript": 2,
-        "coAcquire": "function",
-        "tinDaNhan": [
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
-            "lenh": "napLai"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
-            "lenh": "hienAn"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
-            "lenh": "trangThai"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
-            "lenh": "napLai"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
-            "lenh": "hienAn"
-          }
-        ]
-      },
-      {
-        "t": 34072,
-        "title": "Chatroom",
-        "trangThai": "\n  Bridge: đã nối\n  Sân khấu: chưa nối\n  Não: ?\n",
-        "iframe": null,
-        "csp": "default-src 'none'; style-src 'self' https://*.vscode-cdn.net; script-src 'nonce-_LkmZ7VLTyBx9Oj4-wTT6w' 'self' https://*.vscode-cdn.net",
-        "soScript": 2,
-        "coAcquire": "function",
-        "tinDaNhan": [
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          }
-        ]
-      },
-      {
-        "t": 34078,
-        "title": "Sân khấu",
-        "trangThai": "Sân khấu: http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
-        "iframe": {
-          "src": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
-          "dataUrl": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
-          "sandbox": "allow-scripts allow-same-origin allow-forms allow-downloads"
-        },
-        "csp": "default-src 'none'; frame-src http://127.0.0.1:9014; style-src 'self' https://*.vscode-cdn.net 'nonce-EuGnRoh0YSnFGTE3Byan2Q'; script-src 'nonce-EuGnRoh0YSnFGTE3Byan2Q'",
-        "soScript": 2,
-        "coAcquire": "function",
-        "tinDaNhan": [
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
-            "lenh": "napLai"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
-            "lenh": "hienAn"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
-            "lenh": "trangThai"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
-            "lenh": "napLai"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
-            "lenh": "hienAn"
-          }
-        ]
-      },
-      {
-        "t": 37085,
+        "t": 63746,
         "title": "Chatroom",
         "trangThai": "\n  Bridge: đã nối\n  Sân khấu: đã nối\n  Não: chưa nối (genStage.nao = tat)\n",
         "iframe": null,
-        "csp": "default-src 'none'; style-src 'self' https://*.vscode-cdn.net; script-src 'nonce-_LkmZ7VLTyBx9Oj4-wTT6w' 'self' https://*.vscode-cdn.net",
+        "csp": "default-src 'none'; style-src 'self' https://*.vscode-cdn.net; script-src 'nonce-E4TWudWUhuIm3tUsfBH1kg' 'self' https://*.vscode-cdn.net",
         "soScript": 2,
         "coAcquire": "function",
         "tinDaNhan": [
@@ -627,7 +589,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
+            "origin": "vscode-webview://082edor1rdf2hmu17ehk5pmqf48vpaflqqchhnstds82v6j77m3e",
             "lenh": "moHinh"
           },
           {
@@ -636,7 +598,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
+            "origin": "vscode-webview://082edor1rdf2hmu17ehk5pmqf48vpaflqqchhnstds82v6j77m3e",
             "lenh": "moHinh"
           },
           {
@@ -645,31 +607,13 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
+            "origin": "vscode-webview://082edor1rdf2hmu17ehk5pmqf48vpaflqqchhnstds82v6j77m3e",
             "lenh": "moHinh"
           }
         ]
       },
       {
-        "t": 37092,
+        "t": 66758,
         "title": "Sân khấu",
         "trangThai": "Sân khấu: http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
         "iframe": {
@@ -677,7 +621,7 @@
           "dataUrl": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
           "sandbox": "allow-scripts allow-same-origin allow-forms allow-downloads"
         },
-        "csp": "default-src 'none'; frame-src http://127.0.0.1:9014; style-src 'self' https://*.vscode-cdn.net 'nonce-EuGnRoh0YSnFGTE3Byan2Q'; script-src 'nonce-EuGnRoh0YSnFGTE3Byan2Q'",
+        "csp": "default-src 'none'; frame-src http://127.0.0.1:9014; style-src 'self' https://*.vscode-cdn.net 'nonce-zlWK2XGx0mZEfJUWqlOg6w'; script-src 'nonce-zlWK2XGx0mZEfJUWqlOg6w'",
         "soScript": 2,
         "coAcquire": "function",
         "tinDaNhan": [
@@ -687,7 +631,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
             "lenh": "napLai"
           },
           {
@@ -696,7 +640,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
             "lenh": "hienAn"
           },
           {
@@ -705,7 +649,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
             "lenh": "trangThai"
           },
           {
@@ -714,7 +658,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
             "lenh": "napLai"
           },
           {
@@ -723,17 +667,17 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
             "lenh": "hienAn"
           }
         ]
       },
       {
-        "t": 40098,
+        "t": 66763,
         "title": "Chatroom",
         "trangThai": "\n  Bridge: đã nối\n  Sân khấu: đã nối\n  Não: chưa nối (genStage.nao = tat)\n",
         "iframe": null,
-        "csp": "default-src 'none'; style-src 'self' https://*.vscode-cdn.net; script-src 'nonce-_LkmZ7VLTyBx9Oj4-wTT6w' 'self' https://*.vscode-cdn.net",
+        "csp": "default-src 'none'; style-src 'self' https://*.vscode-cdn.net; script-src 'nonce-E4TWudWUhuIm3tUsfBH1kg' 'self' https://*.vscode-cdn.net",
         "soScript": 2,
         "coAcquire": "function",
         "tinDaNhan": [
@@ -743,7 +687,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
+            "origin": "vscode-webview://082edor1rdf2hmu17ehk5pmqf48vpaflqqchhnstds82v6j77m3e",
             "lenh": "moHinh"
           },
           {
@@ -752,7 +696,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
+            "origin": "vscode-webview://082edor1rdf2hmu17ehk5pmqf48vpaflqqchhnstds82v6j77m3e",
             "lenh": "moHinh"
           },
           {
@@ -761,31 +705,13 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
+            "origin": "vscode-webview://082edor1rdf2hmu17ehk5pmqf48vpaflqqchhnstds82v6j77m3e",
             "lenh": "moHinh"
           }
         ]
       },
       {
-        "t": 40108,
+        "t": 69771,
         "title": "Sân khấu",
         "trangThai": "Sân khấu: http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
         "iframe": {
@@ -793,7 +719,7 @@
           "dataUrl": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
           "sandbox": "allow-scripts allow-same-origin allow-forms allow-downloads"
         },
-        "csp": "default-src 'none'; frame-src http://127.0.0.1:9014; style-src 'self' https://*.vscode-cdn.net 'nonce-EuGnRoh0YSnFGTE3Byan2Q'; script-src 'nonce-EuGnRoh0YSnFGTE3Byan2Q'",
+        "csp": "default-src 'none'; frame-src http://127.0.0.1:9014; style-src 'self' https://*.vscode-cdn.net 'nonce-zlWK2XGx0mZEfJUWqlOg6w'; script-src 'nonce-zlWK2XGx0mZEfJUWqlOg6w'",
         "soScript": 2,
         "coAcquire": "function",
         "tinDaNhan": [
@@ -803,7 +729,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
             "lenh": "napLai"
           },
           {
@@ -812,7 +738,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
             "lenh": "hienAn"
           },
           {
@@ -821,7 +747,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
             "lenh": "trangThai"
           },
           {
@@ -830,7 +756,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
             "lenh": "napLai"
           },
           {
@@ -839,17 +765,17 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0",
+            "origin": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba",
             "lenh": "hienAn"
           }
         ]
       },
       {
-        "t": 43116,
+        "t": 69777,
         "title": "Chatroom",
         "trangThai": "\n  Bridge: đã nối\n  Sân khấu: đã nối\n  Não: chưa nối (genStage.nao = tat)\n",
         "iframe": null,
-        "csp": "default-src 'none'; style-src 'self' https://*.vscode-cdn.net; script-src 'nonce-_LkmZ7VLTyBx9Oj4-wTT6w' 'self' https://*.vscode-cdn.net",
+        "csp": "default-src 'none'; style-src 'self' https://*.vscode-cdn.net; script-src 'nonce-E4TWudWUhuIm3tUsfBH1kg' 'self' https://*.vscode-cdn.net",
         "soScript": 2,
         "coAcquire": "function",
         "tinDaNhan": [
@@ -859,7 +785,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
+            "origin": "vscode-webview://082edor1rdf2hmu17ehk5pmqf48vpaflqqchhnstds82v6j77m3e",
             "lenh": "moHinh"
           },
           {
@@ -868,7 +794,7 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
+            "origin": "vscode-webview://082edor1rdf2hmu17ehk5pmqf48vpaflqqchhnstds82v6j77m3e",
             "lenh": "moHinh"
           },
           {
@@ -877,38 +803,28 @@
             "sourceLaChinhNo": false,
             "sourceLaTop": false,
             "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
-            "lenh": "moHinh"
-          },
-          {
-            "sourceLaParent": false,
-            "sourceNull": false,
-            "sourceLaChinhNo": false,
-            "sourceLaTop": false,
-            "parentLaTop": false,
-            "origin": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s",
+            "origin": "vscode-webview://082edor1rdf2hmu17ehk5pmqf48vpaflqqchhnstds82v6j77m3e",
             "lenh": "moHinh"
           }
         ]
       }
     ],
-    "daBamTaiLaiMs": 13693,
+    "daBamTaiLaiMs": 46659,
     "moPhongSuaBoLocMs": null,
+    "chatroomMat": [
+      "15:55:17👁 Lưu 1 file: .cache/e2e-v3/luu.txt",
+      "15:55:30👁 Có 1 lỗi biên dịch",
+      "15:55:33👁 Hết lỗi biên dịch",
+      "15:55:35👁 Test \"test e2e\" fail (mã 3)",
+      "15:55:35👁 Task \"build e2e\" xong",
+      "15:55:38👁 Lưu 1 file: .cache/e2e-v3/loi.ts",
+      "15:55:42👁 Commit 33fff83: thêm dòng hai",
+      "15:55:45👁 Commit 85cf7b8: Setting genStage.mcpPort (B7 làm lại: +2 đụng devPort), pnpm kiem:vscode một lệ…"
+    ],
+    "anhChatroomMatMs": 109786,
     "danhGia": [
       {
-        "loi": "Error: frame.evaluate: Execution context was destroyed, most likely because of a navigation"
-      },
-      {
-        "t": 21167,
+        "t": 50285,
         "href": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
         "title": "Gen-Stage · Sân khấu 3D điều khiển bằng lệnh",
         "coWindowStage": "object",
@@ -917,183 +833,188 @@
         "bodyText": "Đang tải sân khấu…\n\nGen-Stage"
       },
       {
-        "t": 26983,
+        "t": 54119,
         "href": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
         "title": "Gen-Stage · Sân khấu 3D điều khiển bằng lệnh",
         "coWindowStage": "object",
         "webgl2": true,
         "webgl": true,
         "bodyText": "Đang dựng căn nhà…\n\nGen-Stage"
+      },
+      {
+        "t": 60216,
+        "href": "http://127.0.0.1:9014/?bridge=1&bridgePort=9012&ttsPort=9013&sttPort=9015",
+        "title": "Gen-Stage · Sân khấu 3D điều khiển bằng lệnh",
+        "coWindowStage": "object",
+        "webgl2": true,
+        "webgl": true,
+        "bodyText": "Đang nạp nhân vật…\n\nGen-Stage"
       }
     ],
     "console": [
       {
-        "t": 9951,
+        "t": 41590,
         "type": "warning",
         "url": "vscode-file://vscode-app/tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/vsc/.vscode-test/vs",
         "text": "Unrecognized feature: 'local-network-access'."
       },
       {
-        "t": 9993,
-        "type": "warning",
-        "url": "vscode-file://vscode-app/tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/vsc/.vscode-test/vs",
-        "text": "An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing."
-      },
-      {
-        "t": 10294,
+        "t": 41822,
         "type": "warning",
         "url": "vscode-file://vscode-app/tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/vsc/.vscode-test/vs",
         "text": "An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing."
       },
       {
-        "t": 10299,
+        "t": 43454,
         "type": "warning",
-        "url": "vscode-webview://0tlmina829fgkael3d7ndvlo79dgusd6ftntd415q71uru70im5s/index.html?id=7a0a8221-736a-4fcc-be73-2138a541895d",
+        "url": "vscode-file://vscode-app/tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/vsc/.vscode-test/vs",
+        "text": "An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing."
+      },
+      {
+        "t": 44720,
+        "type": "warning",
+        "url": "vscode-webview://1gvq4hnj99c8q3m5n4v4f8kdmnpp4dfqo4llk3ppvf5gogb9odba/index.html?id=cda548e6-8a7a-4f1b-8c8d-123eff2bde19",
         "text": "Unrecognized feature: 'local-network-access'."
       },
       {
-        "t": 10648,
+        "t": 44724,
         "type": "warning",
-        "url": "vscode-webview://1hts4k6tn6dl6n3kcigmmrum9mts3jf5mca6ivb8vtd7kb38ckb0/index.html?id=54026065-f70b-4461-8a39-2b5921727a04",
+        "url": "vscode-webview://082edor1rdf2hmu17ehk5pmqf48vpaflqqchhnstds82v6j77m3e/index.html?id=767f4a6c-a198-4899-858f-17f6a1a437fc",
         "text": "Unrecognized feature: 'local-network-access'."
       },
       {
-        "t": 14376,
+        "t": 50191,
         "type": "debug",
         "url": "http://127.0.0.1:9014/@vite/client",
         "text": "[vite] connecting..."
       },
       {
-        "t": 14456,
+        "t": 50233,
         "type": "debug",
         "url": "http://127.0.0.1:9014/@vite/client",
         "text": "[vite] connected."
       },
       {
-        "t": 23997,
-        "type": "debug",
-        "url": "http://127.0.0.1:9014/@vite/client",
-        "text": "[vite] connecting..."
-      },
-      {
-        "t": 24275,
-        "type": "debug",
-        "url": "http://127.0.0.1:9014/@vite/client",
-        "text": "[vite] connected."
-      },
-      {
-        "t": 49659,
+        "t": 74118,
         "type": "info",
         "url": "http://127.0.0.1:9014/src/audio/mic.ts",
         "text": "[Gen-Stage] Chưa cài nhận dạng giọng. Chạy: bash scripts/fetch-stt.sh"
       },
       {
-        "t": 50046,
+        "t": 74630,
         "type": "error",
         "url": "http://127.0.0.1:9013/tts?text=Ch%C3%A0o+t%E1%BB%AB+VS+Code+th%E1%BA%ADt&voice=nu&rate=0&pitch=0",
         "text": "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
       },
       {
-        "t": 50049,
+        "t": 74633,
         "type": "warning",
         "url": "http://127.0.0.1:9014/@vite/client",
         "text": "[tts] câu này không có giọng: bridge trả 502"
       },
       {
-        "t": 69104,
+        "t": 93751,
         "type": "warning",
         "url": "http://127.0.0.1:9014/src/behavior/am-thanh.ts",
         "text": "The AudioContext was not allowed to start. It must be resumed (or created) from a user gesture event handler. https://developer.chrome.com/blog/autoplay/#web_audio"
       },
       {
-        "t": 69107,
+        "t": 93753,
         "type": "warning",
         "url": "http://127.0.0.1:9014/src/behavior/am-thanh.ts",
         "text": "The AudioContext was not allowed to start. It must be resumed (or created) from a user gesture event handler. https://developer.chrome.com/blog/autoplay/#web_audio"
+      },
+      {
+        "t": 115380,
+        "type": "log",
+        "url": "http://127.0.0.1:9014/@vite/client",
+        "text": "[vite] server connection lost. Polling for restart..."
       }
     ]
   },
   "logExthost": {
     "soFile": 1,
     "dongLoiCanhBao": [
-      "2026-10-26 14:21:40.405 [warning] Could not identify extension for 'vscode' require call from file:///home/user/Gen-3D-Harness/scripts/e2e-vscode/suite.cjs. These are the extension path mappings: ",
-      "2026-10-26 14:21:45.265 [warning] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'search.useIgnoreFiles', provide the URI of a resource or 'null' for any resource.",
-      "2026-10-26 14:21:45.265 [warning] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'search.useIgnoreFiles', provide the URI of a resource or 'null' for any resource.",
-      "2026-10-26 14:21:53.080 [warning] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'search.useIgnoreFiles', provide the URI of a resource or 'null' for any resource.",
-      "2026-10-26 14:21:53.080 [warning] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'search.useIgnoreFiles', provide the URI of a resource or 'null' for any resource.",
-      "2026-10-26 14:22:27.191 [warning] [vscode.typescript-language-features] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'files.watcherExclude', provide the URI of a resource or 'null' for any resource.",
-      "2026-10-26 14:22:27.208 [warning] [vscode.typescript-language-features] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'typescript.suggestionActions.enabled', provide the URI of a resource or 'null' for any resource.",
-      "2026-10-26 14:22:27.210 [warning] [vscode.typescript-language-features] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'javascript.suggestionActions.enabled', provide the URI of a resource or 'null' for any resource.",
-      "2026-10-26 14:22:27.581 [warning] [vscode.typescript-language-features] Accessing a window scoped configuration for a resource is not expected. To associate 'typescript.validate.enable' to a resource, define its scope to 'resource' in configuration contributions in 'package.json'.",
-      "2026-10-26 14:22:31.303 [warning] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'files.watcherExclude', provide the URI of a resource or 'null' for any resource.",
-      "2026-10-26 14:22:43.836 [warning] [vscode.typescript-language-features] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'files.watcherExclude', provide the URI of a resource or 'null' for any resource.",
-      "2026-10-26 14:22:45.066 [warning] [vscode.typescript-language-features] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'files.watcherExclude', provide the URI of a resource or 'null' for any resource."
+      "2026-10-26 15:54:34.715 [warning] Could not identify extension for 'vscode' require call from file:///home/user/Gen-3D-Harness/scripts/e2e-vscode/suite.cjs. These are the extension path mappings: ",
+      "2026-10-26 15:54:39.084 [warning] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'search.useIgnoreFiles', provide the URI of a resource or 'null' for any resource.",
+      "2026-10-26 15:54:39.084 [warning] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'search.useIgnoreFiles', provide the URI of a resource or 'null' for any resource.",
+      "2026-10-26 15:54:44.176 [warning] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'search.useIgnoreFiles', provide the URI of a resource or 'null' for any resource.",
+      "2026-10-26 15:54:44.176 [warning] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'search.useIgnoreFiles', provide the URI of a resource or 'null' for any resource.",
+      "2026-10-26 15:55:17.280 [warning] [vscode.typescript-language-features] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'files.watcherExclude', provide the URI of a resource or 'null' for any resource.",
+      "2026-10-26 15:55:17.542 [warning] [vscode.typescript-language-features] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'typescript.suggestionActions.enabled', provide the URI of a resource or 'null' for any resource.",
+      "2026-10-26 15:55:17.544 [warning] [vscode.typescript-language-features] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'javascript.suggestionActions.enabled', provide the URI of a resource or 'null' for any resource.",
+      "2026-10-26 15:55:17.730 [warning] [vscode.typescript-language-features] Accessing a window scoped configuration for a resource is not expected. To associate 'typescript.validate.enable' to a resource, define its scope to 'resource' in configuration contributions in 'package.json'.",
+      "2026-10-26 15:55:21.927 [warning] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'files.watcherExclude', provide the URI of a resource or 'null' for any resource.",
+      "2026-10-26 15:55:34.118 [warning] [vscode.typescript-language-features] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'files.watcherExclude', provide the URI of a resource or 'null' for any resource.",
+      "2026-10-26 15:55:34.784 [warning] [vscode.typescript-language-features] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'files.watcherExclude', provide the URI of a resource or 'null' for any resource.",
+      "2026-10-26 15:55:52.017 [error] Error: Channel has been closed",
+      "2026-10-26 15:55:52.045 [error] Error: Channel has been closed"
     ],
     "dongGenStage": [
       "\tfile:///home/user/Gen-3D-Harness/vscode -> gen-labs.gen-stage-vscode",
-      "2026-10-26 14:21:40.581 [info] ExtensionService#_doActivateExtension gen-labs.gen-stage-vscode, startup: false, activationEvent: 'api', root cause: nullExtensionDescription"
+      "2026-10-26 15:54:35.340 [info] ExtensionService#_doActivateExtension gen-labs.gen-stage-vscode, startup: false, activationEvent: 'api', root cause: nullExtensionDescription"
     ]
   },
   "logKenhGenStage": [
-    "14:21:40 [khởi động] node 24.21.0 · WebSocket: toan-cuc · root: /home/user/Gen-3D-Harness · workspace tin cậy: có",
-    "14:21:40 [khởi động] sổ tiến trình: /tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/vsc/user-data/User/globalStorage/gen-labs.gen-stage-vscode/tien-trinh.json",
-    "14:21:40 [giác quan] git: đang theo dõi commit",
-    "14:21:40 [cầu nối] đóng (mã 1006)",
-    "14:21:41 [sân khấu] visible=true active=true",
-    "14:21:41 [tiến trình] dò cổng: bridge 9012=không · sân khấu 9014=khong-co",
-    "14:21:41 [tiến trình] bật bridge: /opt/node22/bin/pnpm bridge (cwd /home/user/Gen-3D-Harness, log /tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/vsc/user-data/User/globalStorage/gen-labs.gen-stage-vscode/logs/bridge-9012.log)",
-    "14:21:41 [tiến trình] bật vite: /opt/node22/bin/pnpm exec vite --host 127.0.0.1 --port 9014 --strictPort (cwd /home/user/Gen-3D-Harness, log /tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/vsc/user-data/User/globalStorage/gen-labs.gen-stage-vscode/logs/vite-9014.log)",
-    "14:21:41 [cầu nối] đóng (mã 1006)",
-    "14:21:42 [bridge] > gen-stage@0.0.0 bridge /home/user/Gen-3D-Harness",
-    "14:21:42 [bridge] > tsx bridge/server.ts",
-    "14:21:43 [vite]   VITE v8.3.2  ready in 614 ms",
-    "14:21:43 [vite]   ➜  Local:   http://127.0.0.1:9014/",
-    "14:21:44 [cầu nối] đóng (mã 1006)",
-    "14:21:44 [bridge] [bridge 14:21:44] đang nghe ws://127.0.0.1:9012  (kiểm bằng: ss -ltn | grep 9012)",
-    "14:21:44 [bridge] [bridge 14:21:44] sân khấu nối vào  ws://127.0.0.1:9012/?role=stage  (mở app với ?bridge=1)",
-    "14:21:44 [bridge] [bridge 14:21:44] client ra lệnh    ws://127.0.0.1:9012/",
-    "14:21:44 [bridge] [bridge 14:21:44] token: tắt (chỉ nghe trên máy này nên không cần)",
-    "14:21:44 [bridge] [tts ] đang nghe http://127.0.0.1:9013/tts?text=Xin%20ch%C3%A0o&voice=nu",
-    "14:21:44 [bridge] [tts ] giọng: nữ vi-VN-HoaiMyNeural · nam vi-VN-NamMinhNeural · cache .cache/tts/",
-    "14:21:44 [bridge] [mcp ] không nghe được 127.0.0.1:9014 — listen EADDRINUSE: address already in use 127.0.0.1:9014; MCP HTTP tắt",
-    "14:21:44 [bridge] [stt ] đang nghe http://127.0.0.1:9015/stt  (POST audio)",
-    "14:21:44 [bridge] [stt ] CHƯA CÀI model — chạy: bash scripts/fetch-stt.sh",
-    "14:21:44 [bridge] [bridge 14:21:44] client nối. Tổng: 1 ",
-    "14:21:44 [bridge] [bridge 14:21:44] client nối. Tổng: 2 ",
-    "14:21:44 [bridge] [bridge 14:21:44] client ngắt. Tổng: 1  mã 1005",
-    "14:21:46 [bridge] [bridge 14:21:45] client nối. Tổng: 2 ",
-    "14:21:46 [bridge] [bridge 14:21:45] client ngắt. Tổng: 1  mã 1005",
-    "14:21:46 [tiến trình] dò cổng: bridge 9012=có · sân khấu 9014=gen-stage",
-    "14:21:47 [bridge] [bridge 14:21:46] client nối. Tổng: 2 ",
-    "14:21:47 [bridge] [bridge 14:21:46] client ngắt. Tổng: 1  mã 1005",
-    "14:21:48 [cầu nối] đã nối ws://127.0.0.1:9012/",
-    "14:21:48 [chatroom] stage.describe lỗi: Sân khấu chưa nối. Mở http://localhost:5173/?bridge=1 trong trình duyệt rồi gửi lại.",
-    "14:21:48 [bridge] [bridge 14:21:48] client nối. Tổng: 2 ",
-    "14:21:48 [bridge] [bridge 14:21:48] client nối. Tổng: 3 ",
-    "14:21:48 [bridge] [bridge 14:21:48] client ngắt. Tổng: 2  mã 1005",
-    "14:21:49 [bridge] [bridge 14:21:49] client nối. Tổng: 3 ",
-    "14:21:49 [bridge] [bridge 14:21:49] client ngắt. Tổng: 2  mã 1005",
-    "14:21:50 [bridge] [bridge 14:21:50] client nối. Tổng: 3 ",
-    "14:21:50 [bridge] [bridge 14:21:50] client ngắt. Tổng: 2  mã 1005",
-    "14:21:51 [bridge] [bridge 14:21:51] client nối. Tổng: 3 ",
-    "14:21:51 [bridge] [bridge 14:21:51] client ngắt. Tổng: 2  mã 1005",
-    "14:21:52 [bridge] [bridge 14:21:52] client nối. Tổng: 3 ",
-    "14:21:52 [bridge] [bridge 14:21:52] client ngắt. Tổng: 2  mã 1005",
-    "14:21:53 [bridge] [bridge 14:21:53] client nối. Tổng: 3 ",
-    "14:21:53 [bridge] [bridge 14:21:53] client ngắt. Tổng: 2  mã 1005",
-    "14:21:54 [bridge] [bridge 14:21:54] client nối. Tổng: 3 ",
-    "14:21:54 [bridge] [bridge 14:21:54] client ngắt. Tổng: 2  mã 1005",
-    "14:21:55 [bridge] [bridge 14:21:55] client nối. Tổng: 3 ",
-    "14:21:55 [bridge] [bridge 14:21:55] client ngắt. Tổng: 2  mã 1005",
-    "14:21:56 [bridge] [bridge 14:21:56] client nối. Tổng: 3 ",
-    "14:21:56 [bridge] [bridge 14:21:56] client ngắt. Tổng: 2  mã 1005",
-    "14:21:57 [bridge] [bridge 14:21:57] client nối. Tổng: 3 ",
-    "14:21:57 [bridge] [bridge 14:21:57] client ngắt. Tổng: 2  mã 1005",
-    "14:21:58 [bridge] [bridge 14:21:58] client nối. Tổng: 3 ",
-    "14:21:58 [bridge] [bridge 14:21:58] client ngắt. Tổng: 2  mã 1005",
-    "14:21:59 [bridge] [bridge 14:21:59] client nối. Tổng: 3 ",
-    "14:21:59 [bridge] [bridge 14:21:59] client ngắt. Tổng: 2  mã 1005",
-    "14:22:00 [bridge] [bridge 14:22:00] client nối. Tổng: 3 ",
-    "14:22:00 [bridge] [bridge 14:22:00] client ngắt. Tổng: 2  mã 1005"
+    "15:54:36 [khởi động] node 24.21.0 · WebSocket: toan-cuc · root: /home/user/Gen-3D-Harness · workspace tin cậy: có",
+    "15:54:36 [khởi động] sổ tiến trình: /tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/vsc/user-data/User/globalStorage/gen-labs.gen-stage-vscode/tien-trinh.json",
+    "15:54:36 [giác quan] git: đang theo dõi commit",
+    "15:54:37 [cầu nối] đóng (mã 1006)",
+    "15:54:39 [cầu nối] đóng (mã 1006)",
+    "15:54:39 [sân khấu] visible=true active=true",
+    "15:54:41 [cầu nối] đóng (mã 1006)",
+    "15:54:41 [tiến trình] dò cổng: bridge 9012=không · sân khấu 9014=khong-co",
+    "15:54:41 [tiến trình] bật bridge: /opt/node22/bin/pnpm bridge (cwd /home/user/Gen-3D-Harness, log /tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/vsc/user-data/User/globalStorage/gen-labs.gen-stage-vscode/logs/bridge-9012.log)",
+    "15:54:41 [tiến trình] bật vite: /opt/node22/bin/pnpm exec vite --host 127.0.0.1 --port 9014 --strictPort (cwd /home/user/Gen-3D-Harness, log /tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/vsc/user-data/User/globalStorage/gen-labs.gen-stage-vscode/logs/vite-9014.log)",
+    "15:54:42 [bridge] > gen-stage@0.0.0 bridge /home/user/Gen-3D-Harness",
+    "15:54:42 [bridge] > tsx bridge/server.ts",
+    "15:54:44 [vite]   VITE v8.3.2  ready in 1557 ms",
+    "15:54:44 [vite]   ➜  Local:   http://127.0.0.1:9014/",
+    "15:54:45 [cầu nối] đóng (mã 1006)",
+    "15:54:45 [bridge] [bridge 15:54:45] đang nghe ws://127.0.0.1:9012  (kiểm bằng: ss -ltn | grep 9012)",
+    "15:54:45 [bridge] [bridge 15:54:45] sân khấu nối vào  ws://127.0.0.1:9012/?role=stage  (mở app với ?bridge=1)",
+    "15:54:45 [bridge] [bridge 15:54:45] client ra lệnh    ws://127.0.0.1:9012/",
+    "15:54:45 [bridge] [bridge 15:54:45] token: tắt (chỉ nghe trên máy này nên không cần)",
+    "15:54:45 [bridge] [tts ] đang nghe http://127.0.0.1:9013/tts?text=Xin%20ch%C3%A0o&voice=nu",
+    "15:54:45 [bridge] [tts ] giọng: nữ vi-VN-HoaiMyNeural · nam vi-VN-NamMinhNeural · cache .cache/tts/",
+    "15:54:45 [bridge] [mcp ] không nghe được 127.0.0.1:9014 — listen EADDRINUSE: address already in use 127.0.0.1:9014; MCP HTTP tắt",
+    "15:54:45 [bridge] [stt ] đang nghe http://127.0.0.1:9015/stt  (POST audio)",
+    "15:54:45 [bridge] [stt ] CHƯA CÀI model — chạy: bash scripts/fetch-stt.sh",
+    "15:54:45 [bridge] [bridge 15:54:45] client nối. Tổng: 1 ",
+    "15:54:45 [tiến trình] dò cổng: bridge 9012=có · sân khấu 9014=gen-stage",
+    "15:54:46 [bridge] [bridge 15:54:45] client nối. Tổng: 2 ",
+    "15:54:46 [bridge] [bridge 15:54:45] client ngắt. Tổng: 1  mã 1005",
+    "15:54:47 [bridge] [bridge 15:54:47] client nối. Tổng: 2 ",
+    "15:54:47 [bridge] [bridge 15:54:47] client ngắt. Tổng: 1  mã 1005",
+    "15:54:48 [bridge] [bridge 15:54:48] client nối. Tổng: 2 ",
+    "15:54:48 [bridge] [bridge 15:54:48] client ngắt. Tổng: 1  mã 1005",
+    "15:54:49 [bridge] [bridge 15:54:49] client nối. Tổng: 2 ",
+    "15:54:49 [bridge] [bridge 15:54:49] client ngắt. Tổng: 1  mã 1005",
+    "15:54:50 [bridge] [bridge 15:54:50] client nối. Tổng: 2 ",
+    "15:54:50 [bridge] [bridge 15:54:50] client ngắt. Tổng: 1  mã 1005",
+    "15:54:51 [bridge] [bridge 15:54:51] client nối. Tổng: 2 ",
+    "15:54:51 [bridge] [bridge 15:54:51] client ngắt. Tổng: 1  mã 1005",
+    "15:54:52 [bridge] [bridge 15:54:52] client nối. Tổng: 2 ",
+    "15:54:52 [bridge] [bridge 15:54:52] client ngắt. Tổng: 1  mã 1005",
+    "15:54:53 [cầu nối] đã nối ws://127.0.0.1:9012/",
+    "15:54:53 [chatroom] stage.describe lỗi: Sân khấu chưa nối. Mở http://localhost:5173/?bridge=1 trong trình duyệt rồi gửi lại.",
+    "15:54:53 [bridge] [bridge 15:54:53] client nối. Tổng: 2 ",
+    "15:54:53 [bridge] [bridge 15:54:53] client ngắt. Tổng: 1  mã 1005",
+    "15:54:53 [bridge] [bridge 15:54:53] client nối. Tổng: 2 ",
+    "15:54:54 [bridge] [bridge 15:54:54] client nối. Tổng: 3 ",
+    "15:54:54 [bridge] [bridge 15:54:54] client ngắt. Tổng: 2  mã 1005",
+    "15:54:55 [bridge] [bridge 15:54:55] client nối. Tổng: 3 ",
+    "15:54:55 [bridge] [bridge 15:54:55] client ngắt. Tổng: 2  mã 1005",
+    "15:54:56 [bridge] [bridge 15:54:56] client nối. Tổng: 3 ",
+    "15:54:56 [bridge] [bridge 15:54:56] client ngắt. Tổng: 2  mã 1005",
+    "15:54:57 [bridge] [bridge 15:54:57] client nối. Tổng: 3 ",
+    "15:54:57 [bridge] [bridge 15:54:57] client ngắt. Tổng: 2  mã 1005",
+    "15:54:58 [bridge] [bridge 15:54:58] client nối. Tổng: 3 ",
+    "15:54:58 [bridge] [bridge 15:54:58] client ngắt. Tổng: 2  mã 1005",
+    "15:54:59 [bridge] [bridge 15:54:59] client nối. Tổng: 3 ",
+    "15:54:59 [bridge] [bridge 15:54:59] client ngắt. Tổng: 2  mã 1005",
+    "15:55:00 [bridge] [bridge 15:55:00] sân khấu đã nối. Client đang chờ: 2",
+    "15:55:00 [bridge] [bridge 15:55:00] não đang nối: 0",
+    "15:55:00 [bridge] [bridge 15:55:00] client nối. Tổng: 3 "
   ]
 }
