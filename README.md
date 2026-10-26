@@ -38,6 +38,19 @@ Persona từng nhân vật: `scripts/nao-local/<actor>.md`; muốn sửa riêng 
 `.cache/nao-local/<actor>.md` (được ưu tiên, không commit). Chỉ chạy **một** driver
 não một lúc (`pnpm nao` hoặc `pnpm nao-local`).
 
+### Tai nghe — nói với sân khấu từ ngoài trình duyệt (V2)
+
+```bash
+bash scripts/fetch-stt.sh                       # một lần: model PhoWhisper cho bridge
+pnpm tai-nghe --to gen                       # thu mic mặc định → tự dừng khi im 1,2 s → Gen nghe
+pnpm tai-nghe --to gen --nguon cau.wav       # đọc file thay mic (thử/kiểm)
+```
+
+Cần `ffmpeg` (Fedora: `dnf install ffmpeg-free`) và Node ≥ 22.18. Thu một lượt rồi
+thoát; stdout là JSON lines (`bat-dau`/`muc`/`ket-qua`/`bo-qua`/`loi`) cho extension
+VS Code đọc. Gen đang nói thì không thu (tránh vòng loa → mic). Tin cậy < 0,6 thì
+không tự gửi. Hợp đồng đầy đủ: đầu file `scripts/tai-nghe.mjs`.
+
 Xem trên điện thoại cùng wifi: `pnpm dev --host` rồi mở địa chỉ `http://<IP máy>:5173`.
 
 Chi tiết quy ước: [`CLAUDE.md`](./CLAUDE.md) · giấy phép asset: [`assets/LICENSES.md`](./assets/LICENSES.md)

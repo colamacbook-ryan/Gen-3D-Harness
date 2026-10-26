@@ -88,11 +88,16 @@ export function timDaiNoi(
  */
 export class SoDoAm {
   private rms: number[] = [];
+  readonly buocMs: number;
+  private readonly ch: CauHinhVad;
 
-  constructor(
-    readonly buocMs: number,
-    private readonly ch: CauHinhVad = {},
-  ) {}
+  // Không dùng "parameter property" (`constructor(readonly buocMs…)`): Node chạy
+  // file .ts bằng type stripping chỉ nhận cú pháp xoá-được, và `scripts/tai-nghe.mjs`
+  // (V2) import thẳng file này bằng `node`, không qua tsx.
+  constructor(buocMs: number, ch: CauHinhVad = {}) {
+    this.buocMs = buocMs;
+    this.ch = ch;
+  }
 
   them(x: number): void {
     this.rms.push(Number.isFinite(x) ? Math.max(0, x) : 0);

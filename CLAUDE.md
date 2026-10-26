@@ -36,6 +36,7 @@ pnpm bridge               # bridge: ws lệnh (8787) + giọng Việt (8788) + M
 pnpm mcp                  # MCP qua stdio cho agy CLI (`agy mcp add gen-stage …`)
 pnpm nao                  # DRIVER não: nghe user.text qua ws → nuôi agy đang ấm trong tmux
 pnpm nao-local            # V1 — DRIVER NÃO LOCAL: user.text qua ws → Ollama /v1 (tools) → Gen trả lời
+pnpm tai-nghe --to gen    # V2 — TAI NGHE: thu mic (ffmpeg) một lượt → POST /stt → stage.hear; stdout JSON lines (hợp đồng đầu file scripts/tai-nghe.mjs)
 pnpm nao-demo             # não mẫu rule-based (không LLM) nối MCP stdio — vòng kín khi không có agy
 pnpm preview              # xem thử bản build
 
@@ -49,6 +50,7 @@ node scripts/kiem-a2.mjs --chi-anh  # bản NHANH lúc đang làm (chỉ ảnh +
 node scripts/kiem-b1.mjs      # bằng chứng B1: bố cục 3 vùng + steer mượt + owner/gen vào docs/b1/ (CHẠY MỘT LẦN)
 node scripts/kiem-b3.mjs      # bằng chứng B3: Owner gõ → MCP → Gen diễn + nói, vào docs/b3/ (CHẠY MỘT LẦN)
 node scripts/kiem-nao.mjs     # bằng chứng DRIVER: Sếp gõ → driver → agy thật → Gen nói, đo độ trễ, vào docs/nao/ (CHẠY MỘT LẦN)
+node scripts/kiem-tai-nghe.mjs   # bằng chứng V2: bridge THẬT (token) + sân khấu giả + STT GIẢ + tai-nghe thật, ca a–i (cổng 8924–8929, đổi bằng `GEN_STAGE_KIEM_CONG_TAI`), vào docs/v2/nhat-ky-kiem-tai-nghe.json
 node scripts/kiem-nao-local.mjs  # bằng chứng V1: bridge thật + Ollama GIẢ + driver thật (cổng 8863–8868, đổi bằng `GEN_STAGE_KIEM_CONG`), vào docs/v1/nhat-ky-kiem-nao-local.json
 node scripts/kiem-mo-phong-loi-cu.mjs  # mô phỏng nguyên nhân gốc #37 (naoHttpDen hết hạn, ws không hề rớt) vào docs/nao/mo-phong-loi-cu.*
 node scripts/kiem-reconnect.mjs        # bằng chứng heartbeat + backoff + watchdog (#37): driver sống 10 phút, giết bridge giữa chừng, vào docs/nao/reconnect.* (CHẠY MỘT LẦN)
@@ -144,6 +146,7 @@ biết registry, **giao diện** không gọi thẳng vào sân khấu.
 | `skills/gen-stage-nao/SKILL.md` | **B3** — skill cho agy CLI: vòng `stage_events` → `stage_describe` → 1–3 lệnh → `actor_say` |
 | `scripts/nao-agy.mjs` | **DRIVER NÃO** — vòng lặp nằm ở đây, không ở agy: nghe `user.text` qua ws, phản xạ ≤300 ms, gộp câu 800 ms, hàng đợi 1 lượt, bơm một dòng vào agy đang ấm trong tmux |
 | `scripts/nao-local.mjs` | **V1 — DRIVER NÃO LOCAL** (Ollama): cùng khung `nao-agy.mjs` (import, không chép), 10 tool danh sách trắng sinh bằng `toolTuLenh`, mọi tool_call qua `lyDoCamNao`; persona `scripts/nao-local/<actor>.md` (ghi đè bằng `.cache/nao-local/<actor>.md`) |
+| `scripts/tai-nghe.mjs` | **V2 — TAI NGHE** (thu giọng NGOÀI trình duyệt): ffmpeg → PCM qua pipe → RMS/VAD (`timDaiNoi` của `src/audio/vad.ts`) → `POST /stt` → `stage.hear` qua ws (vai client). Bán song công CNS-004. CLI là hợp đồng với extension `vscode/` |
 | `scripts/nao-demo.mjs` | **B3** — não mẫu rule-based (không LLM) chạy qua MCP stdio thật, làm bằng chứng vòng kín khi không có agy |
 | `bridge/tts.ts` | **B2** — giọng tiếng Việt: `GET /tts` (cổng 8788) gọi thẳng WebSocket Edge, trả mp3, cache `.cache/tts/<sha1>.mp3` |
 | `src/audio/tts-client.ts` | **B2** — tải + giải mã mp3, đo `durationMs` thật, phát bằng Web Audio, đẩy biên độ RMS mỗi 50 ms sang nhân vật |
@@ -761,3 +764,45 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
 - Driver não trong extension (`genStage.nao`): xem `vscode/README.md` (dùng chung
   sổ PID/nhóm tiến trình; một driver cho một bridge, nhận diện driver ngoài bằng
   argv `nao-(agy|local).mjs` + `GEN_STAGE_PORT`).
+
+## Quyết định V2 — tai nghe (26/10, INT-02 · INT-05 · CNS-004)
+
+- **Một tiến trình một lượt, CLI là hợp đồng** với extension (`vscode/` spawn nó):
+  `node scripts/tai-nghe.mjs --port --stt-port --to [--nguon] [--toi-da-ms 15000]
+  [--im-lang-ms 1200] [--khong-gui] [--token]`. stdout chỉ có JSON lines
+  (`bat-dau` · `muc` ≤ 10 lần/s · `dang-nhan-dang` · `ket-qua {…, daGui}` ·
+  `bo-qua {lyDo: gen-dang-noi|im-lang|rong}` · `loi {ma: thiet-bi|stt|bridge|tham-so}`),
+  log người đọc ra stderr. Mã thoát 0 / 2 thiết bị / 4 STT-bridge / 64 tham số
+  (130 = tín hiệu lần hai lúc chờ STT). Dừng: stdin `dung`, SIGINT/SIGTERM (dừng
+  thu rồi VẪN nhận dạng phần đã thu), VAD im ≥ `--im-lang-ms` sau khi có tiếng,
+  hoặc `--toi-da-ms`. EOF stdin KHÔNG dừng.
+- **Bán song công (CNS-004)**: hỏi `stage.describe` TRƯỚC khi mở mic — actor
+  `controlledBy:"agent"` đang `speaking` ⇒ `bo-qua gen-dang-noi`, không mở mic.
+  Trong lúc thu, `actor.sayStart` của bất kỳ actor nào KHÔNG phải owner ⇒ dừng,
+  vứt âm, không gọi STT (kể cả khi sự kiện tới đúng lúc vừa dừng vì lý do khác;
+  tới trong lúc STT đang chạy thì không gửi `stage.hear`). Không hỏi được sân
+  khấu ⇒ `loi bridge` — không bảo đảm được bán song công thì không thu.
+- **PCM qua pipe, không ghi wav tạm**: ffmpeg xuất `s16le` 16 kHz mono ra stdout;
+  một luồng vừa đo RMS vừa là âm gửi đi; wav gửi STT dựng lại từ PCM đã cắt
+  (header 44 byte). Không có thư mục tạm nào phải dọn; đọc wav đang ghi dở thì
+  header chưa có độ dài thật.
+- **VAD dùng lại `timDaiNoi` của C1, không chép**: tự dừng = chạy lại hàm đó
+  (`chuaMs: 0`) trên chuỗi RMS đến giờ; cắt trước khi gửi = cùng hàm, cấu hình
+  mặc định (chừa 120 ms). Muốn `node` thuần import được `src/audio/vad.ts` thì
+  file đó chỉ được dùng **cú pháp TS xoá-được** (type stripping, Node ≥ 22.18):
+  constructor `SoDoAm` bỏ "parameter property". Node cũ hơn ⇒ một dòng
+  `loi tham-so` nói rõ (hoặc chạy bằng `npx tsx scripts/tai-nghe.mjs`).
+- **Vạch mic kẹp theo đồng hồ thật**, không theo thời lượng âm: nguồn có thể đổ
+  một mẻ dồn (buffer pulse, `-re` lúc mở file) — đo thật lần đầu ra 17 vạch/1,4 s.
+- **Nguồn thu dò lúc chạy (STD-10)**: Linux `pulse` rồi `alsa` (`default`), macOS
+  `avfoundation :0`, Windows `dshow audio=<--nguon>` (bắt buộc tên, chưa test);
+  `--nguon` có `/` hoặc đuôi âm thanh ⇒ file, đọc `-re` (tốc độ thật, như mic).
+  Không có ffmpeg / không mở được nguồn nào / nguồn không ra âm trong `--toi-da-ms`
+  ⇒ `loi thiet-bi` mã 2.
+- **Tin cậy < 0,6 ⇒ `daGui:false`** (cùng `TIN_DU` của mic trình duyệt); extension
+  hỏi Sếp rồi tự gửi `stage.hear`. `stage.hear` lỗi ⇒ vẫn phát `ket-qua daGui:false`
+  (giữ chữ) rồi `loi bridge` mã 4.
+- Kiểm: `scripts/__tests__/tai-nghe.test.mjs` (CLI thật + ffmpeg thật, bridge giả
+  8920, STT giả 8921; đổi gốc bằng `GEN_STAGE_TEST_CONG_TAI`) và
+  `node scripts/kiem-tai-nghe.mjs` (bridge THẬT có token). **Chưa đo với mic thật
+  và PhoWhisper thật** (máy kiểm không có cả hai).

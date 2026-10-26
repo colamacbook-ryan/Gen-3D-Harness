@@ -1,0 +1,568 @@
+{
+  "batDau": "2026-10-26T09:28:04.905Z",
+  "node": "v22.22.0",
+  "cong": {
+    "bridge": 8924,
+    "sttGia": 8928,
+    "sttTat": 8929
+  },
+  "ca": {
+    "a": {
+      "ca": "a",
+      "moTa": "nói 1,2 s rồi im → VAD tự dừng → STT → stage.hear to=gen",
+      "lenh": "node scripts/tai-nghe.mjs --port 8924 --stt-port 8928 --to gen --token kiem-tai-nghe --nguon /tmp/kiem-tai-nghe-fqAdyM/noi.wav --im-lang-ms 800",
+      "maThoat": 0,
+      "tongMs": 2271,
+      "muc": {
+        "soLan": 16,
+        "dinh": 0.088,
+        "nhipNganNhatMs": 126
+      },
+      "suKien": [
+        {
+          "su": "bat-dau",
+          "tMs": 281
+        },
+        {
+          "su": "dang-nhan-dang",
+          "tMs": 2214
+        },
+        {
+          "su": "ket-qua",
+          "text": "Gen ơi, dựng connector Baserow",
+          "confidence": 0.91,
+          "durationMs": 412,
+          "goiGen": true,
+          "daGui": true,
+          "tMs": 2259
+        }
+      ],
+      "stderr": [
+        "[tai-nghe 09:28:06] mở nguồn file /tmp/kiem-tai-nghe-fqAdyM/noi.wav",
+        "[tai-nghe 09:28:06] đang thu (file /tmp/kiem-tai-nghe-fqAdyM/noi.wav) — nói đi",
+        "[tai-nghe 09:28:08] im lặng ≥ 800 ms sau khi nói — tự dừng",
+        "[tai-nghe 09:28:08] dừng (im-lang) sau 2500 ms, giữ 400–1800 ms",
+        "[tai-nghe 09:28:08] nghe được: \"Gen ơi, dựng connector Baserow\" (tin cậy 0.91)"
+      ],
+      "lenhSanKhauNhan": [
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        },
+        {
+          "cmd": "stage.hear",
+          "args": {
+            "text": "Gen ơi, dựng connector Baserow",
+            "to": "gen",
+            "confidence": 0.91,
+            "durationMs": 412
+          }
+        }
+      ],
+      "sttNhan": [
+        {
+          "t": 1793006888487,
+          "url": "/stt",
+          "contentType": "audio/wav",
+          "byte": 44844,
+          "audioMs": 1400
+        }
+      ]
+    },
+    "b": {
+      "ca": "b",
+      "moTa": "tin cậy 0,4 → không tự gửi",
+      "lenh": "node scripts/tai-nghe.mjs --port 8924 --stt-port 8928 --to gen --token kiem-tai-nghe --nguon /tmp/kiem-tai-nghe-fqAdyM/noi.wav --im-lang-ms 800",
+      "maThoat": 0,
+      "tongMs": 2245,
+      "muc": {
+        "soLan": 16,
+        "dinh": 0.088,
+        "nhipNganNhatMs": 127
+      },
+      "suKien": [
+        {
+          "su": "bat-dau",
+          "tMs": 254
+        },
+        {
+          "su": "dang-nhan-dang",
+          "tMs": 2187
+        },
+        {
+          "su": "ket-qua",
+          "text": "ờ thì",
+          "confidence": 0.4,
+          "durationMs": 300,
+          "goiGen": false,
+          "daGui": false,
+          "tMs": 2233
+        }
+      ],
+      "stderr": [
+        "[tai-nghe 09:28:08] mở nguồn file /tmp/kiem-tai-nghe-fqAdyM/noi.wav",
+        "[tai-nghe 09:28:08] đang thu (file /tmp/kiem-tai-nghe-fqAdyM/noi.wav) — nói đi",
+        "[tai-nghe 09:28:10] im lặng ≥ 800 ms sau khi nói — tự dừng",
+        "[tai-nghe 09:28:10] dừng (im-lang) sau 2500 ms, giữ 400–1800 ms",
+        "[tai-nghe 09:28:10] nghe được: \"ờ thì\" (tin cậy 0.4)",
+        "[tai-nghe 09:28:10] tin cậy < 0.6 — không tự gửi, để Sếp quyết"
+      ],
+      "lenhSanKhauNhan": [
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        }
+      ],
+      "sttNhan": [
+        {
+          "t": 1793006890885,
+          "url": "/stt",
+          "contentType": "audio/wav",
+          "byte": 44844,
+          "audioMs": 1400
+        }
+      ]
+    },
+    "c": {
+      "ca": "c",
+      "moTa": "Gen đang speaking lúc bắt đầu",
+      "lenh": "node scripts/tai-nghe.mjs --port 8924 --stt-port 8928 --to gen --token kiem-tai-nghe --nguon /tmp/kiem-tai-nghe-fqAdyM/noi.wav",
+      "maThoat": 0,
+      "tongMs": 199,
+      "muc": null,
+      "suKien": [
+        {
+          "su": "bo-qua",
+          "lyDo": "gen-dang-noi",
+          "tMs": 190
+        }
+      ],
+      "stderr": [
+        "[tai-nghe 09:28:11] gen đang nói — không thu (bán song công)"
+      ],
+      "lenhSanKhauNhan": [
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        }
+      ],
+      "sttNhan": []
+    },
+    "d": {
+      "ca": "d",
+      "moTa": "actor.sayStart của gen (sân khấu → bridge thật → tai-nghe) giữa lúc thu",
+      "lenh": "node scripts/tai-nghe.mjs --port 8924 --stt-port 8928 --to gen --token kiem-tai-nghe --nguon /tmp/kiem-tai-nghe-fqAdyM/dai.wav --im-lang-ms 0",
+      "maThoat": 0,
+      "tongMs": 1091,
+      "muc": {
+        "soLan": 7,
+        "dinh": 0.088,
+        "nhipNganNhatMs": 128
+      },
+      "suKien": [
+        {
+          "su": "bat-dau",
+          "tMs": 276
+        },
+        {
+          "su": "bo-qua",
+          "lyDo": "gen-dang-noi",
+          "tMs": 1079
+        }
+      ],
+      "stderr": [
+        "[tai-nghe 09:28:11] mở nguồn file /tmp/kiem-tai-nghe-fqAdyM/dai.wav",
+        "[tai-nghe 09:28:11] đang thu (file /tmp/kiem-tai-nghe-fqAdyM/dai.wav) — nói đi",
+        "[tai-nghe 09:28:12] gen bắt đầu nói giữa lúc thu — dừng, vứt âm đã thu"
+      ],
+      "lenhSanKhauNhan": [
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        }
+      ],
+      "sttNhan": []
+    },
+    "e": {
+      "ca": "e",
+      "moTa": "stdin \"dung\" (VAD tắt)",
+      "lenh": "node scripts/tai-nghe.mjs --port 8924 --stt-port 8928 --to gen --token kiem-tai-nghe --nguon /tmp/kiem-tai-nghe-fqAdyM/dai.wav --im-lang-ms 0",
+      "maThoat": 0,
+      "tongMs": 1820,
+      "muc": {
+        "soLan": 12,
+        "dinh": 0.088,
+        "nhipNganNhatMs": 127
+      },
+      "suKien": [
+        {
+          "su": "bat-dau",
+          "tMs": 248
+        },
+        {
+          "su": "dang-nhan-dang",
+          "tMs": 1752
+        },
+        {
+          "su": "ket-qua",
+          "text": "Gen ơi, dựng connector Baserow",
+          "confidence": 0.91,
+          "durationMs": 412,
+          "goiGen": true,
+          "daGui": true,
+          "tMs": 1807
+        }
+      ],
+      "stderr": [
+        "[tai-nghe 09:28:12] mở nguồn file /tmp/kiem-tai-nghe-fqAdyM/dai.wav",
+        "[tai-nghe 09:28:12] đang thu (file /tmp/kiem-tai-nghe-fqAdyM/dai.wav) — nói đi",
+        "[tai-nghe 09:28:14] stdin — dừng thu",
+        "[tai-nghe 09:28:14] dừng (dung) sau 2000 ms, giữ 200–2000 ms",
+        "[tai-nghe 09:28:14] nghe được: \"Gen ơi, dựng connector Baserow\" (tin cậy 0.91)"
+      ],
+      "lenhSanKhauNhan": [
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        },
+        {
+          "cmd": "stage.hear",
+          "args": {
+            "text": "Gen ơi, dựng connector Baserow",
+            "to": "gen",
+            "confidence": 0.91,
+            "durationMs": 412
+          }
+        }
+      ],
+      "sttNhan": [
+        {
+          "t": 1793006894443,
+          "url": "/stt",
+          "contentType": "audio/wav",
+          "byte": 57644,
+          "audioMs": 1800
+        }
+      ]
+    },
+    "f": {
+      "ca": "f",
+      "moTa": "chạm --toi-da-ms 1500",
+      "lenh": "node scripts/tai-nghe.mjs --port 8924 --stt-port 8928 --to gen --token kiem-tai-nghe --nguon /tmp/kiem-tai-nghe-fqAdyM/dai.wav --im-lang-ms 0 --toi-da-ms 1500",
+      "maThoat": 0,
+      "tongMs": 1714,
+      "muc": {
+        "soLan": 11,
+        "dinh": 0.088,
+        "nhipNganNhatMs": 125
+      },
+      "suKien": [
+        {
+          "su": "bat-dau",
+          "tMs": 281
+        },
+        {
+          "su": "dang-nhan-dang",
+          "tMs": 1661
+        },
+        {
+          "su": "ket-qua",
+          "text": "Gen ơi, dựng connector Baserow",
+          "confidence": 0.91,
+          "durationMs": 412,
+          "goiGen": true,
+          "daGui": true,
+          "tMs": 1705
+        }
+      ],
+      "stderr": [
+        "[tai-nghe 09:28:14] mở nguồn file /tmp/kiem-tai-nghe-fqAdyM/dai.wav",
+        "[tai-nghe 09:28:14] đang thu (file /tmp/kiem-tai-nghe-fqAdyM/dai.wav) — nói đi",
+        "[tai-nghe 09:28:16] chạm --toi-da-ms 1500 — dừng",
+        "[tai-nghe 09:28:16] dừng (toi-da) sau 1900 ms, giữ 200–1900 ms",
+        "[tai-nghe 09:28:16] nghe được: \"Gen ơi, dựng connector Baserow\" (tin cậy 0.91)"
+      ],
+      "lenhSanKhauNhan": [
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        },
+        {
+          "cmd": "stage.hear",
+          "args": {
+            "text": "Gen ơi, dựng connector Baserow",
+            "to": "gen",
+            "confidence": 0.91,
+            "durationMs": 412
+          }
+        }
+      ],
+      "sttNhan": [
+        {
+          "t": 1793006896316,
+          "url": "/stt",
+          "contentType": "audio/wav",
+          "byte": 54444,
+          "audioMs": 1700
+        }
+      ]
+    },
+    "g": {
+      "ca": "g",
+      "moTa": "STT tắt",
+      "lenh": "node scripts/tai-nghe.mjs --port 8924 --stt-port 8928 --to gen --token kiem-tai-nghe --nguon /tmp/kiem-tai-nghe-fqAdyM/noi.wav --im-lang-ms 800 --stt-port 8929",
+      "maThoat": 4,
+      "tongMs": 2263,
+      "muc": {
+        "soLan": 16,
+        "dinh": 0.088,
+        "nhipNganNhatMs": 125
+      },
+      "suKien": [
+        {
+          "su": "bat-dau",
+          "tMs": 283
+        },
+        {
+          "su": "dang-nhan-dang",
+          "tMs": 2215
+        },
+        {
+          "su": "loi",
+          "ma": "stt",
+          "chu": "Không gọi được STT 127.0.0.1:8929/stt: ECONNREFUSED",
+          "tMs": 2252
+        }
+      ],
+      "stderr": [
+        "[tai-nghe 09:28:16] mở nguồn file /tmp/kiem-tai-nghe-fqAdyM/noi.wav",
+        "[tai-nghe 09:28:16] đang thu (file /tmp/kiem-tai-nghe-fqAdyM/noi.wav) — nói đi",
+        "[tai-nghe 09:28:18] im lặng ≥ 800 ms sau khi nói — tự dừng",
+        "[tai-nghe 09:28:18] dừng (im-lang) sau 2500 ms, giữ 400–1800 ms",
+        "[tai-nghe 09:28:18] LỖI stt: Không gọi được STT 127.0.0.1:8929/stt: ECONNREFUSED"
+      ],
+      "lenhSanKhauNhan": [
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        }
+      ],
+      "sttNhan": []
+    },
+    "h": {
+      "ca": "h",
+      "moTa": "nguồn sai",
+      "lenh": "node scripts/tai-nghe.mjs --port 8924 --stt-port 8928 --to gen --token kiem-tai-nghe --nguon /khong/co/mic.wav",
+      "maThoat": 2,
+      "tongMs": 240,
+      "muc": null,
+      "suKien": [
+        {
+          "su": "loi",
+          "ma": "thiet-bi",
+          "chu": "Không thấy file nguồn: /khong/co/mic.wav",
+          "tMs": 203
+        }
+      ],
+      "stderr": [
+        "[tai-nghe 09:28:19] LỖI thiet-bi: Không thấy file nguồn: /khong/co/mic.wav"
+      ],
+      "lenhSanKhauNhan": [],
+      "sttNhan": []
+    },
+    "h2": {
+      "ca": "h2",
+      "moTa": "thiết bị không có (pulse → alsa đều hỏng)",
+      "lenh": "node scripts/tai-nghe.mjs --port 8924 --stt-port 8928 --to gen --token kiem-tai-nghe --nguon khong-co-mic-nay",
+      "maThoat": 2,
+      "tongMs": 364,
+      "muc": null,
+      "suKien": [
+        {
+          "su": "loi",
+          "ma": "thiet-bi",
+          "chu": "Không mở được nguồn thu — alsa:khong-co-mic-nay: Error opening input files: Input/output error",
+          "tMs": 354
+        }
+      ],
+      "stderr": [
+        "[tai-nghe 09:28:19] mở nguồn pulse:khong-co-mic-nay",
+        "[tai-nghe 09:28:19] không mở được pulse:khong-co-mic-nay: Error opening input files: No such process",
+        "[tai-nghe 09:28:19] mở nguồn alsa:khong-co-mic-nay",
+        "[tai-nghe 09:28:19] không mở được alsa:khong-co-mic-nay: Error opening input files: Input/output error",
+        "[tai-nghe 09:28:19] LỖI thiet-bi: Không mở được nguồn thu — alsa:khong-co-mic-nay: Error opening input files: Input/output error"
+      ],
+      "lenhSanKhauNhan": [
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        }
+      ],
+      "sttNhan": []
+    },
+    "i": {
+      "ca": "i",
+      "moTa": "chỉ im lặng",
+      "lenh": "node scripts/tai-nghe.mjs --port 8924 --stt-port 8928 --to gen --token kiem-tai-nghe --nguon /tmp/kiem-tai-nghe-fqAdyM/im.wav --im-lang-ms 800",
+      "maThoat": 0,
+      "tongMs": 1220,
+      "muc": {
+        "soLan": 8,
+        "dinh": 0,
+        "nhipNganNhatMs": 127
+      },
+      "suKien": [
+        {
+          "su": "bat-dau",
+          "tMs": 288
+        },
+        {
+          "su": "bo-qua",
+          "lyDo": "im-lang",
+          "tMs": 1205
+        }
+      ],
+      "stderr": [
+        "[tai-nghe 09:28:19] mở nguồn file /tmp/kiem-tai-nghe-fqAdyM/im.wav",
+        "[tai-nghe 09:28:20] đang thu (file /tmp/kiem-tai-nghe-fqAdyM/im.wav) — nói đi",
+        "[tai-nghe 09:28:21] dừng (het-nguon) sau 1500 ms, không có tiếng"
+      ],
+      "lenhSanKhauNhan": [
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        }
+      ],
+      "sttNhan": []
+    }
+  },
+  "pgidBridge": 3687,
+  "ketThuc": "2026-10-26T09:28:21.177Z",
+  "ketQua": [
+    {
+      "ten": "(a) ket-qua daGui:true",
+      "ok": true,
+      "kq": {
+        "su": "ket-qua",
+        "text": "Gen ơi, dựng connector Baserow",
+        "confidence": 0.91,
+        "durationMs": 412,
+        "goiGen": true,
+        "daGui": true,
+        "tMs": 2259
+      }
+    },
+    {
+      "ten": "(a) tự dừng bằng VAD (không đọc hết file 4,2 s)",
+      "ok": true,
+      "tongMs": 2271
+    },
+    {
+      "ten": "(a) stage.hear qua bridge thật đúng to/text/confidence/durationMs",
+      "ok": true
+    },
+    {
+      "ten": "(a) STT nhận wav đã cắt im lặng (1,2 s tiếng + lề ≤ 240 ms)",
+      "ok": true,
+      "sttNhan": [
+        {
+          "t": 1793006888487,
+          "url": "/stt",
+          "contentType": "audio/wav",
+          "byte": 44844,
+          "audioMs": 1400
+        }
+      ]
+    },
+    {
+      "ten": "(a) vạch mic ≤ 10 lần/s",
+      "ok": true,
+      "muc": {
+        "soLan": 16,
+        "dinh": 0.088,
+        "nhipNganNhatMs": 126
+      }
+    },
+    {
+      "ten": "(b) daGui:false, sân khấu không nhận stage.hear",
+      "ok": true
+    },
+    {
+      "ten": "(c) bo-qua gen-dang-noi, không mở mic, không gọi STT",
+      "ok": true
+    },
+    {
+      "ten": "(d) dừng ngay, bo-qua gen-dang-noi, không gọi STT",
+      "ok": true,
+      "tongMs": 1091,
+      "treDungMs": 165
+    },
+    {
+      "ten": "(e) stdin dung → dừng tay rồi nhận dạng",
+      "ok": true
+    },
+    {
+      "ten": "(f) toi-da-ms",
+      "ok": true
+    },
+    {
+      "ten": "(g) loi stt, mã 4",
+      "ok": true
+    },
+    {
+      "ten": "(h) loi thiet-bi, mã 2 (file thiếu + thiết bị thiếu)",
+      "ok": true
+    },
+    {
+      "ten": "(i) bo-qua im-lang, không gọi STT",
+      "ok": true
+    },
+    {
+      "ten": "bridge log: tai-nghe nối vai client (không \"(não)\")",
+      "ok": true
+    }
+  ],
+  "loi": [],
+  "bridgeLog": [
+    "[bridge 09:28:06] ← ok",
+    "[bridge 09:28:08] → stage.hear {\"text\":\"Gen ơi, dựng connector Baserow\",\"to\":\"gen\",\"confidence\":0.91,\"durationMs\":412}",
+    "[bridge 09:28:08] ← ok",
+    "[bridge 09:28:08] client ngắt. Tổng: 1  mã 1005",
+    "[bridge 09:28:08] client nối. Tổng: 2 ",
+    "[bridge 09:28:08] → stage.describe {}",
+    "[bridge 09:28:08] ← ok",
+    "[bridge 09:28:10] client ngắt. Tổng: 1  mã 1005",
+    "[bridge 09:28:11] client nối. Tổng: 2 ",
+    "[bridge 09:28:11] → stage.describe {}",
+    "[bridge 09:28:11] ← ok",
+    "[bridge 09:28:11] client ngắt. Tổng: 1  mã 1005",
+    "[bridge 09:28:11] client nối. Tổng: 2 ",
+    "[bridge 09:28:11] → stage.describe {}",
+    "[bridge 09:28:11] ← ok",
+    "[bridge 09:28:12] client ngắt. Tổng: 1  mã 1005",
+    "[bridge 09:28:12] client nối. Tổng: 2 ",
+    "[bridge 09:28:12] → stage.describe {}",
+    "[bridge 09:28:12] ← ok",
+    "[bridge 09:28:14] → stage.hear {\"text\":\"Gen ơi, dựng connector Baserow\",\"to\":\"gen\",\"confidence\":0.91,\"durationMs\":412}",
+    "[bridge 09:28:14] ← ok",
+    "[bridge 09:28:14] client ngắt. Tổng: 1  mã 1005",
+    "[bridge 09:28:14] client nối. Tổng: 2 ",
+    "[bridge 09:28:14] → stage.describe {}",
+    "[bridge 09:28:14] ← ok",
+    "[bridge 09:28:16] → stage.hear {\"text\":\"Gen ơi, dựng connector Baserow\",\"to\":\"gen\",\"confidence\":0.91,\"durationMs\":412}",
+    "[bridge 09:28:16] ← ok",
+    "[bridge 09:28:16] client ngắt. Tổng: 1  mã 1005",
+    "[bridge 09:28:16] client nối. Tổng: 2 ",
+    "[bridge 09:28:16] → stage.describe {}",
+    "[bridge 09:28:16] ← ok",
+    "[bridge 09:28:18] client ngắt. Tổng: 1  mã 1005",
+    "[bridge 09:28:19] client nối. Tổng: 2 ",
+    "[bridge 09:28:19] → stage.describe {}",
+    "[bridge 09:28:19] ← ok",
+    "[bridge 09:28:19] client ngắt. Tổng: 1  mã 1005",
+    "[bridge 09:28:19] client nối. Tổng: 2 ",
+    "[bridge 09:28:19] → stage.describe {}",
+    "[bridge 09:28:19] ← ok",
+    "[bridge 09:28:21] client ngắt. Tổng: 1  mã 1005"
+  ]
+}
