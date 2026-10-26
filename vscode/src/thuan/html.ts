@@ -200,9 +200,19 @@ export function taoHtmlChatroom(t: ThamSoHtmlChatroom): string {
 <section id="nhat-ky" aria-label="Hội thoại">
   <ol id="ds-dong"></ol>
 </section>
+<section id="giong" aria-label="Giọng nói" aria-live="polite" hidden>
+  <div id="giong-dong"><span id="giong-chu"></span><span id="giong-vach" hidden><span id="giong-muc"></span></span></div>
+  <div id="giong-goi-y" hidden></div>
+  <form id="giong-xac-nhan" hidden>
+    <input id="giong-sua" type="text" autocomplete="off" aria-label="Sửa câu vừa nói">
+    <button type="submit" id="giong-gui">Gửi</button>
+    <button type="button" id="giong-bo" class="phu">Bỏ</button>
+  </form>
+</section>
 <form id="o-nhap">
+  <button type="button" id="nut-mic" class="mic" aria-label="Giữ để nói" title="Giữ để nói">🎤</button>
   <input id="nhap" type="text" autocomplete="off" placeholder="Nói với…">
-  <button type="submit">Gửi</button>
+  <button type="submit" id="nut-gui">Gửi</button>
 </form>
 <script nonce="${thoatHtml(t.nonce)}" type="module" src="${thoatHtml(t.scriptUri)}"></script>
 </body>

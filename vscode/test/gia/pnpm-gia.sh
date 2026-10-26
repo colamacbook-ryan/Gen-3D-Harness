@@ -3,6 +3,14 @@
 # trình con (nghe cổng) rồi chờ — để kiểm "giết cả NHÓM", không chỉ cái vỏ.
 set -u
 DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ "${1:-}" = "exec" ] && [ "${2:-}" = "node" ]; then
+  # V2 — `pnpm exec node scripts/tai-nghe.mjs …` (cwd = root giả = thư mục gia/):
+  # chạy node làm CON (không exec) để giống pnpm thật — nhóm có >1 tiến trình,
+  # stdin/stdout đi thẳng xuống con.
+  shift 2
+  node "$@"
+  exit $?
+fi
 if [ "${1:-}" = "bridge" ]; then
   node "$DIR/server-gia.mjs" tcp "${GEN_STAGE_PORT:?}" &
 elif [ "${1:-}" = "exec" ] && [ "${2:-}" = "vite" ]; then

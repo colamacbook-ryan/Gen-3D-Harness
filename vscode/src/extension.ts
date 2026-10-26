@@ -9,8 +9,9 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ChatroomProvider } from './chatroom';
 import { SanKhauPanel } from './san-khau';
-import { chuanCong, chuanNao, MAC_DINH, urlBridge, type CauHinh } from './thuan/cau-hinh';
+import { chuanCong, chuanNao, chuanNguonTaiNghe, MAC_DINH, urlBridge, type CauHinh } from './thuan/cau-hinh';
 import { CauNoi, chonNhaMayWs } from './thuan/cau-noi';
+import { DieuKhienGiong } from './thuan/giong';
 import { SoChatroom } from './thuan/so-chatroom';
 import { QuanLyTienTrinh } from './thuan/tien-trinh';
 
@@ -21,6 +22,7 @@ const NUT_CHO_PHEP = 'Cho phép';
 
 let tienTrinh: QuanLyTienTrinh | undefined;
 let cauNoi: CauNoi | undefined;
+let giong: DieuKhienGiong | undefined;
 
 function laRepoGenStage(thuMuc: string): boolean {
   return fs.existsSync(path.join(thuMuc, 'bridge', 'server.ts'));
@@ -41,6 +43,8 @@ function timRoot(cauHinhRoot: string, extensionPath: string): { root: string; tu
 }
 
 let rootTuDo = true;
+/** Lỗi setting `genStage.taiNghe.nguon` lần đọc gần nhất (rỗng = không lỗi) — ghi log một lần mỗi lần đổi. */
+let loiNguon = '';
 
 function docCauHinh(extensionPath: string): CauHinh {
   const c = vscode.workspace.getConfiguration('genStage');
@@ -54,6 +58,12 @@ function docCauHinh(extensionPath: string): CauHinh {
     tuBat: c.get<boolean>('tuBat') ?? MAC_DINH.tuBat,
     pnpm: String(c.get<string>('pnpm') ?? MAC_DINH.pnpm).trim() || MAC_DINH.pnpm,
     nao: chuanNao(c.get('nao') ?? MAC_DINH.nao),
+    sttPort: chuanCong(c.get('sttPort'), MAC_DINH.sttPort),
+    taiNgheNguon: (() => {
+      const n = chuanNguonTaiNghe(c.get('taiNghe.nguon'));
+      loiNguon = n.loi;
+      return n.nguon;
+    })(),
   };
 }
 
@@ -109,6 +119,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
     },
   });
   ghi(`[khởi động] sổ tiến trình: ${tienTrinh.fileSo()}`);
+  if (loiNguon) ghi(`[cấu hình] ${loiNguon}`);
   tienTrinh.nhanLai();
 
   const so = new SoChatroom(ctx.workspaceState.get<string>(KHOA_CHON) ?? null, (id) => {
@@ -142,7 +153,25 @@ export function activate(ctx: vscode.ExtensionContext): void {
     },
   });
 
-  chatroom = new ChatroomProvider(ctx.extensionUri, so, cauNoi, ghi);
+  /**
+   * V2 — giọng nói: tai-nghe (tiến trình ngắn ngoài webview, vì webview không có mic).
+   * Cùng cổng an toàn `choPhepBat` với bridge/vite/não.
+   */
+  giong = new DieuKhienGiong({
+    so,
+    layCfg: () => cfg,
+    choPhep: choPhepBat,
+    ve: () => {
+      chatroom?.ve();
+      // phím bật/tắt khi chatroom đang đóng: câu chờ xác nhận / lỗi phải được thấy
+      const p = so.giong.pha;
+      if ((p === 'cho-xac-nhan' || p === 'loi') && chatroom && !chatroom.dangHien) chatroom.hienRa();
+    },
+    guiMuc: (rms) => chatroom?.guiMuc(rms),
+    ghi,
+  });
+
+  chatroom = new ChatroomProvider(ctx.extensionUri, so, cauNoi, ghi, giong);
   ctx.subscriptions.push(
     vscode.window.registerWebviewViewProvider(ChatroomProvider.ID, chatroom, {
       webviewOptions: { retainContextWhenHidden: false },
@@ -166,6 +195,8 @@ export function activate(ctx: vscode.ExtensionContext): void {
   so.datNao(cfg.nao, 'tat');
 
   const sanKhau = new SanKhauPanel(ctx, () => cfg, tienTrinh, ghi, (p) => {
+    // đóng tab sân khấu giữa lúc thu → câu sẽ không tới đâu: huỷ
+    if (p === 'chua-mo') void giong?.huy('đóng tab sân khấu');
     so.datPanel(p);
     chatroom?.ve();
   }, () => void dongBoNao());
@@ -191,12 +222,19 @@ export function activate(ctx: vscode.ExtensionContext): void {
       );
     }),
     vscode.commands.registerCommand('genStage.xemLog', () => out.show(true)),
+    // V2 — "Gen-Stage: Nói (bật/tắt)": lần 1 thu có VAD, lần 2 dừng (không có keyup → không "giữ phím")
+    vscode.commands.registerCommand('genStage.noi', () => giong?.batTat()),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (!e.affectsConfiguration('genStage')) return;
       const cu = cfg;
       cfg = docCauHinh(ctx.extensionPath);
       tienTrinh?.datCauHinh(cfg);
       ghi('[cấu hình] đã đổi');
+      if (loiNguon) ghi(`[cấu hình] ${loiNguon}`);
+      // lần thu đang chạy mang tham số cũ (cổng, nguồn) → huỷ, lần sau dùng cấu hình mới
+      if (cu.bridgePort !== cfg.bridgePort || cu.sttPort !== cfg.sttPort || cu.taiNgheNguon !== cfg.taiNgheNguon || cu.root !== cfg.root || cu.pnpm !== cfg.pnpm) {
+        void giong?.huy('đổi cấu hình');
+      }
       if (cu.bridgePort !== cfg.bridgePort) cauNoi?.doiUrl(urlBridge(cfg));
       sanKhau.doiCauHinh(cu, cfg);
       // đổi chế độ não (hoặc cổng bridge mà driver nối tới) → tắt cái cũ của mình, bật cái mới
@@ -215,8 +253,13 @@ export function activate(ctx: vscode.ExtensionContext): void {
   cauNoi.bat();
 }
 
-export function deactivate(): void {
+export function deactivate(): Promise<void> {
+  // tai-nghe: `huy` vào stdin, quá 2 s thì SIGKILL cả nhóm (ffmpeg giữ mic chết theo).
+  // VS Code chờ Promise của deactivate một lúc ngắn; trần 2,5 s rồi ép SIGKILL —
+  // không để mồ côi kể cả khi host tắt trước khi hẹn giờ trong tai-nghe.ts kịp chạy.
+  const choTaiNghe = giong?.huy('extension tắt') ?? Promise.resolve();
   cauNoi?.tat();
   // CHỈ tắt cái mình bật; bridge/vite Sếp bật sẵn thì sống tiếp
   tienTrinh?.tatCuaMinh();
+  return Promise.race([choTaiNghe, new Promise<void>((r) => setTimeout(r, 2500))]).then(() => giong?.epTat());
 }

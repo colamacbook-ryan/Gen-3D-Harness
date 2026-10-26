@@ -240,6 +240,8 @@ export interface MoHinhChatroom {
   /** Chữ + màu đèn đã tính sẵn ở host (`chuSanKhau`/`chuNao`) — webview chỉ vẽ. */
   trangThaiSanKhau: { chu: string; den: MauDen };
   trangThaiNao: { chu: string; den: MauDen };
+  /** V2 — giọng nói (tai-nghe) + nút 🎤. */
+  giong: MoHinhGiong;
 }
 
 export type MauDen = 'xanh' | 'vang' | 'do';
@@ -269,4 +271,136 @@ export function canhBaoCho(m: Pick<MoHinhChatroom, 'bridgeNoi' | 'sanKhauNoi' | 
   if (!m.sanKhauNoi) return 'Bridge chưa thấy sân khấu — mở "Gen-Stage: Mở sân khấu".';
   if (m.panel === 'an') return 'Tab sân khấu đang ẩn: VS Code tạm dừng nó, lệnh sẽ chờ tới khi tab hiện lại.';
   return '';
+}
+
+/* ------------------------------------------------------ V2 — giọng nói */
+
+/**
+ * Pha của MỘT lần thu (tai-nghe). `nghi` = không thu; `bo-qua`/`loi`/`cho-xac-nhan`
+ * là pha "kết quả" — giữ trên màn hình tới lần thu kế / tới khi Sếp xử lý.
+ */
+export type PhaGiong = 'nghi' | 'khoi-dong' | 'nghe' | 'nhan-dang' | 'bo-qua' | 'loi' | 'cho-xac-nhan';
+
+/** `giu` = nút giữ-để-nói (không VAD); `bat-tat` = lệnh/phím bật-tắt (có VAD). */
+export type CheDoGiong = 'giu' | 'bat-tat';
+
+/** Câu tai-nghe nhận được nhưng KHÔNG tự gửi (tin cậy < 0,6) — chờ Sếp sửa rồi Gửi/Bỏ. */
+export interface CauChoXacNhan {
+  /** Tăng mỗi câu mới — webview chỉ ghi đè ô sửa khi id đổi (không xoá chữ Sếp đang sửa). */
+  id: number;
+  text: string;
+  confidence: number;
+  durationMs: number;
+  /** Người nghe lúc bắt đầu thu (INT-02) — đổi lựa chọn giữa chừng không đổi câu này. */
+  to: string;
+}
+
+export interface TrangThaiGiong {
+  pha: PhaGiong;
+  cheDo: CheDoGiong | null;
+  /** Người nghe (`--to`) của lần thu hiện tại / gần nhất. */
+  toi: string | null;
+  /** Một dòng tiếng Việt cho Sếp đọc (rỗng = không hiện). */
+  chu: string;
+  /** Gợi ý sửa khi lỗi (rỗng = không có). */
+  goiY: string;
+  cau: CauChoXacNhan | null;
+  /** Đang gửi `stage.hear` cho câu chờ xác nhận — chặn bấm Gửi hai lần. */
+  dangGui: boolean;
+}
+
+export interface MoHinhGiong extends TrangThaiGiong {
+  /** Nút 🎤 bấm được không — tính sẵn ở host. */
+  nutDuoc: boolean;
+  /** Vì sao nút bị tắt (title của nút). */
+  nutLyDo: string;
+  /** id các nhân vật agent đang nói (`actor.sayStart` chưa có `actor.sayDone`). */
+  dangNoi: string[];
+}
+
+export const GIONG_NGHI: TrangThaiGiong = { pha: 'nghi', cheDo: null, toi: null, chu: '', goiY: '', cau: null, dangGui: false };
+
+/** Lý do `bo-qua` của tai-nghe → câu tiếng Việt. Lý do lạ vẫn hiện (không nuốt). */
+export function chuBoQua(lyDo: string): string {
+  switch (lyDo) {
+    case 'gen-dang-noi':
+      return 'Bỏ qua: nhân vật đang nói — đợi nói xong rồi nói lại (bán song công, tránh mic thu tiếng loa).';
+    case 'im-lang':
+      return 'Bỏ qua: không nghe thấy tiếng nói nào.';
+    case 'rong':
+      return 'Bỏ qua: không nhận ra chữ nào — nói rõ và gần mic hơn.';
+    case 'huy':
+      return 'Đã huỷ lần thu — không nhận dạng, không gửi.';
+    default:
+      return `Bỏ qua (${lyDo || 'không rõ lý do'}).`;
+  }
+}
+
+export type MaLoiTaiNghe = 'thiet-bi' | 'stt' | 'bridge' | 'tham-so' | 'khac';
+
+/** tai-nghe thoát cứng (tín hiệu lần 2 trong lúc chờ STT) — coi như huỷ, không phải lỗi. */
+export const MA_THOAT_HUY = 130;
+
+/**
+ * Mã thoát của tai-nghe (hợp đồng CLI): 0 xong · 2 thiết bị · 4 STT/bridge · 64 tham số
+ * (gồm Node < 22.18) · 130 thoát cứng vì tín hiệu thứ hai lúc chờ STT (= huỷ, xử lý ở `giong.ts`).
+ */
+export function maLoiTuMaThoat(ma: number | null): MaLoiTaiNghe {
+  if (ma === 2) return 'thiet-bi';
+  // 4 = STT hoặc bridge; tai-nghe luôn in `loi` kèm mã chính xác trước khi thoát 4 — đây chỉ là dự phòng
+  if (ma === 4) return 'stt';
+  if (ma === 64) return 'tham-so';
+  return 'khac';
+}
+
+/** Lỗi tai-nghe → { chu, goiY } cho chatroom. `cong` để gợi ý đúng cổng đang cấu hình. */
+export function chuLoi(
+  ma: string,
+  chiTiet: string,
+  cong: { bridgePort: number; sttPort: number },
+): { chu: string; goiY: string } {
+  const them = chiTiet ? `: ${chiTiet}` : '';
+  switch (ma) {
+    case 'thiet-bi':
+      return {
+        chu: `Lỗi micro${them}`,
+        goiY: 'Kiểm tra ffmpeg/PipeWire (`ffmpeg -version`, `pactl list short sources`) hoặc đặt genStage.taiNghe.nguon (User settings).',
+      };
+    case 'stt':
+      return {
+        chu: `Lỗi nhận dạng giọng${them}`,
+        goiY: `Bridge có nghe /stt ở cổng ${cong.sttPort} không? Cần \`pnpm bridge\` + \`bash scripts/fetch-stt.sh\` (một lần); cổng khác thì đặt genStage.sttPort.`,
+      };
+    case 'bridge':
+      return {
+        chu: `Lỗi nối bridge${them}`,
+        goiY: `Bridge ws cổng ${cong.bridgePort} — chạy "Gen-Stage: Bật bridge + sân khấu" hoặc \`pnpm bridge\`.`,
+      };
+    case 'tham-so':
+      return {
+        chu: `tai-nghe từ chối chạy${them}`,
+        goiY: 'tai-nghe cần Node ≥ 22.18 (`node -v` trong PATH mà VS Code thấy — đặt genStage.pnpm là đường dẫn tuyệt đối nếu dùng nvm). Node đã đủ mà vẫn lỗi = lệch hợp đồng CLI — báo Gen (xem "Gen-Stage: Xem nhật ký").',
+      };
+    default:
+      return { chu: `Lỗi tai-nghe${them}`, goiY: 'Xem "Gen-Stage: Xem nhật ký" (dòng [tai-nghe]).' };
+  }
+}
+
+/**
+ * Nút 🎤 bấm được không. Đang thu thì LUÔN bấm được (để thả/dừng — nút tắt giữa
+ * chừng là mất `pointerup`). Không thu: cần bridge + có người nghe + không nhân
+ * vật agent nào đang nói (bán song công phía UI; tai-nghe còn tự chặn lần nữa).
+ */
+export function nutMic(
+  m: Pick<MoHinhChatroom, 'bridgeNoi' | 'nhanVat' | 'dangChon'>,
+  g: TrangThaiGiong,
+  dangNoi: readonly string[],
+): { nutDuoc: boolean; nutLyDo: string } {
+  if (g.pha === 'khoi-dong' || g.pha === 'nghe' || g.pha === 'nhan-dang') return { nutDuoc: true, nutLyDo: '' };
+  if (!m.bridgeNoi) return { nutDuoc: false, nutLyDo: 'Chưa nối bridge' };
+  if (!m.dangChon) return { nutDuoc: false, nutLyDo: 'Chưa có nhân vật nào để nghe' };
+  if (dangNoi.length) {
+    return { nutDuoc: false, nutLyDo: `${dangNoi.map((id) => tenCua(m.nhanVat, id)).join(', ')} đang nói — đợi nói xong` };
+  }
+  return { nutDuoc: true, nutLyDo: '' };
 }

@@ -160,6 +160,7 @@ declare module 'vscode' {
 
   export namespace commands {
     export function registerCommand(command: string, callback: (...args: any[]) => any, thisArg?: any): Disposable;
+    export function executeCommand<T = unknown>(command: string, ...rest: any[]): Thenable<T>;
   }
 
   export namespace workspace {
