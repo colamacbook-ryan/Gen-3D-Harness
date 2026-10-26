@@ -11,6 +11,7 @@ import { ChatroomProvider } from './chatroom';
 import { SanKhauPanel } from './san-khau';
 import { chuanCong, chuanNao, chuanNguonTaiNghe, MAC_DINH, urlBridge, type CauHinh } from './thuan/cau-hinh';
 import { CauNoi, chonNhaMayWs } from './thuan/cau-noi';
+import { chuanGiacQuan, GiacQuan, noiGit } from './thuan/giac-quan';
 import { DieuKhienGiong } from './thuan/giong';
 import { SoChatroom } from './thuan/so-chatroom';
 import { QuanLyTienTrinh } from './thuan/tien-trinh';
@@ -23,6 +24,7 @@ const NUT_CHO_PHEP = 'Cho phép';
 let tienTrinh: QuanLyTienTrinh | undefined;
 let cauNoi: CauNoi | undefined;
 let giong: DieuKhienGiong | undefined;
+let giacQuan: GiacQuan | undefined;
 
 function laRepoGenStage(thuMuc: string): boolean {
   return fs.existsSync(path.join(thuMuc, 'bridge', 'server.ts'));
@@ -174,6 +176,57 @@ export function activate(ctx: vscode.ExtensionContext): void {
   });
 
   chatroom = new ChatroomProvider(ctx.extensionUri, so, cauNoi, ghi, giong);
+
+  /**
+   * V3 — GIÁC QUAN IDE: lưu file / lỗi biên dịch 0⇄>0 / task-test xong / git commit
+   * → `stage.notice` qua cùng ws client của chatroom. Chỉ gửi khi workspace tin cậy;
+   * không bao giờ gửi nội dung file, đường dẫn tuyệt đối hay message diagnostics.
+   */
+  giacQuan = new GiacQuan({
+    gui: (tb) => cauNoi!.goi('stage.notice', { ...tb }),
+    layCfg: () => {
+      const c = vscode.workspace.getConfiguration('genStage');
+      return chuanGiacQuan((k) => c.get(`giacQuan.${k}`));
+    },
+    tinCay: () => vscode.workspace.isTrusted,
+    daGui: (tb) => {
+      so.ghiGiacQuan(tb.summary);
+      chatroom?.ve();
+    },
+    ghi,
+  });
+  /** File thật nằm trong một workspace folder → đường tương đối; còn lại → null (bị bỏ). */
+  const duongTuongDoi = (uri: vscode.Uri): string | null =>
+    uri.scheme === 'file' && vscode.workspace.getWorkspaceFolder(uri) ? vscode.workspace.asRelativePath(uri, false) : null;
+  const demLoi = (): number => {
+    let n = 0;
+    for (const [uri, ds] of vscode.languages.getDiagnostics()) {
+      if (duongTuongDoi(uri) === null) continue;
+      for (const d of ds) if (d.severity === vscode.DiagnosticSeverity.Error) n++;
+    }
+    return n;
+  };
+  ctx.subscriptions.push(
+    vscode.workspace.onDidSaveTextDocument((doc) => giacQuan?.luuFile(duongTuongDoi(doc.uri))),
+    vscode.languages.onDidChangeDiagnostics(() => giacQuan?.doiLoi(demLoi)),
+    vscode.tasks.onDidEndTaskProcess((e) => giacQuan?.ketThucTask(e.execution.task.name, e.exitCode, e.execution.task.group?.id)),
+    { dispose: () => giacQuan?.dung() },
+  );
+  giacQuan.doiLoi(demLoi); // mốc số lỗi lúc mở — không gửi
+  // git: extension có sẵn `vscode.git` (API v1); không có / bị tắt thì bỏ qua êm
+  const gitExt = vscode.extensions.getExtension('vscode.git');
+  if (gitExt) {
+    void Promise.resolve(gitExt.isActive ? gitExt.exports : gitExt.activate()).then(
+      (exp) => {
+        const huy = noiGit(exp, giacQuan!, ghi);
+        ctx.subscriptions.push(...huy);
+        ghi(`[giác quan] git: ${huy.length ? 'đang theo dõi commit' : 'API không dùng được — bỏ qua'}`);
+      },
+      (e: unknown) => ghi(`[giác quan] không bật được extension git: ${(e as Error)?.message ?? e}`),
+    );
+  } else {
+    ghi('[giác quan] không có extension vscode.git — bỏ qua commit');
+  }
   ctx.subscriptions.push(
     vscode.window.registerWebviewViewProvider(ChatroomProvider.ID, chatroom, {
       webviewOptions: { retainContextWhenHidden: false },
@@ -260,6 +313,7 @@ export function deactivate(): Promise<void> {
   // VS Code chờ Promise của deactivate một lúc ngắn; trần 2,5 s rồi ép SIGKILL —
   // không để mồ côi kể cả khi host tắt trước khi hẹn giờ trong tai-nghe.ts kịp chạy.
   const choTaiNghe = giong?.huy('extension tắt') ?? Promise.resolve();
+  giacQuan?.dung();
   cauNoi?.tat();
   // CHỈ tắt cái mình bật; bridge/vite Sếp bật sẵn thì sống tiếp
   tienTrinh?.tatCuaMinh();

@@ -20,6 +20,10 @@ import {
   promptDau,
   rutGonSkill,
   gannNgheCau,
+  gannNgheIde,
+  cauTuSuKienIde,
+  laSuKienIdeChoNao,
+  MS_GIUA_LUOT_IDE,
   taoGop,
   taoLocTrung,
   taoHangDoi,
@@ -582,5 +586,117 @@ describe('taoLocTrung + gannNgheCau — text/speech cùng câu mic (review 26/10
     await new Promise((r) => setTimeout(r, 80));
     expect(luot.map((x) => x.cau)).toEqual(['xin chào']);
     expect(lenh.filter((c) => c === 'actor.turnTo')).toHaveLength(1);
+  });
+});
+
+/* ------------------------------------------------ V3 — giác quan IDE */
+
+describe('V3 — ide.event → lượt não (lọc, giới hạn 60 s, câu Sếp ưu tiên)', () => {
+  it('chỉ test/task/git với good|bad và có summary; save/diag/info thì không', () => {
+    expect(laSuKienIdeChoNao('ide.event', { kind: 'test', level: 'bad', summary: 'Test fail' })).toBe(true);
+    expect(laSuKienIdeChoNao('ide.event', { kind: 'git', level: 'good', summary: 'Commit abc' })).toBe(true);
+    expect(laSuKienIdeChoNao('ide.event', { kind: 'task', level: 'good', summary: 'build xong' })).toBe(true);
+    expect(laSuKienIdeChoNao('ide.event', { kind: 'save', level: 'good', summary: 'Lưu 1 file' })).toBe(false);
+    expect(laSuKienIdeChoNao('ide.event', { kind: 'diag', level: 'bad', summary: 'Có 3 lỗi' })).toBe(false);
+    expect(laSuKienIdeChoNao('ide.event', { kind: 'test', level: 'info', summary: 'x' })).toBe(false);
+    expect(laSuKienIdeChoNao('ide.event', { kind: 'test', level: 'bad', summary: '  ' })).toBe(false);
+    expect(laSuKienIdeChoNao('user.text', { kind: 'test', level: 'bad', summary: 'x' })).toBe(false);
+    expect(MS_GIUA_LUOT_IDE).toBeGreaterThanOrEqual(60_000);
+  });
+
+  it('cauTuSuKienIde nói rõ việc + tốt/xấu + summary', () => {
+    expect(cauTuSuKienIde({ kind: 'test', level: 'bad', summary: 'Test "unit" fail (mã 1)' })).toBe(
+      'Sếp vừa chạy test — hỏng: Test "unit" fail (mã 1)',
+    );
+    expect(cauTuSuKienIde({ kind: 'git', level: 'good', summary: 'Commit abc1234: sửa' })).toMatch(/^Sếp vừa commit — ổn:/);
+  });
+
+  function dungIde({ sepBan = () => false, msGiua = 60_000 } = {}) {
+    let nghe;
+    let t = 1_000_000;
+    const luot = [];
+    const log = [];
+    const san = { khiSuKien: (f) => (nghe = f), goi: async () => ({ ok: true }) };
+    gannNgheIde({ san, msGop: 20, msGiua, sepBan, now: () => t, ghi: (x) => log.push(x), themLuot: (x) => luot.push(x) });
+    return { phat: (d) => nghe('ide.event', d), luot, log, tien: (ms) => (t += ms), cho: () => new Promise((r) => setTimeout(r, 60)) };
+  }
+
+  it('test fail + commit sát nhau → MỘT lượt gộp, cờ ide:true; lưu file không bao giờ gọi não', async () => {
+    const x = dungIde();
+    x.phat({ kind: 'save', level: 'info', summary: 'Lưu 1 file: a.ts' });
+    x.phat({ kind: 'test', level: 'bad', summary: 'Test fail' });
+    x.phat({ kind: 'git', level: 'good', summary: 'Commit abc1234: sửa' });
+    await x.cho();
+    expect(x.luot).toHaveLength(1);
+    expect(x.luot[0].ide).toBe(true);
+    expect(x.luot[0].cau).toMatch(/chạy test — hỏng: Test fail\. Sếp vừa commit — ổn/);
+  });
+
+  it('giới hạn 60 s giữa hai lượt IDE', async () => {
+    const x = dungIde();
+    x.phat({ kind: 'test', level: 'bad', summary: 'fail 1' });
+    await x.cho();
+    x.tien(59_999);
+    x.phat({ kind: 'test', level: 'bad', summary: 'fail 2' });
+    await x.cho();
+    expect(x.luot).toHaveLength(1);
+    x.tien(1);
+    x.phat({ kind: 'test', level: 'good', summary: 'pass' });
+    await x.cho();
+    expect(x.luot.map((l) => l.cau)).toEqual(['Sếp vừa chạy test — hỏng: fail 1', 'Sếp vừa chạy test — ổn: pass']);
+  });
+
+  it('câu Sếp ưu tiên: Sếp đang nói/não bận lúc nhận hoặc lúc đóng cửa sổ gộp → bỏ sự kiện IDE', async () => {
+    let ban = true;
+    const x = dungIde({ sepBan: () => ban });
+    x.phat({ kind: 'test', level: 'bad', summary: 'fail' });
+    await x.cho();
+    expect(x.luot).toHaveLength(0);
+    // bận bắt đầu GIỮA cửa sổ gộp
+    ban = false;
+    x.phat({ kind: 'test', level: 'bad', summary: 'fail' });
+    ban = true;
+    await x.cho();
+    expect(x.luot).toHaveLength(0);
+    expect(x.log.some((l) => /ưu tiên/.test(l))).toBe(true);
+  });
+
+  it('đường nao-agy thật: câu Sếp đang gộp → ide bị bỏ; Sếp im → ide thành lượt (không phản xạ turnTo)', async () => {
+    let nghe = [];
+    const lenh = [];
+    const san = { khiSuKien: (f) => nghe.push(f), goi: async (c) => (lenh.push(c), { ok: true }) };
+    const luot = [];
+    const tai = gannNgheCau({ san, msGop: 30, themLuot: (x) => luot.push(x) });
+    gannNgheIde({ san, msGop: 30, sepBan: () => tai.dangGop(), ghi: () => {}, themLuot: (x) => luot.push(x) });
+    const phat = (e, d) => nghe.forEach((f) => f(e, d));
+    phat('user.text', { actor: 'owner', text: 'Gen ơi', to: 'camera' });
+    phat('ide.event', { kind: 'test', level: 'bad', summary: 'fail' });
+    await new Promise((r) => setTimeout(r, 80));
+    expect(luot.map((x) => x.cau)).toEqual(['Gen ơi']);
+    phat('ide.event', { kind: 'git', level: 'good', summary: 'Commit abc' });
+    await new Promise((r) => setTimeout(r, 80));
+    expect(luot.at(-1)).toMatchObject({ ide: true });
+    expect(lenh.filter((c) => c === 'actor.turnTo')).toHaveLength(1); // chỉ phản xạ cho câu Sếp
+  });
+
+  it('taoLuot với ide:true → nhắc "VIỆC THẬT", không xin chờ, không nói đỡ, lỗi chỉ ghi log', async () => {
+    const s = sanGia();
+    const nhac = [];
+    const luot = taoLuot({
+      san: s.api,
+      skill: SKILL,
+      nghi: (d) => new Promise((r) => (nhac.push(d), setTimeout(() => r({ ok: true, msGiay: 40 }), 40))),
+      msXinCho: 5,
+      ghi: () => {},
+    });
+    await luot('Sếp vừa chạy test — hỏng: fail', { ide: true });
+    expect(nhac[0]).toMatch(/^VIỆC THẬT TRONG IDE CỦA SẾP «Sếp vừa chạy test — hỏng: fail»/);
+    expect(nhac[0]).not.toMatch(/\n/);
+    expect(s.goi.filter(([c]) => c === 'actor.say')).toHaveLength(0);
+
+    const s2 = sanGia();
+    const luot2 = taoLuot({ san: s2.api, skill: SKILL, nghi: async () => ({ ok: false, loi: 'quota', msGiay: 1 }), ghi: () => {} });
+    await luot2('x', { ide: true });
+    expect(s2.goi.filter(([c]) => c === 'actor.say')).toHaveLength(0);
   });
 });

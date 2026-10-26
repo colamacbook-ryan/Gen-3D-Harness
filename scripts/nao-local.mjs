@@ -45,6 +45,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  MS_GIUA_LUOT_IDE,
   MS_GOP_MAC_DINH,
   MS_NHIP_TIM_MAC_DINH,
   MS_QUA_HAN_TIM_MAC_DINH,
@@ -52,6 +53,7 @@ import {
   MS_BACKOFF_MAX,
   MS_BACKOFF_MIN,
   dungDongNhac,
+  gannNgheIde,
   gonDescribe,
   laCauCuaSep,
   noiSanKhau,
@@ -385,10 +387,12 @@ export function taoLuotLocal({
     for (const f of Array.from(choNoi)) f(String(data?.actor ?? ''), data);
   });
 
-  return async function luot({ cau, nguoiTraLoi = 'gen', t0 = Date.now() }) {
+  return async function luot({ cau, nguoiTraLoi = 'gen', t0 = Date.now(), ide = false }) {
     const bd = Date.now();
-    const nhat = { cau, nguoiTraLoi, model: null, vong: 0, toolCalls: [], tuNoi: null, ok: false, lyDo: '' };
-    ghi(`[nao-local] ${gio()} SẾP → ${nguoiTraLoi}: «${cau}»`);
+    const nhat = { cau, nguoiTraLoi, model: null, vong: 0, toolCalls: [], tuNoi: null, ok: false, lyDo: '', ...(ide ? { ide: true } : {}) };
+    ghi(`[nao-local] ${gio()} ${ide ? 'IDE' : 'SẾP'} → ${nguoiTraLoi}: «${cau}»`);
+    // V3 — lượt IDE: Sếp không hỏi gì → không "xin chờ", không câu dự phòng/lỗi nói ra,
+    // và câu driver nói hộ KHÔNG cắt ngang việc đang làm (ưu tiên thấp).
 
     // Hẹn "xin chờ" + hạn lượt chạy NGAY, bao cả bước dò model (`doNao.lay()`):
     // Ollama treo ở dò thì Sếp vẫn nghe "đang nghĩ" rồi "nghĩ lâu quá", hàng đợi không kẹt.
@@ -401,7 +405,7 @@ export function taoLuotLocal({
     };
     choNoi.add(thoi);
     const henXinCho = setTimeout(() => {
-      if (!moMieng) void san.goi('actor.say', { actor: nguoiTraLoi, text: CAU_XIN_CHO, emotion: 'suy-nghi', interrupt: true });
+      if (!moMieng && !ide) void san.goi('actor.say', { actor: nguoiTraLoi, text: CAU_XIN_CHO, emotion: 'suy-nghi', interrupt: true });
     }, msXinCho);
     const ac = new AbortController();
     const henHan = setTimeout(() => ac.abort(), msHan);
@@ -423,7 +427,7 @@ export function taoLuotLocal({
       if (mt.ok) capNhatActors(mt.result?.actors);
       const messages = [
         { role: 'system', content: dungNhacHeThong({ persona: layPersona(nguoiTraLoi), actor: nguoiTraLoi }) },
-        { role: 'user', content: dungDongNhac({ cau, describe: gonDescribe(mt.result, { suKien: san.suKienCuoi() }) }) },
+        { role: 'user', content: dungDongNhac({ cau, ide, describe: gonDescribe(mt.result, { suKien: san.suKienCuoi() }) }) },
       ];
 
       for (let v = 0; v < vongToiDa; v++) {
@@ -448,7 +452,7 @@ export function taoLuotLocal({
       if (e?.quaHan || ac.signal.aborted) {
         nhat.lyDo = `quá ${msHan} ms`;
         ghi(`[nao-local] ${gio()} lượt quá hạn ${msHan} ms.`);
-        if (!daNoi) {
+        if (!daNoi && !ide) {
           await san.goi('actor.say', { actor: nguoiTraLoi, text: CAU_QUA_LAU, emotion: 'boi-roi', interrupt: true });
           nhat.tuNoi = CAU_QUA_LAU;
         }
@@ -460,7 +464,7 @@ export function taoLuotLocal({
         doNao.hong(nhat.lyDo); // mất Ollama/model: báo Sếp một lần qua doNao, không nói thêm
         return nhat;
       }
-      if (!daNoi) {
+      if (!daNoi && !ide) {
         const cau2 = `Em bị lỗi não local: ${nhat.lyDo.slice(0, 80)}`;
         await san.goi('actor.say', { actor: nguoiTraLoi, text: cau2, emotion: 'that-bai', interrupt: true });
         nhat.tuNoi = cau2;
@@ -473,9 +477,9 @@ export function taoLuotLocal({
     }
 
     // Ollama không có tool_choice: model trả chữ thuần → driver nói hộ
-    if (!daNoi) {
+    if (!daNoi && (noiDung || !ide)) {
       const text = noiDung || CAU_DU_PHONG;
-      const kq = await san.goi('actor.say', { actor: nguoiTraLoi, text, interrupt: true });
+      const kq = await san.goi('actor.say', { actor: nguoiTraLoi, text, interrupt: !ide });
       nhat.tuNoi = text;
       if (!kq.ok) ghi(`[nao-local] ${gio()} tự nói hộ lỗi: ${kq.error}`);
     }
@@ -539,6 +543,7 @@ export async function batDriver({
   backoff = { min: MS_BACKOFF_MIN, max: MS_BACKOFF_MAX },
   khiXongLuot = () => {},
   layPersona = docPersona,
+  msGiuaIde = MS_GIUA_LUOT_IDE,
 }) {
   const san = await noiSanKhau({ WebSocket, cong, token, ghi, msNhipTim, msQuaHanTim, backoff });
   const ollama = taoOllama({ url: ollamaUrl, fetch: f, msDo });
@@ -611,6 +616,17 @@ export async function batDriver({
     if (mt.ok) capNhatActors(mt.result?.actors);
   }
 
+  // V3 — giác quan IDE: test/task/git good|bad → một lượt cho Gen (≥ 60 s giữa hai lượt IDE);
+  // câu của Sếp (đang gộp ở bất kỳ người nhận nào / đang xếp hàng / đang chạy) luôn thắng.
+  gannNgheIde({
+    san,
+    msGop,
+    msGiua: msGiuaIde,
+    ghi,
+    sepBan: () => [...gopTheoNguoi.values()].some((g) => g.gop.dangCho() > 0) || hangDoi.dangChay() || hangDoi.doDai() > 0,
+    themLuot: (x) => hangDoi.them({ ...x, nguoiTraLoi: 'gen' }),
+  });
+
   if (await san.choMo()) await lamMoiActors();
   void doNao.lay();
 
@@ -646,7 +662,7 @@ export async function chay() {
     msNhipTim: Number(process.env.GEN_STAGE_NAO_NHIP_TIM ?? MS_NHIP_TIM_MAC_DINH),
     msQuaHanTim: Number(process.env.GEN_STAGE_NAO_QUA_HAN_TIM ?? MS_QUA_HAN_TIM_MAC_DINH),
   });
-  console.log(`[nao-local] ${gio()} ${d.tools.length} tool · đang nghe user.text/user.speech.`);
+  console.log(`[nao-local] ${gio()} ${d.tools.length} tool · đang nghe user.text/user.speech + ide.event (test/task/git).`);
   for (const tin of ['SIGINT', 'SIGTERM']) {
     process.on(tin, () => {
       console.log(`[nao-local] ${gio()} tắt driver.`);

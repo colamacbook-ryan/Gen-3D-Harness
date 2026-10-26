@@ -16,7 +16,8 @@ export interface NhanVat {
   controlledBy: DieuKhienBoi;
 }
 
-export type LoaiDong = 'sep' | 'nhan-vat' | 'lenh' | 'he-thong';
+/** `giac-quan` (V3): dòng nhỏ "👁 …" cho mỗi notice IDE đã gửi. */
+export type LoaiDong = 'sep' | 'nhan-vat' | 'lenh' | 'he-thong' | 'giac-quan';
 
 export interface DongChat {
   t: number;

@@ -254,6 +254,23 @@ describe('MCP không được lọt rào owner (stage.hear)', () => {
     expect(goi).toHaveLength(0);
   });
 
+  it('V3 — stage_notice (giác quan IDE) bị chặn: não không được giả việc thật của Sếp', async () => {
+    expect(LENH_CHI_CHO_BOSS.has('stage.notice')).toBe(true);
+    expect(sinhTools().map((t) => t.name)).toContain('stage_notice');
+    const { client, goi } = await noiMcp();
+    const kq = (await client.callTool({
+      name: 'stage_notice',
+      arguments: { kind: 'test', level: 'good', summary: 'Test pass' },
+    })) as { isError?: boolean; content: { text: string }[] };
+    expect(kq.isError).toBe(true);
+    expect(kq.content[0]!.text).toMatch(/chỉ dành cho Boss/);
+    expect(goi).toHaveLength(0);
+    // gói trong script.run cũng bị chặn
+    expect(lyDoCamNao('script.run', { steps: [{ cmd: 'stage.notice', args: { kind: 'git', summary: 'x' } }] })).toMatch(
+      /stage\.notice/,
+    );
+  });
+
   it('tool thường (actor_say lên gen) vẫn đi qua; lên owner vẫn bị chặn', async () => {
     const { client, goi } = await noiMcp();
     const ok = (await client.callTool({ name: 'actor_say', arguments: { actor: 'gen', text: 'Dạ' } })) as { isError?: boolean };

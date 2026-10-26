@@ -21,6 +21,11 @@
  *  3. **Gen nói** → luôn nhìn về Owner, nói xong **giữ nhìn 2 s** rồi thả.
  *  4. **Không có não** (`brainConnected: false`) → trả lời bằng **não
  *     rule-based tối thiểu** ngay trong app, để Gen không bao giờ im lặng.
+ *  5. **V3 — giác quan IDE** (`ide.event` từ `stage.notice`): test/task/git/diag
+ *     tốt → emote vui/thành công, xấu → bối rối/suy nghĩ (bảng `EMOTE_IDE`).
+ *     `save` và mọi `info` → không làm gì. Chỉ khi Gen rảnh, không giữa cuộc
+ *     nói chuyện, và cách lần trước ≥ `ideCachMs` (20 s) — Sếp lưu/test liên
+ *     tục thì Gen không nhảy múa liên tục.
  *
  * Hai giao kèo quan trọng, cố ý:
  *
@@ -55,7 +60,23 @@ export interface SoPhanXa {
   liecMs: number;
   /** Lệch quá ngần này độ thì quay lại cho thẳng người nghe. */
   lechToiDa: number;
+  /** V3 — tối thiểu bấy nhiêu ms giữa hai phản xạ do `ide.event` kích. */
+  ideCachMs: number;
 }
+
+/** V3 — khoảng cách tối thiểu giữa hai phản xạ giác quan IDE (ms). */
+export const MS_GIUA_PHAN_XA_IDE = 20_000;
+
+/**
+ * V3 — `ide.event` → emote của Gen, theo `kind` rồi `level`. Không có dòng =
+ * không phản xạ (`save`, mọi `info`). Chỉ dùng emote có sẵn trong `emotes.ts`.
+ */
+export const EMOTE_IDE: Readonly<Record<string, { good?: string; bad?: string }>> = {
+  test: { good: 'vui', bad: 'boi-roi' },
+  task: { good: 'vui', bad: 'suy-nghi' },
+  git: { good: 'thanh-cong', bad: 'boi-roi' },
+  diag: { good: 'vui', bad: 'suy-nghi' },
+};
 
 /** Số đo mặc định — spec mục 3.2d. */
 export const MAC_DINH: SoPhanXa = {
@@ -76,6 +97,7 @@ export const MAC_DINH: SoPhanXa = {
   banKinhLiec: 3,
   liecMs: 700,
   lechToiDa: 12,
+  ideCachMs: MS_GIUA_PHAN_XA_IDE,
 };
 
 /** Câu đệm — ngắn, không hứa gì, nói trong lúc não còn đang nghĩ. */
@@ -178,6 +200,8 @@ export function batPhanXa(ts: ThamSoPhanXa): MayPhanXa {
   let nguoiNgheCuaGen = 'camera';
   /** Hạn của cú **liếc** tạm (0 = không liếc). */
   let nhinTamDen = 0;
+  /** Mốc phản xạ giác quan IDE gần nhất (null = chưa lần nào). */
+  let tPhanXaIde: number | null = null;
 
   /**
    * Gửi một lệnh phản xạ.
@@ -385,6 +409,24 @@ export function batPhanXa(ts: ThamSoPhanXa): MayPhanXa {
       // KHÔNG đệm câu, KHÔNG để não rule-based nói "chưa có não".
       if (e.data.handled) return;
       ownerNoi(String(e.data.text ?? ''), String(e.data.to ?? 'camera'));
+    }),
+  );
+
+  /**
+   * V3 — giác quan IDE: ưu tiên THẤP NHẤT. Không cắt việc gì, không chen vào
+   * cuộc nói chuyện (đang chờ não / đang câu đệm), giới hạn tần suất.
+   */
+  boNghe.push(
+    bus.on('ide.event', (e) => {
+      const emote = EMOTE_IDE[String(e.data.kind)]?.[String(e.data.level) as 'good' | 'bad'];
+      if (!emote) return;
+      const { gen } = doc();
+      if (!gen) return;
+      const now = bayGio();
+      if (tPhanXaIde !== null && now - tPhanXaIde < so.ideCachMs) return;
+      if (choNao || cauDemDangPhat !== null || dispatcher.dangBan(gen)) return;
+      tPhanXaIde = now;
+      void gui('actor.emote', { actor: gen, emote, intensity: 0.7 });
     }),
   );
 

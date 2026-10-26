@@ -146,6 +146,7 @@ biết registry, **giao diện** không gọi thẳng vào sân khấu.
 | `skills/gen-stage-nao/SKILL.md` | **B3** — skill cho agy CLI: vòng `stage_events` → `stage_describe` → 1–3 lệnh → `actor_say` |
 | `scripts/nao-agy.mjs` | **DRIVER NÃO** — vòng lặp nằm ở đây, không ở agy: nghe `user.text` qua ws, phản xạ ≤300 ms, gộp câu 800 ms, hàng đợi 1 lượt, bơm một dòng vào agy đang ấm trong tmux |
 | `scripts/nao-local.mjs` | **V1 — DRIVER NÃO LOCAL** (Ollama): cùng khung `nao-agy.mjs` (import, không chép), 10 tool danh sách trắng sinh bằng `toolTuLenh`, mọi tool_call qua `lyDoCamNao`; persona `scripts/nao-local/<actor>.md` (ghi đè bằng `.cache/nao-local/<actor>.md`) |
+| `vscode/src/thuan/giac-quan.ts` | **V3 — GIÁC QUAN IDE** (thuần): lưu file (gộp 5 s) / lỗi biên dịch 0⇄>0 (debounce 3 s) / task-test exit code / git commit → `stage.notice`; lọc đường dẫn, setting, workspace trust |
 | `scripts/tai-nghe.mjs` | **V2 — TAI NGHE** (thu giọng NGOÀI trình duyệt): ffmpeg → PCM qua pipe → RMS/VAD (`timDaiNoi` của `src/audio/vad.ts`) → `POST /stt` → `stage.hear` qua ws (vai client). Bán song công CNS-004. CLI là hợp đồng với extension `vscode/` |
 | `scripts/nao-demo.mjs` | **B3** — não mẫu rule-based (không LLM) chạy qua MCP stdio thật, làm bằng chứng vòng kín khi không có agy |
 | `bridge/tts.ts` | **B2** — giọng tiếng Việt: `GET /tts` (cổng 8788) gọi thẳng WebSocket Edge, trả mp3, cache `.cache/tts/<sha1>.mp3` |
@@ -206,7 +207,7 @@ biết registry, **giao diện** không gọi thẳng vào sân khấu.
   điều khiển), `stage.describe` thêm **`controlledBy`**, và chibi hoá xương raw
   (Issue #17 — tỉ lệ đầu/người đo thật ~1/2,5–1/2,8).
 
-- **B3 (xong, #21)**: `bridge/mcp.ts` — **số tool = số lệnh + 1** (đếm từ registry 26/10: 43 lệnh → 44 tool; test b3-mcp giữ công thức, đừng viết cứng số),
+- **B3 (xong, #21)**: `bridge/mcp.ts` — **số tool = số lệnh + 1** (đếm từ registry 26/10: 44 lệnh → 45 tool sau V3 `stage.notice`; test b3-mcp giữ công thức, đừng viết cứng số),
   sinh thẳng từ registry nên thêm lệnh là có tool mới; `stage_bootstrap` qua MCP
   trả thêm `huongDanAgent` (vai diễn của Gen); `actor.say` lên nhân vật
   `controlledBy: "owner"` bắn **`user.text`** → vòng hội thoại Owner ⇄ Gen;
@@ -855,3 +856,38 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
   8920, STT giả 8921; đổi gốc bằng `GEN_STAGE_TEST_CONG_TAI`; phía host: `vscode/test/giong.test.mjs`, gốc 8930, đổi bằng `GEN_STAGE_TEST_CONG`; `nao.test.mjs` mặc định 8874/8875, khi đặt biến đó thì dùng gốc +5) và
   `node scripts/kiem-tai-nghe.mjs` (bridge THẬT có token). **Chưa đo với mic thật
   và PhoWhisper thật** (máy kiểm không có cả hai).
+
+## Quyết định V3 — giác quan IDE (26/10, INTENT §4 V3)
+
+- **Một lệnh, một sự kiện**: `stage.notice {kind: save|diag|test|task|git, summary ≤ 200, level? info|good|bad,
+  data? phẳng}` (nhóm `stage`, `src/api/commands/stage.ts`) bắn **`ide.event {kind, level, summary, data}`**. Không chiếm actor,
+  không đổi trạng thái sân khấu. `data` chỉ nhận số / boolean / chuỗi ≤ 120 / mảng ≤ 20 phần tử như thế, ≤ 12 khoá — sai thì
+  **từ chối** (không cắt lặng), để không ai nhét nội dung file vào sự kiện.
+- **Não không được giả giác quan**: `stage.notice` nằm trong `LENH_CHI_CHO_BOSS` (cùng `stage.hear`) — tool vẫn liệt kê
+  (số tool = số lệnh + 1 tự đúng), gọi qua MCP/script.run bị từ chối. Nguồn thật duy nhất là extension qua ws.
+- **Phản xạ (C0) ưu tiên thấp nhất**: bảng `EMOTE_IDE` trong `phan-xa.ts` — test/task good → `vui`, test bad → `boi-roi`,
+  task bad → `suy-nghi`, git good → `thanh-cong`, diag good/bad → `vui`/`suy-nghi`; `save` + mọi `info` → không gì. Chỉ khi Gen
+  rảnh (`dangBan` false), KHÔNG giữa cuộc nói chuyện (đang chờ não / câu đệm), cách lần trước ≥ `MS_GIUA_PHAN_XA_IDE` = 20 s.
+  Lần bị bỏ vì bận KHÔNG tính lượt. *Lệch đề*: thêm `diag` vào phản xạ (đề chỉ nói test/task/git) vì extension đã lọc diag
+  xuống đúng hai lần chuyển trạng thái 0⇄>0 nên không ồn; não thì KHÔNG nghĩ cho diag.
+- **Não (nao-agy + nao-local) dùng chung `gannNgheIde`** (`nao-agy.mjs`): lọc `laSuKienIdeChoNao` (test/task/git, good|bad) →
+  giới hạn `MS_GIUA_LUOT_IDE` = 60 s (tính từ sự kiện được nhận) → gộp 800 ms bằng chính `taoGop` (test fail + commit sát nhau =
+  một lượt) → hàng đợi một-lượt sẵn có với cờ `ide: true`. **Câu Sếp thắng**: `sepBan()` = câu Sếp đang gộp / đang xếp hàng /
+  lượt nào đang chạy → bỏ sự kiện IDE (kiểm lúc nhận và lúc cửa sổ gộp đóng). Lượt IDE: nhắc `VIỆC THẬT TRONG IDE CỦA SẾP «…»
+  (Sếp không nói gì — nói MỘT câu ngắn…)`, không phản xạ turnTo, không "xin chờ", không câu dự phòng, lỗi chỉ ghi log; nao-local
+  nói hộ chữ của model với `interrupt: false`. Lượt IDE ĐANG chạy thì câu Sếp tới sau vẫn phải chờ nó xong (hàng đợi không
+  huỷ được lượt agy/Ollama đang chạy) — chấp nhận, vì lượt IDE hiếm (≥ 60 s) và chỉ bắt đầu khi không có câu Sếp nào.
+- **Extension** (`vscode/src/thuan/giac-quan.ts`, nối ở `extension.ts`): save gộp 5 s **cửa sổ cố định từ lần lưu đầu**
+  (autosave không đẩy lùi mãi); diag: hàm đếm chỉ chạy khi số lỗi đứng yên 3 s, lần đầu chỉ ghi mốc (lỗi có sẵn lúc mở không phải
+  "vừa xảy ra"); task: `exitCode` undefined → không gửi, nhóm `test` hoặc tên có "test" → `kind: test`; git: `HEAD.commit` đổi
+  **và commit mới có cha = HEAD cũ** (*lệch đề*: đề chỉ nói "HEAD.commit đổi" — thêm điều kiện cha để checkout/reset/pull không
+  thành "Sếp vừa commit"). Setting `genStage.giacQuan.batTat` + `save/diag/test/git` (scope window, đọc lại mỗi lần gửi);
+  `isTrusted` kiểm mỗi lần gửi. Chatroom dòng "👁 …" chỉ cho notice gửi thành công.
+- **Riêng tư**: chỉ `asRelativePath(uri,false)` của file `file:` trong workspace folder; `locDuong` bỏ tuyệt đối / `..` / `.git/`
+  / `node_modules/` / ký tự điều khiển. Diagnostics chỉ đếm. Đường repo git chỉ làm khoá nội bộ.
+- `vscode/types/vscode.d.ts` thêm `TextDocument`, `Uri.scheme`, `DiagnosticSeverity`, `Diagnostic`, `DiagnosticChangeEvent`,
+  `Task`/`TaskGroup`/`TaskExecution`/`TaskProcessEndEvent`, `Extension<T>`, `languages`/`tasks`/`extensions`, `workspace.
+  onDidSaveTextDocument`/`getWorkspaceFolder`/`asRelativePath` — chép từ `@types/vscode@1.106.1`, đã biên dịch `src/` với bản thật.
+  API git không có trong `@types/vscode` → khai interface tối thiểu `GitExtensionToiThieu` trong `giac-quan.ts`.
+- Kiểm: `src/api/__tests__/v3-giac-quan.test.ts`, `b3-mcp.test.ts` (stage_notice bị chặn), `scripts/__tests__/nao-agy.test.mjs` +
+  `nao-local.test.mjs` (mục V3), `vscode/test/giac-quan.test.mjs`. **Chưa kiểm trên VS Code thật** (README checklist 15–19).

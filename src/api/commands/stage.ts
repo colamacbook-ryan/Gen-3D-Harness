@@ -15,6 +15,43 @@ import { chuanHoaCauNoi } from '../../audio/so-tu';
 
 export const PHIEN_BAN_API = '0.1';
 
+/** V3 — loại việc thật `stage.notice` nhận (giác quan IDE). */
+export const LOAI_NOTICE = ['save', 'diag', 'test', 'task', 'git'] as const;
+export const MUC_NOTICE = ['info', 'good', 'bad'] as const;
+export const TOI_DA_SUMMARY = 200;
+/** `data` chỉ là số đếm/tên ngắn — giới hạn để không ai nhét nội dung file vào sự kiện. */
+export const TOI_DA_KHOA_DATA = 12;
+export const TOI_DA_CHUOI_DATA = 120;
+export const TOI_DA_MANG_DATA = 20;
+
+/**
+ * Kiểm `data` của `stage.notice`: object phẳng, giá trị là số hữu hạn, boolean,
+ * chuỗi ngắn hoặc mảng ngắn các số/chuỗi ngắn. Sai thì ném lỗi (không cắt lặng).
+ */
+export function kiemDataNotice(x: unknown): Record<string, unknown> {
+  if (!x || typeof x !== 'object' || Array.isArray(x)) throw new Error('data phải là object phẳng');
+  const ra: Record<string, unknown> = {};
+  const khoa = Object.keys(x);
+  if (khoa.length > TOI_DA_KHOA_DATA) throw new Error(`data tối đa ${TOI_DA_KHOA_DATA} khoá`);
+  const giaTriDon = (v: unknown): boolean =>
+    (typeof v === 'number' && Number.isFinite(v)) ||
+    typeof v === 'boolean' ||
+    (typeof v === 'string' && v.length <= TOI_DA_CHUOI_DATA);
+  for (const k of khoa) {
+    if (k.length > 40) throw new Error(`data: tên khoá quá dài "${k.slice(0, 20)}…"`);
+    const v = (x as Record<string, unknown>)[k];
+    if (giaTriDon(v)) ra[k] = v;
+    else if (Array.isArray(v) && v.length <= TOI_DA_MANG_DATA && v.every((p) => typeof p !== 'boolean' && giaTriDon(p))) {
+      ra[k] = [...v];
+    } else {
+      throw new Error(
+        `data.${k}: chỉ nhận số, boolean, chuỗi ≤ ${TOI_DA_CHUOI_DATA} ký tự hoặc mảng ≤ ${TOI_DA_MANG_DATA} phần tử như thế`,
+      );
+    }
+  }
+  return ra;
+}
+
 export const LENH_STAGE: CommandSpec[] = [
   {
     cmd: 'stage.bootstrap',
@@ -143,6 +180,39 @@ export const LENH_STAGE: CommandSpec[] = [
         throw new Error(kq.error);
       }
       return ngay({ heard: true, actor: owner.id, text });
+    },
+  },
+
+  {
+    cmd: 'stage.notice',
+    group: 'stage',
+    events: ['ide.event'],
+    desc:
+      'V3 — GIÁC QUAN IDE: báo sân khấu một việc thật vừa xảy ra trong IDE của Sếp (lưu file, lỗi biên dịch, ' +
+      'test/task pass/fail, git commit) → bắn sự kiện ide.event để phản xạ + não phản ứng. Không chiếm actor. ' +
+      'Chỉ mang tóm tắt + số đếm/tên ngắn, KHÔNG nội dung file. ' +
+      'Chỉ dành cho Boss/ngoại vi (extension VS Code qua ws bridge): MCP của não bị chặn lệnh này',
+    params: [
+      { name: 'kind', type: 'enum', desc: 'Loại việc', values: LOAI_NOTICE, required: true },
+      { name: 'summary', type: 'text', desc: `Tóm tắt một dòng (≤ ${TOI_DA_SUMMARY} ký tự)`, required: true },
+      { name: 'level', type: 'enum', desc: 'Tốt/xấu', values: MUC_NOTICE, default: 'info' },
+      {
+        name: 'data',
+        type: 'json',
+        desc: 'Object phẳng chỉ số đếm/tên ngắn (vd {"errors":3}, {"files":["a.ts"]}) — không nội dung',
+      },
+    ],
+    example: { cmd: 'stage.notice', args: { kind: 'test', level: 'bad', summary: 'Test "unit" fail (mã 1)' } },
+    handler(a, ctx) {
+      const summary = String(a.summary).replace(/\s+/g, ' ').trim();
+      if (!summary) throw new Error('summary rỗng');
+      if (summary.length > TOI_DA_SUMMARY) {
+        throw new Error(`summary dài ${summary.length} ký tự (tối đa ${TOI_DA_SUMMARY})`);
+      }
+      const data = a.data === undefined ? {} : kiemDataNotice(a.data);
+      const ev = { kind: String(a.kind), level: String(a.level ?? 'info'), summary, data };
+      ctx.bus.emit('ide.event', ev);
+      return ngay({ noticed: true, kind: ev.kind, level: ev.level });
     },
   },
 

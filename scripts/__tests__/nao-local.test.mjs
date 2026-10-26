@@ -443,3 +443,46 @@ describe('nao-local — review: dò model treo, arguments lạ, câu trùng, g�
     expect(Number(dong[0].match(/sau (\d+) ms/)[1])).toBeGreaterThanOrEqual(300);
   });
 });
+
+describe('nao-local — V3 giác quan IDE', () => {
+  it('ide.event test bad → MỘT lượt cho gen, nhắc "VIỆC THẬT", không phản xạ turnTo; lần hai trong 60 s bị bỏ', async () => {
+    await bat();
+    ollama.kichBan.push({ content: 'Test đỏ rồi Sếp, để em xem cùng' });
+    phat('ide.event', { kind: 'save', level: 'info', summary: 'Lưu 1 file: a.ts' });
+    phat('ide.event', { kind: 'test', level: 'bad', summary: 'Test "unit" fail (mã 1)' });
+    await ngu(120);
+    await driver.hangDoi.choHet();
+    await ngu(30);
+    expect(ollama.yeuCau).toHaveLength(1);
+    expect(ollama.yeuCau[0].messages[1].content).toMatch(/^VIỆC THẬT TRONG IDE CỦA SẾP «Sếp vừa chạy test — hỏng: Test "unit" fail \(mã 1\)»/);
+    expect(bridge.lenh.some((l) => l.cmd === 'actor.turnTo')).toBe(false);
+    // driver nói hộ câu của model, KHÔNG cắt ngang (ưu tiên thấp)
+    expect(lenhSay()).toEqual([{ cmd: 'actor.say', args: { actor: 'gen', text: 'Test đỏ rồi Sếp, để em xem cùng', interrupt: false } }]);
+    phat('ide.event', { kind: 'git', level: 'good', summary: 'Commit abc1234: sửa' });
+    await ngu(120);
+    await driver.hangDoi.choHet();
+    expect(ollama.yeuCau).toHaveLength(1);
+  });
+
+  it('câu Sếp và sự kiện IDE cùng lúc → chỉ câu Sếp thành lượt', async () => {
+    await bat({ msGop: 60 });
+    ollama.kichBan.push({ content: 'Dạ' });
+    phat('user.text', { actor: 'owner', text: 'Gen ơi', to: 'camera' });
+    phat('ide.event', { kind: 'test', level: 'bad', summary: 'fail' });
+    await ngu(200);
+    await driver.hangDoi.choHet();
+    expect(ollama.yeuCau).toHaveLength(1);
+    expect(ollama.yeuCau[0].messages[1].content).toMatch(/^SẾP NÓI «Gen ơi»/);
+  });
+
+  it('model im lặng ở lượt IDE → không nói câu dự phòng', async () => {
+    await bat({ msGiuaIde: 0 });
+    ollama.kichBan.push({ content: '' });
+    phat('ide.event', { kind: 'git', level: 'good', summary: 'Commit abc1234: sửa' });
+    await ngu(120);
+    await driver.hangDoi.choHet();
+    await ngu(30);
+    expect(ollama.yeuCau).toHaveLength(1);
+    expect(lenhSay()).toEqual([]);
+  });
+});
