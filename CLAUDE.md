@@ -647,11 +647,11 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
   166,3, Gen 177,2), FPS tương đối (~1 fps, cùng tầm lab cũ trên swiftshader),
   console 0 lỗi.
 
-- **Nợ còn mở (V1, 26/10)**: `vscode/test/nao.test.mjs` ca "dongBoNao … đổi chế độ" vẫn đỏ ~2/5 lần dù đã
-  đổi cổng — không phải xung đột cổng mà là race thật ở `vscode/src/thuan/tien-trinh.ts` `tatMot`: chỉ đợi *đầu
-  nhóm* (bash/pnpm) chết, không đợi cả nhóm, nên `timDriverNaoNgoai` còn thấy node con đang tắt → `cua-ngoai`
-  thay vì `dang-chay`. Sửa: đợi tới khi `process.kill(-pgid, 0)` ném ESRCH.
-
+- **Race `tatMot` (V1, đã sửa 26/10)**: `vscode/test/nao.test.mjs` ca "dongBoNao … đổi chế độ" từng đỏ ~2/5 lần —
+  không phải tranh cổng mà là race thật ở `vscode/src/thuan/tien-trinh.ts` `tatMot`: chỉ đợi ĐẦU nhóm (pnpm/bash)
+  chết, con `node` còn đang dọn thì `timDriverNaoNgoai` vẫn thấy ⇒ đổi chế độ não báo nhầm `cua-ngoai` (người dùng
+  thật cũng gặp). Nay `tatMot` đợi cả nhóm chết qua `nhomConSong(pgid)` (quét `/proc`, bỏ zombie — không dùng
+  `kill(-pgid,0)` vì zombie chưa thu hồi vẫn làm nó thành công). Đo lại: 8/8 lần `pnpm -C vscode test` xanh.
 ## Quyết định chay.sh — dò theo cổng, không mở hai sân khấu (26/10, CNS-002 e)
 
 - **Dò dịch vụ theo CỔNG đang nghe, không theo `pgrep -f`**: bridge/vite do extension

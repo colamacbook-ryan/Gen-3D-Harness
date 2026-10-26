@@ -250,6 +250,28 @@ export function conSong(pid: number): boolean {
   return !!st && st.trangThai !== 'Z';
 }
 
+/**
+ * Nhóm tiến trình `pgid` còn thành viên nào SỐNG (không tính zombie) không — quét `/proc`.
+ * Không dùng `kill(-pgid, 0)`: zombie chưa được thu hồi vẫn làm lệnh đó thành công.
+ * Cần cho `tatMot`: đầu nhóm (pnpm/bash) chết trước, con `node` còn đang dọn thì
+ * `timDriverNaoNgoai` vẫn thấy nó ⇒ đổi chế độ não báo nhầm "cua-ngoai" (race đã đo: 2/5 lần).
+ */
+export function nhomConSong(pgid: number): boolean {
+  if (!Number.isInteger(pgid) || pgid <= 1) return false;
+  let ds: string[];
+  try {
+    ds = fs.readdirSync('/proc');
+  } catch {
+    return false;
+  }
+  for (const ten of ds) {
+    if (!/^\d+$/.test(ten)) continue;
+    const st = docStat(Number(ten));
+    if (st && st.pgrp === pgid && st.trangThai !== 'Z') return true;
+  }
+  return false;
+}
+
 /** Danh tính một tiến trình: PID + starttime (PID có thể bị tái sử dụng, cặp này thì không). */
 export interface DanhTinh {
   pid: number;
@@ -672,7 +694,8 @@ export class QuanLyTienTrinh {
       } catch (e) {
         this.ghi(`[tiến trình] không tắt được ${ten} (nhóm ${v.pid}): ${(e as Error).message}`);
       }
-      await doiToi(async () => !laDungTienTrinh(v), 5000, 50);
+      // đợi CẢ NHÓM chết, không chỉ đầu nhóm (con node còn dọn dẹp sau khi pnpm thoát)
+      await doiToi(async () => !laDungTienTrinh(v) && !nhomConSong(v.pid), 5000, 50);
     }
     this.luuSo();
   }
