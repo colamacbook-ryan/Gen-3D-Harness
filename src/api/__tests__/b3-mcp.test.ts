@@ -260,7 +260,8 @@ describe('MCP không được lọt rào owner (stage.hear)', () => {
     expect(ok.isError).toBeFalsy();
     const chan = (await client.callTool({ name: 'actor_say', arguments: { actor: 'owner', text: 'x' } })) as { isError?: boolean };
     expect(chan.isError).toBe(true);
-    expect(goi).toEqual(['actor.say']);
+    // stage.describe = lượt đọc vai (chỉ đọc) để rào theo controlledBy; lệnh bị chặn không được tới sân khấu
+    expect(goi.filter((c) => c !== 'stage.describe')).toEqual(['actor.say']);
   });
 });
 
@@ -280,3 +281,18 @@ describe('rào não lách qua script.run (review bảo mật 26/10)', () => {
     expect(lyDoCamNao('actor.list', { actor: 'owner' })).toBeNull();
   });
 });
+
+describe('rào não theo VAI, không theo tên (review bảo mật 26/10)', () => {
+  it('actor.spawn {controlledBy:"owner"} (trực tiếp hoặc trong script.run) → chặn', () => {
+    expect(lyDoCamNao('actor.spawn', { id: 'javis2', controlledBy: 'owner' })).toMatch(/controlledBy/);
+    expect(lyDoCamNao('script.run', { steps: [{ cmd: 'actor.spawn', args: { id: 'x', controlledBy: 'owner' } }] })).not.toBeNull();
+    expect(lyDoCamNao('actor.spawn', { id: 'tro-ly', controlledBy: 'agent' })).toBeNull();
+  });
+  it('actor khác tên nhưng controlledBy "owner" trên sân khấu → chặn', () => {
+    const cuaBoss = new Set(['owner', 'javis2']);
+    expect(lyDoCamNao('actor.say', { actor: 'javis2', text: 'x' }, cuaBoss)).toMatch(/owner/);
+    expect(lyDoCamNao('script.run', { steps: [{ cmd: 'actor.say', args: { actor: 'javis2', text: 'x' } }] }, cuaBoss)).not.toBeNull();
+    expect(lyDoCamNao('actor.say', { actor: 'gen', text: 'x' }, cuaBoss)).toBeNull();
+  });
+});
+

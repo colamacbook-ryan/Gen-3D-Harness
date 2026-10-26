@@ -194,9 +194,20 @@ export const LENH_CHI_CHO_BOSS: ReadonlySet<string> = new Set(['stage.hear']);
  * - `script.run`: soi từng bước (đệ quy, có giới hạn sâu) — không thì gói lệnh cấm vào kịch bản là lọt.
  * `steps` đọc hỏng thì trả `null`: validate của sân khấu sẽ từ chối, không có gì chạy.
  */
-export function lyDoCamNao(cmd: string, args: Record<string, unknown>, sau = 0): string | null {
+export function lyDoCamNao(
+  cmd: string,
+  args: Record<string, unknown>,
+  /** id mọi actor `controlledBy:"owner"` đang có trên sân khấu (luôn gồm "owner"). */
+  cuaBoss: ReadonlySet<string> = new Set(['owner']),
+  sau = 0,
+): string | null {
   if (sau > 8) return 'Kịch bản lồng quá sâu — não không được gọi.';
-  if (cmd.startsWith('actor.') && cmd !== 'actor.list' && String(args.actor ?? '') === 'owner') {
+  // Não không được TẠO hay ĐỔI nhân vật sang vai của Boss (actor.spawn {controlledBy:"owner"} rồi nói qua nó
+  // là giả Boss — review bảo mật 26/10: rào phải theo VAI, không theo tên).
+  if (String(args.controlledBy ?? '') === 'owner') {
+    return 'Não không được tạo/đổi nhân vật sang controlledBy "owner" (vai của Sếp).';
+  }
+  if (cmd.startsWith('actor.') && cmd !== 'actor.list' && (cuaBoss.has(String(args.actor ?? '')) || String(args.actor ?? '') === 'owner')) {
     return 'Não không được điều khiển actor "owner" (nhân vật của Sếp). Chỉ điều khiển "gen".';
   }
   if (LENH_CHI_CHO_BOSS.has(cmd)) {
@@ -211,7 +222,7 @@ export function lyDoCamNao(cmd: string, args: Record<string, unknown>, sau = 0):
     try { buoc = docSteps(tho); } catch { return null; }
     for (const b of buoc) {
       if (typeof b.cmd !== 'string') continue;
-      const ly = lyDoCamNao(b.cmd, b.args ?? {}, sau + 1);
+      const ly = lyDoCamNao(b.cmd, b.args ?? {}, cuaBoss, sau + 1);
       if (ly) return `Trong script.run: ${ly}`;
     }
   }
@@ -489,7 +500,14 @@ export function taoMcpServer(noi: NoiSanKhau): Server {
 
     // Não KHÔNG được điều khiển nhân vật của Sếp, không được gọi lệnh chỉ dành cho Boss — kể cả
     // khi gói trong `script.run` (review bảo mật 26/10: lách rào bằng lệnh lồng).
-    const cam = lyDoCamNao(cmd, args);
+    // Ai là "của Boss" đọc từ sân khấu (theo vai), chỉ khi lệnh có thể chạm actor.
+    let cuaBoss: ReadonlySet<string> = new Set(['owner']);
+    if (cmd.startsWith('actor.') || cmd === 'script.run') {
+      const mo = await noi.goi('stage.describe', {});
+      const ds = (mo.ok ? (mo.result as { actors?: { id: string; controlledBy?: string }[] } | undefined)?.actors : undefined) ?? [];
+      cuaBoss = new Set(['owner', ...ds.filter((x) => x.controlledBy === 'owner').map((x) => x.id)]);
+    }
+    const cam = lyDoCamNao(cmd, args, cuaBoss);
     if (cam) return { isError: true, content: [{ type: 'text' as const, text: cam }] };
 
     const kq = await noi.goi(cmd, args);
