@@ -61,6 +61,9 @@ function ngheBridge() {
   return { thay, dong: () => w.close() };
 }
 
+/** Lệnh VS Code có thể mở hộp thoại rồi chờ người bấm — không bao giờ chờ quá `ms`. */
+const coHan = (p, ms, ten) => Promise.race([p, ngu(ms).then(() => { throw new Error(`${ten}: quá ${ms} ms`); })]);
+
 async function choSuKien(nghe, dk, ms) {
   const han = Date.now() + ms;
   while (Date.now() < han) {
@@ -89,7 +92,7 @@ async function kiemV3(ghi, kq) {
     const ed = await vscode.window.showTextDocument(doc);
     kq._t = Date.now();
     await ed.edit((e) => e.insert(new vscode.Position(1, 0), 'b\n'));
-    await doc.save();
+    await coHan(doc.save(), 10000, 'save');
     const eLuu = await choSuKien(nghe, ide('save'), 15000);
     ghi('V3 lưu file → ide.event save (gộp 5 s)', !!eLuu, tom(eLuu));
 
@@ -107,13 +110,13 @@ async function kiemV3(ghi, kq) {
     await edTs.edit((e) => e.replace(new vscode.Range(0, 0, 1, 0), 'export const so: number = 2;\n'));
     const eHet = await choSuKien(nghe, ide('diag', 'good'), 60000);
     ghi('V3 hết lỗi >0 → 0 → ide.event diag good', !!eHet, tom(eHet));
-    await docTs.save();
+    await coHan(docTs.save(), 10000, 'save ts');
 
     // 3. task: tên có "test" + exit 3 → test bad; build exit 0 → task good
     const chayTask = async (ten, lenh) => {
       const t = new vscode.Task({ type: 'shell' }, vscode.TaskScope.Workspace, ten, 'e2e', new vscode.ShellExecution(lenh));
       kq._t = Date.now();
-      await vscode.tasks.executeTask(t);
+      await coHan(vscode.tasks.executeTask(t), 15000, 'executeTask');
     };
     await chayTask('test e2e', 'exit 3');
     const eTest = await choSuKien(nghe, ide('test'), 30000);
@@ -130,13 +133,13 @@ async function kiemV3(ghi, kq) {
     fs.writeFileSync(path.join(rg, 'a.txt'), '1\n');
     g('add', '.');
     g('commit', '-qm', 'mốc đầu');
-    await vscode.commands.executeCommand('git.openRepository', rg);
+    await coHan(vscode.commands.executeCommand('git.openRepository', rg), 15000, 'git.openRepository');
     await ngu(5000); // extension git ghi mốc HEAD
     fs.writeFileSync(path.join(rg, 'a.txt'), '2\n');
     g('commit', '-qam', 'thêm dòng hai');
     kq._t = Date.now();
     try {
-      await vscode.commands.executeCommand('git.refresh');
+      await coHan(vscode.commands.executeCommand('git.refresh'), 10000, 'git.refresh');
     } catch {
       /* không có thì thôi — watcher .git tự bắt */
     }
@@ -155,6 +158,9 @@ exports.run = async function run() {
   const kq = { buoc: [], loi: [] };
   const ghi = (ten, ok, chiTiet) => {
     kq.buoc.push({ ten, ok: !!ok, ...(chiTiet === undefined ? {} : { chiTiet }) });
+    // ghi dở sau từng bước: treo giữa chừng vẫn biết đã tới đâu
+    fs.writeFileSync(RA, JSON.stringify(kq, null, 2));
+    console.log(`[e2e] ${ok ? 'OK  ' : 'FAIL'} ${ten}`);
   };
   try {
     kq.vscodeVersion = vscode.version;
@@ -216,7 +222,11 @@ exports.run = async function run() {
     if (dsc) {
       const say = await hoiBridge('actor.say', { actor: 'gen', text: 'Chào từ VS Code thật' });
       ghi('lệnh actor.say qua bridge tới sân khấu trong webview', say.ok, say.ok ? { durationMs: say.result && say.result.durationMs } : say.error);
-      await kiemV3(ghi, kq);
+      try {
+        await kiemV3(ghi, kq);
+      } catch (e) {
+        ghi('V3 chạy hết các bước không ném lỗi', false, String(e));
+      }
     }
 
     // gọi lại moSanKhau → reveal, không mở panel thứ hai
