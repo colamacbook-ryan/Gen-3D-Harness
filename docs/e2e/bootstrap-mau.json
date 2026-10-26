@@ -326,7 +326,7 @@
   {
    "cmd": "actor.steer",
    "group": "actor",
-   "desc": "Lái bằng vận tốc: đi theo (vx, vz) m/s trong ms rồi tự hết. Gọi lại để kéo dài; lệnh mới THAY lệnh cũ, không xếp hàng",
+   "desc": "Lái bằng vận tốc: đi theo (vx, vz) m/s trong ms rồi tự dừng êm. Gọi lại CÙNG (vx, vz) để gia hạn; đổi (vx, vz) thì lệnh mới THAY lệnh cũ, không xếp hàng",
    "params": [
     {
      "name": "actor",
@@ -355,7 +355,7 @@
      "type": "number",
      "desc": "Giữ vận tốc này bao lâu (ms) rồi tự dừng êm",
      "required": false,
-     "default": 150
+     "default": 700
     }
    ],
    "events": [
@@ -367,7 +367,7 @@
      "actor": "gen",
      "vx": 0,
      "vz": -1.6,
-     "ms": 150
+     "ms": 700
     }
    }
   },
@@ -1535,9 +1535,9 @@
    "example": {
     "cmd": "screen.spawn",
     "args": {
-     "id": "main",
+     "id": "bang-phu",
      "at": "ban-dieu-khien",
-     "size": 2.4
+     "size": 0.8
     }
    }
   },
@@ -1564,7 +1564,7 @@
    "example": {
     "cmd": "screen.remove",
     "args": {
-     "screen": "main"
+     "screen": "may-tinh"
     }
    }
   },
@@ -1610,7 +1610,7 @@
    "example": {
     "cmd": "screen.show",
     "args": {
-     "screen": "main",
+     "screen": "may-tinh",
      "kind": "code",
      "content": "const a = 1;"
     }
@@ -1664,7 +1664,7 @@
    "example": {
     "cmd": "screen.stream",
     "args": {
-     "screen": "main",
+     "screen": "may-tinh",
      "kind": "code",
      "source": "agent"
     }
@@ -1693,7 +1693,7 @@
    "example": {
     "cmd": "screen.clear",
     "args": {
-     "screen": "main"
+     "screen": "may-tinh"
     }
    }
   },
@@ -1720,7 +1720,7 @@
    "example": {
     "cmd": "screen.focus",
     "args": {
-     "screen": "main"
+     "screen": "may-tinh"
     }
    }
   },
@@ -1782,7 +1782,7 @@
      "id": "connector-baserow",
      "shape": "book",
      "label": "Baserow",
-     "from": "main"
+     "from": "may-tinh"
     }
    }
   },
@@ -1849,6 +1849,73 @@
     "args": {
      "module": "connector-baserow",
      "to": "ke-module"
+    }
+   }
+  },
+  {
+   "cmd": "module.demo",
+   "group": "module",
+   "desc": "MỘT LỆNH = cả màn dựng module: bay màn hình tới trước mặt → code chạy lên màn hình → hạt kết tinh thành module vào tay nhân vật → emote thành công → nói một câu báo xong",
+   "params": [
+    {
+     "name": "id",
+     "type": "string",
+     "desc": "Mã module (vd \"connector-baserow\")",
+     "required": true
+    },
+    {
+     "name": "label",
+     "type": "string",
+     "desc": "Nhãn hiện trên module (vd \"Baserow\")",
+     "required": true
+    },
+    {
+     "name": "screen",
+     "type": "enum",
+     "desc": "Dựng trên màn hình nào (bỏ trống = màn hình đầu tiên)",
+     "required": false,
+     "values": [
+      "may-tinh",
+      "tivi"
+     ],
+     "tuDo": true
+    },
+    {
+     "name": "shape",
+     "type": "enum",
+     "desc": "Hình kết tinh",
+     "required": false,
+     "values": [
+      "book",
+      "cube",
+      "tool",
+      "crystal",
+      "orb"
+     ],
+     "default": "book"
+    },
+    {
+     "name": "say",
+     "type": "text",
+     "desc": "Câu báo xong (bỏ trống thì lệnh tự ghép một câu tiếng Việt)",
+     "required": false
+    },
+    {
+     "name": "buildMs",
+     "type": "number",
+     "desc": "Thời lượng hiệu ứng kết tinh (ms)",
+     "required": false,
+     "default": 2600
+    }
+   ],
+   "events": [
+    "module.demoDone"
+   ],
+   "example": {
+    "cmd": "module.demo",
+    "args": {
+     "id": "demo-baserow",
+     "label": "Baserow"
     }
    }
   },

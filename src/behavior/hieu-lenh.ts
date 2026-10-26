@@ -23,10 +23,10 @@
  *    muốn nghe "lệnh đã hiểu". Não (C-não / `nao-demo`) bỏ qua mọi `user.text`
  *    có `handled: true` — ghi trong spec mục 3.6.
  *
- * 3. **Javis không có não.** Câu tự do gửi cho Javis (nhân vật nam, id `owner`)
- *    được lớp này trả lời bằng giọng nam rồi đánh dấu `handled` — không đẩy
- *    sang não. Câu tự do cho Gen thì **giữ nguyên** luồng cũ (`user.text` →
- *    não qua MCP), lớp này không chạm vào.
+ * 3. **Nam không có não.** Câu tự do gửi cho Nam (tên hiển thị của `owner`,
+ *    nhân vật nam) được lớp này trả lời bằng giọng nam rồi đánh dấu `handled`
+ *    — không đẩy sang não. Câu tự do cho Nhi (`gen`) thì **giữ nguyên** luồng
+ *    cũ (`user.text` → não qua MCP), lớp này không chạm vào.
  */
 import type { Dispatcher } from '../api/dispatcher';
 import type { EventBusLike, StageEvent, StageState } from '../api/types';
@@ -38,8 +38,13 @@ import {
   BI_DANH_PLACE,
   CAU_CHUA_HIEU,
   CHO_SEP,
+  DONG_TU_LENH,
+  DONG_TU_LENH_MO_HO,
+  DONG_TU_NGHE_NHAM,
   GHE_GAN_NHAT,
   GOC_MAY_KE,
+  NGHE_NHAM_TEN,
+  TIN_HIEU_GOI,
   XAC_NHAN,
   boDau,
   gan,
@@ -106,10 +111,22 @@ interface TachNguoiNhan {
 /** Người nhận mặc định khi Sếp không gọi tên: Gen (Issue #32). */
 export const NGUOI_NHAN_MAC_DINH = 'gen';
 
+/**
+ * G2 (28/10) — tên hiển thị trùng từ Việt thường: KHÔNG được tự thêm làm bí
+ * danh trần một từ trong `bangBiDanh` (bình thường `TEN_HIEN_THI[id]` luôn
+ * được thêm — đúng cho "Javis"/"Gen" cũ, nhưng "Nam"/"Nhi" thì "nam châm"/
+ * "nhí nhảnh" sẽ bị hiểu nhầm là gọi tên). Bị loại ở đây thì nhân vật đó vẫn
+ * gọi được bằng tên mới qua các cụm an toàn khai tay trong `BI_DANH_NHAN_VAT`
+ * ("nam ơi", "anh nam"…) và qua bước 1b (gọi trần + dấu phẩy ở đầu câu).
+ */
+const TEN_HIEN_THI_MO_HO = new Set(['nam', 'nhi']);
+
 function bangBiDanh(bc: BoiCanh): { id: string; cum: string[][] }[] {
   const ra: { id: string; cum: string[][] }[] = [];
   for (const a of bc.actors) {
-    const cum = new Set<string>([a.id, boDau(TEN_HIEN_THI[a.id] ?? a.id)]);
+    const tenHienThi = boDau(TEN_HIEN_THI[a.id] ?? a.id);
+    const cum = new Set<string>([a.id]);
+    if (!TEN_HIEN_THI_MO_HO.has(tenHienThi)) cum.add(tenHienThi);
     for (const b of BI_DANH_NHAN_VAT[a.id] ?? []) cum.add(boDau(b));
     ra.push({
       id: a.id,
@@ -121,18 +138,25 @@ function bangBiDanh(bc: BoiCanh): { id: string; cum: string[][] }[] {
   return ra;
 }
 
-/** Tìm tên người được gọi ở bất kỳ đâu trong câu rồi cắt nó ra. */
+/**
+ * Tìm tên người được gọi ở bất kỳ đâu trong câu rồi cắt nó ra.
+ *
+ * `textGoc` (câu NGUYÊN VĂN, có dấu câu) chỉ cần cho bước 1b (gọi trần "Nam,"/
+ * "Nhi," ở đầu câu — dấu phẩy đã bị `tach()` ăn mất khỏi `cau`); không truyền
+ * thì bước đó coi như không khớp, không ảnh hưởng gì khác.
+ */
 export function tachNguoiNhan(
   cau: { goc: string[]; sach: string[] },
   bc: BoiCanh,
   to?: string,
+  textGoc?: string,
 ): TachNguoiNhan {
   const ds = bangBiDanh(bc);
   const idOwner = bc.actors.find((a) => a.controlledBy === 'owner')?.id ?? 'owner';
   const idGen =
     bc.actors.find((a) => a.controlledBy !== 'owner')?.id ?? NGUOI_NHAN_MAC_DINH;
 
-  // 1) "mọi người / cả hai / tất cả" → cả hai nhân vật, Javis diễn trước
+  // 1) "mọi người / cả hai / tất cả" → cả hai nhân vật, Nam (owner) diễn trước
   for (const cum of BI_DANH_MOI_NGUOI.map((c) => c.split(' '))) {
     const vt = timCum(cau.sach, cum);
     if (vt < 0) continue;
@@ -145,11 +169,88 @@ export function tachNguoiNhan(
   }
 
   /**
+   * 1b. G2 (28/10) — "Nam," / "Nhi," TRẦN ở ĐÚNG ĐẦU CÂU, có dấu phẩy ngay
+   * sau. "nam"/"nhi" là từ tiếng Việt thường (xem chú thích `BI_DANH_NHAN_VAT`
+   * trong `noi-dung.ts`) nên KHÔNG được khai vào bảng bí danh chung (máy khớp
+   * `timCum` ở bước 2 tìm cụm ở bất kỳ đâu trong câu — khai trần thì "nam
+   * châm" cũng dính). Cụm có "ơi"/"à"/"anh"/"em" đã an toàn ở MỌI vị trí nên
+   * nằm thẳng trong bí danh; chỉ dạng "gọi trần + phẩy" này cần ràng buộc vị
+   * trí riêng — và dấu phẩy chỉ còn lại trong `goc` (`sach` đã mất dấu câu khi
+   * `tach()` chạy), nên phải soi câu GỐC, không soi `cau.sach[0]`.
+   */
+  const goiTranDauCau = textGoc ? /^\s*(nam|nhi)\s*,/i.exec(boDau(textGoc)) : null;
+  /**
+   * 1c. G3 (#67) — GỌI TRẦN BẰNG GIỌNG: tên ở ĐẦU CÂU + theo sau là tín hiệu
+   * gọi ("ơi"/"à") hoặc một ĐỘNG TỪ LỆNH. **Không cần dấu phẩy.**
+   *
+   * Luật 1b của G2 đúng cho chữ Boss GÕ, nhưng vô nghĩa với giọng: STT trả
+   * một dòng chữ liền, không bao giờ có dấu phẩy. Review #67 đo trên bộ TTS
+   * bẩn: gọi tên mới chỉ **5/10** đúng người, và "Nam đi tới bếp" là ca trượt
+   * tiêu biểu.
+   *
+   * Ba ràng buộc giữ luật này khỏi ăn vào câu thường — mỗi cái chặn một ca đo
+   * được, test giữ cả ba:
+   *   · **chỉ từ đầu câu** → "miền nam", "ở phía nam" không khớp;
+   *   · **phải có động từ lệnh / "ơi" ngay sau** → "nam châm hút sắt",
+   *     "nhí nhảnh quá" không khớp;
+   *   · cách nghe chệch trùng hẳn từ Việt thường (`nghi` = "nghỉ"/"nghĩ") thì
+   *     động từ theo sau **không được mơ hồ** → "nghỉ đi" giữ nguyên nghĩa,
+   *     "nghi qua bàn điều khiển" mới là gọi Nhi.
+   */
+  const goiTranGiong = (() => {
+    const dau = cau.sach[0];
+    const sau = cau.sach[1];
+    if (!dau) return null;
+    /*
+     * So KHỚP Y, không fuzzy, cho từ đứng sau tên.
+     *
+     * Đây chỉ là **cái cổng** quyết định "có phải lời gọi không"; việc khớp
+     * lệnh thật vẫn fuzzy như cũ ở dưới. Fuzzy ngay tại cổng thì "**nam châm**
+     * hút sắt" lọt: `cham` cách `chao` (động từ "chào") đúng 1 ký tự, mà từ 4
+     * ký tự được phép lệch 1. Thà bỏ sót một lời gọi (câu rơi về người nhận
+     * mặc định) hơn là bắt nhân vật diễn giữa câu Boss đang nói chuyện.
+     */
+    const laTinHieuGoi = sau !== undefined && TIN_HIEU_GOI.includes(sau);
+    const sauChuan = sau !== undefined ? (DONG_TU_NGHE_NHAM[sau] ?? sau) : undefined;
+    const laDongTuLenh = sauChuan !== undefined && DONG_TU_LENH.includes(sauChuan);
+    // Đo trên dạng ĐÃ chuẩn hoá: `bi` → `di`, mà `di` là động từ mơ hồ. Soi
+    // `sau` thô thì "nghi bi …" lọt qua cửa hẹp dù động từ thật là "đi".
+    const moHo = sauChuan !== undefined && DONG_TU_LENH_MO_HO.includes(sauChuan);
+    for (const t of NGHE_NHAM_TEN) {
+      if (t.dongAm.some((x) => boDau(x) === dau) && (laTinHieuGoi || laDongTuLenh))
+        return t.ten;
+      // dạng "hẹp": chỉ nhận khi động từ theo sau KHÔNG mơ hồ
+      if (
+        (t.hep ?? []).some((x) => boDau(x) === dau) &&
+        (laTinHieuGoi || (laDongTuLenh && !moHo))
+      )
+        return t.ten;
+    }
+    return null;
+  })();
+  const tenTran = goiTranDauCau?.[1] ?? goiTranGiong;
+  if (tenTran) {
+    /*
+     * Cắt luôn cả tiếng gọi "ơi"/"à" đi kèm: để lại thì "Nhi ơi, ngồi đi" còn
+     * một từ lạ giữa câu, mà mỗi từ không dùng tới bị trừ 0,7 điểm (`diemThat`)
+     * — đủ để đẩy lệnh ngắn xuống dưới ngưỡng 1,5.
+     */
+    const sau = cau.sach[1];
+    const dai = sau !== undefined && TIN_HIEU_GOI.includes(sau) ? 2 : 1;
+    return {
+      nguoiNhan: [tenTran === 'nam' ? idOwner : idGen],
+      coGoiTen: true,
+      moiNguoi: false,
+      conLai: cat(cau, 0, dai),
+    };
+  }
+
+  /**
    * 2) gọi đúng tên một người — lấy tên xuất hiện **sớm nhất** trong câu.
    *
-   * "Gen, nhìn Javis" có hai tên: người nhận là người được gọi ở đầu câu, tên
-   * còn lại là mục tiêu của lệnh. Quét theo thứ tự danh sách actor thì Javis
-   * (actor đầu tiên của sân khấu) ăn mất chỗ của Gen.
+   * "Nhi, nhìn Nam" có hai tên: người nhận là người được gọi ở đầu câu, tên
+   * còn lại là mục tiêu của lệnh. Quét theo thứ tự danh sách actor thì Nam
+   * (actor đầu tiên của sân khấu) ăn mất chỗ của Nhi.
    */
   let som: { id: string; vt: number; dai: number } | null = null;
   for (const nv of ds) {
@@ -324,7 +425,7 @@ interface KhopMau {
 /**
  * Khớp một mẫu câu với câu của Sếp, **cho phép bỏ qua từ lạ**.
  *
- * Sếp nói "Javis ơi, đi tới cái bàn điều khiển giúp em nhé" thì mẫu
+ * Sếp nói "Nam ơi, đi tới cái bàn điều khiển giúp em nhé" thì mẫu
  * `di toi <place>` vẫn phải khớp. Vì vậy máy đi tuần tự theo mẫu, mỗi phần tử
  * được quét tới trước trong câu; từ nào trong câu không dùng tới thì bị trừ
  * điểm nhẹ. Mẫu **cụ thể hơn** (nhiều từ khoá hơn, bỏ qua ít hơn) điểm cao hơn,
@@ -396,7 +497,7 @@ function diemThat(x: { diem: number; boQua: number }): number {
 /** Đọc một câu của Sếp → người nhận + lệnh. Hàm **thuần**, test gọi trực tiếp. */
 export function phanTich(text: string, bc: BoiCanh, to?: string): KetQuaHieu {
   const cau = tach(text);
-  const nn = tachNguoiNhan(cau, bc, to);
+  const nn = tachNguoiNhan(cau, bc, to, text);
   const chung = {
     text,
     nguoiNhan: nn.nguoiNhan,
@@ -610,11 +711,28 @@ export function batHieuLenh(
       bc.actors.find((a) => a.id === kq.nguoiNhan[0])?.controlledBy === 'owner';
 
     if (kq.mau === null && !javisTuDo) {
-      // Gen nghe câu tự do → giữ nguyên luồng cũ: `user.text` chảy tới não
+      /*
+       * Nhi (gen) nghe câu tự do → giữ nguyên luồng cũ: `user.text` chảy tới não.
+       *
+       * G3 (#62) — THÊM MỘT TRƯỜNG, KHÔNG ĐỔI LUỒNG. Boss gọi đúng tên nhân
+       * vật mà không mẫu nào khớp thì gần như chắc đó là **lệnh nói kiểu đời
+       * thường** chứ không phải câu hỏi: log thật 28/10 có "tôi kêu hai bạn
+       * qua hồi đi mà dính dáng hồi đi" — engine nghe nát, mẫu nào cũng trượt,
+       * nhưng rõ ràng Boss đang sai việc chứ không trò chuyện.
+       *
+       * Nên đánh dấu `hint: 'co-the-la-lenh'` để não biết **trả lời ngắn và
+       * hỏi lại** thay vì tán chuyện. Cố tình KHÔNG đặt `handled` và KHÔNG tự
+       * đoán lệnh: đoán sai là Nhi làm sai việc, mà "hỏi lại một câu" thì
+       * không mất gì. `diem` đi kèm để não/Issue biết nó trượt ngưỡng bao xa.
+       */
+      if (data && kq.coGoiTen) {
+        data.hint = 'co-the-la-lenh';
+        data.diem = kq.diem;
+      }
       return kq;
     }
 
-    // khớp rồi (hoặc Javis phải tự trả lời) → não bỏ qua câu này
+    // khớp rồi (hoặc Nam phải tự trả lời) → não bỏ qua câu này
     if (data) data.handled = true;
     bus.emit('user.command', {
       text,
@@ -629,8 +747,8 @@ export function batHieuLenh(
     /**
      * Chạy lệnh ở **nhịp sau**, không chạy ngay trong handler.
      *
-     * `actor.say` của câu xác nhận lại bắn `user.text` (Javis là nhân vật
-     * owner), mà `EventBus.emit` gọi người nghe theo tên trước rồi mới tới
+     * `actor.say` của câu xác nhận lại bắn `user.text` (Nam là tên hiển thị
+     * của nhân vật `owner`), mà `EventBus.emit` gọi người nghe theo tên trước rồi mới tới
      * người nghe `'*'`. Chạy ngay thì sự kiện xác nhận chen lên trước chính
      * sự kiện đang chảy: nhật ký và cầu nối ws nhận hai câu **ngược thứ tự**.
      * Lùi một microtask là mọi người nghe của câu gốc xong việc trước.

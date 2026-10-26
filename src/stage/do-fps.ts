@@ -1,5 +1,6 @@
 /**
- * do-fps.ts — đo FPS để tự tắt/bật bloom (spec mục 5), THUẦN (không three, không DOM).
+ * do-fps.ts — đo FPS để tự hạ/trả chất lượng (spec mục 5; bloom cũ, từ D1b là bóng đổ +
+ * pixel ratio), THUẦN (không three, không DOM).
  *
  * Bản cũ lấy `1 / dt` với `dt` đã kẹp ≤ 1/20 s → mọi khung đều báo ≥ 20 fps, máy
  * 2–4 fps phải chờ 10–20 s mới tụt dưới ngưỡng. Nay đo bằng KHOẢNG CÁCH THẬT giữa
@@ -18,6 +19,8 @@ export type QuyetDinhBloom = 'tat' | 'bat' | null;
 export class DoFps {
   private lanTruoc: number | null = null;
   private thapTuMs = 0;
+  /** FPS đo được ở khung gần nhất (đồng hồ thật); `null` = chưa có khoảng nào / đang nền. */
+  fpsCuoi: number | null = null;
 
   /**
    * Gọi mỗi khung VẼ với mốc đồng hồ thật `bayGioMs`. Chế độ nền thì không đo
@@ -34,6 +37,7 @@ export class DoFps {
     const khoang = bayGioMs - truoc;
     if (!(khoang > 0)) return null;
     const fps = 1000 / khoang;
+    this.fpsCuoi = fps;
     if (fps < FPS_TU_TAT_BLOOM) {
       this.thapTuMs += khoang;
       return this.thapTuMs > HAN_FPS_THAP_MS ? 'tat' : null;
@@ -46,5 +50,6 @@ export class DoFps {
   datLai(): void {
     this.lanTruoc = null;
     this.thapTuMs = 0;
+    this.fpsCuoi = null;
   }
 }

@@ -44,7 +44,7 @@ export const LENH_SCREEN: CommandSpec[] = [
       { name: 'size', type: 'number', desc: 'Chiều rộng mét', min: 0.3, max: 8, default: 2.2 },
       { name: 'tilt', type: 'number', desc: 'Nghiêng (độ)', min: -45, max: 45 },
     ],
-    example: { cmd: 'screen.spawn', args: { id: 'main', at: 'ban-dieu-khien', size: 2.4 } },
+    example: { cmd: 'screen.spawn', args: { id: 'bang-phu', at: 'ban-dieu-khien', size: 0.8 } },
     async handler(a, ctx) {
       const id = s(a.id);
       if (ctx.world.coScreen(id)) throw new Error(`Màn hình "${id}" đã có`);
@@ -65,7 +65,7 @@ export const LENH_SCREEN: CommandSpec[] = [
     events: ['screen.removed'],
     desc: 'Bỏ màn hình hologram',
     params: [P_SCREEN],
-    example: { cmd: 'screen.remove', args: { screen: 'main' } },
+    example: { cmd: 'screen.remove', args: { screen: 'may-tinh' } },
     handler(a, ctx) {
       const id = s(a.screen);
       if (!ctx.world.coScreen(id)) throw new Error(`Không có màn hình "${id}"`);
@@ -85,7 +85,7 @@ export const LENH_SCREEN: CommandSpec[] = [
       pEnum('kind', 'Loại nội dung', { required: true, values: LOAI_NOI_DUNG }),
       { name: 'content', type: 'text', desc: 'Nội dung', required: true },
     ],
-    example: { cmd: 'screen.show', args: { screen: 'main', kind: 'code', content: 'const a = 1;' } },
+    example: { cmd: 'screen.show', args: { screen: 'may-tinh', kind: 'code', content: 'const a = 1;' } },
     handler(a, ctx) {
       const id = s(a.screen);
       if (!ctx.world.coScreen(id)) throw new Error(`Không có màn hình "${id}"`);
@@ -108,7 +108,7 @@ export const LENH_SCREEN: CommandSpec[] = [
       { name: 'chunks', type: 'json', desc: 'Mảng mẩu nội dung biết trước' },
       { name: 'source', type: 'string', desc: 'Nguồn đẩy dần, vd "agent"' },
     ],
-    example: { cmd: 'screen.stream', args: { screen: 'main', kind: 'code', source: 'agent' } },
+    example: { cmd: 'screen.stream', args: { screen: 'may-tinh', kind: 'code', source: 'agent' } },
     handler(a, ctx) {
       const id = s(a.screen);
       if (!ctx.world.coScreen(id)) throw new Error(`Không có màn hình "${id}"`);
@@ -194,7 +194,7 @@ export const LENH_SCREEN: CommandSpec[] = [
     events: ['screen.cleared'],
     desc: 'Xoá nội dung màn hình',
     params: [P_SCREEN],
-    example: { cmd: 'screen.clear', args: { screen: 'main' } },
+    example: { cmd: 'screen.clear', args: { screen: 'may-tinh' } },
     handler(a, ctx) {
       const id = s(a.screen);
       if (!ctx.world.coScreen(id)) throw new Error(`Không có màn hình "${id}"`);
@@ -210,7 +210,7 @@ export const LENH_SCREEN: CommandSpec[] = [
     events: ['screen.focused'],
     desc: 'Bay màn hình tới trước mặt nhân vật/camera',
     params: [P_SCREEN],
-    example: { cmd: 'screen.focus', args: { screen: 'main' } },
+    example: { cmd: 'screen.focus', args: { screen: 'may-tinh' } },
     handler(a, ctx) {
       const id = s(a.screen);
       if (!ctx.world.coScreen(id)) throw new Error(`Không có màn hình "${id}"`);

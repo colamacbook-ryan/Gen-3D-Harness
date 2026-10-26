@@ -101,6 +101,8 @@ export const CAU_CHUA_CO_NAO =
 export const CAU_XIN_CHO = 'Em đang nghĩ, Sếp chờ chút ạ';
 export const CAU_QUA_LAU = 'Em nghĩ lâu quá, Sếp hỏi lại giúp em nhé';
 export const CAU_DU_PHONG = 'Em nghe rồi Sếp, nhưng em chưa nghĩ ra câu trả lời ạ';
+/** Model đã diễn được (đi, emote, màn hình…) mà không nói gì → đáp gọn, không than "chưa nghĩ ra". */
+export const CAU_DA_LAM = 'Dạ, em làm ngay ạ';
 
 /** Hai nhân vật mặc định khi chưa đọc được sân khấu (để rào người trả lời không mù). */
 const ACTOR_MAC_DINH = [
@@ -199,7 +201,9 @@ export function taoToolSong({ san, tools, banDo, ghi = console.log }) {
 export function chonNguoiTraLoi(text, actors, to) {
   const ds = Array.isArray(actors) && actors.length ? actors : ACTOR_MAC_DINH;
   const bc = { actors: ds.map((a) => ({ id: a.id, controlledBy: a.controlledBy ?? 'agent' })), places: [], emotes: [], screens: [], props: [], gocMay: [] };
-  const nn = tachNguoiNhan(tach(String(text ?? '')), bc, typeof to === 'string' ? to : undefined).nguoiNhan;
+  const cauGoc = String(text ?? '');
+  // textGoc: G3 gọi trần "Nhi, …" đầu câu cần câu nguyên văn (dấu phẩy)
+  const nn = tachNguoiNhan(tach(cauGoc), bc, typeof to === 'string' ? to : undefined, cauGoc).nguoiNhan;
   return nn.find((id) => bc.actors.find((a) => a.id === id)?.controlledBy === 'agent') ?? null;
 }
 
@@ -485,6 +489,8 @@ export function taoLuotLocal({
     huyLuon.catch(() => {}); // tránh unhandledRejection khi lượt xong trước hạn
 
     let daNoi = false;
+    /** Có lệnh diễn (không phải actor.say) chạy thành công trên người trả lời — E2E 26/10. */
+    let daDien = false;
     let noiDung = '';
     try {
       const model = await Promise.race([doNao.lay(), huyLuon]);
@@ -517,6 +523,7 @@ export function taoLuotLocal({
           const kq = await thucThi(c, { cuaBoss, nguoiTraLoi });
           nhat.toolCalls.push(kq.nhat);
           if (kq.nhat.cmd === 'actor.say' && kq.ok && String(kq.nhat.args?.actor) === nguoiTraLoi) daNoi = true; // đúng người trả lời mới tính
+          else if (kq.ok && kq.nhat.cmd !== 'actor.say') daDien = true;
           messages.push({ role: 'tool', tool_call_id: id, content: JSON.stringify(kq.traModel).slice(0, 2000) });
         }
       }
@@ -550,9 +557,11 @@ export function taoLuotLocal({
     }
 
     // Ollama không có tool_choice: model trả chữ thuần → driver nói hộ
+    // Đã diễn được thì KHÔNG cắt ngang (interrupt:false): model vừa cho đi ra cửa sổ mà câu nói hộ
+    // `interrupt:true` là cú đi bị huỷ, Gen không bao giờ tới nơi (E2E 26/10, cùng họ bug B3).
     if (!daNoi && (noiDung || !ide)) {
-      const text = noiDung || CAU_DU_PHONG;
-      const kq = await san.goi('actor.say', { actor: nguoiTraLoi, text, interrupt: !ide });
+      const text = noiDung || (daDien ? CAU_DA_LAM : CAU_DU_PHONG);
+      const kq = await san.goi('actor.say', { actor: nguoiTraLoi, text, interrupt: !ide && !daDien });
       nhat.tuNoi = text;
       if (!kq.ok) ghi(`[nao-local] ${gio()} tự nói hộ lỗi: ${kq.error}`);
     }

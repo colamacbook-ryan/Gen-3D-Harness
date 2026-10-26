@@ -6,12 +6,19 @@
 > repo này chỉ chứa code + tài liệu của chính nó.
 >
 > **Nguồn gốc:** nhập toàn bộ từ `Genesis-ryan-84-0567536339/gen-stage` (giữ lịch sử) ngày 2026-10-26 theo lệnh Ryan
-> ("clone hết về repo Gen-3D-Harness để làm thành dự án độc lập trọn bộ"). Từ đây Gen-3D-Harness là dự án độc lập;
-> đồng bộ thêm từ repo cũ chỉ khi Ryan yêu cầu (`git fetch genstage main` rồi merge).
+> ("clone hết về repo Gen-3D-Harness để làm thành dự án độc lập trọn bộ"). Từ đây Gen-3D-Harness là dự án độc lập.
+> **Đồng bộ định kỳ (Ryan 28/10: "lâu lâu bạn có thể kiểm tra lấy về ứng dụng thêm")**: đầu mỗi phiên làm Gen-3D-Harness
+> chạy `git fetch genstage main && git log --oneline HEAD..genstage/main`; có commit mới thì gộp vào nhánh đang làm
+> (merge, giữ cả hai phía — Gen-Stage gốc vẫn là nơi Ryan phát triển lõi sân khấu), chạy đủ test + build rồi mới đẩy.
+> Lần gộp gần nhất: `genstage/main @e2a8366` (D1b, E1, E2, F1–F3, G2, G3) — 28/10.
 > **License:** © 2026 Gen Labs — All rights reserved (xem `LICENSE`).
 > **Thư mục `vscode/`** (đang làm): extension VS Code — sân khấu trong tab editor + chatroom cột phải + não LLM local.
 
 ## Gen-Stage (lõi sân khấu)
+
+> **Phiên mới / quota mở lại: đọc `docs/MUC-TIEU-TU-CHAY.md` TRƯỚC và tự chạy vòng lặp trong đó, không chờ Boss nhắc.** Cổng chất lượng: `docs/CONG-CHAT-LUONG.md`.
+> **G2 (28/10):** tên hiển thị đổi Gen → **Nhi**, Javis → **Nam** (id kỹ
+> thuật vẫn `gen`/`owner` — xem `TEN_HIEN_THI` trong `src/stage/noi-dung.ts`).
 
 Sân khấu 3D chạy trong trình duyệt, điều khiển bằng **một bộ lệnh cố định**
 (Actor API v0.1 — `docs/spec/actor-api.md`). Mọi đường vào (nút trên giao diện,
@@ -25,6 +32,7 @@ A2 bộ hành vi → A3 lab viễn tưởng.
 ## Lệnh
 
 ```bash
+bash scripts/cai-dat.sh   # CÀI MỘT LẦN cho máy sạch: deps + asset + model giọng + biểu tượng
 pnpm install              # cài phụ thuộc
 pnpm assets                # tải asset (VRM + Kenney Furniture Kit CC0) — 1 lần sau khi clone
 pnpm assets:lab             # tải Kenney Space Kit CC0 cho lab A3 (public/kenney-sci-fi/)
@@ -57,8 +65,11 @@ node scripts/kiem-reconnect.mjs        # bằng chứng heartbeat + backoff + wa
 node scripts/kiem-c0.mjs      # bằng chứng C0: phản xạ xã hội + nhân vật nam anime, vào docs/c0/ (CHẠY MỘT LẦN)
 node scripts/kiem-nen.mjs     # bằng chứng V1 chế độ nền (INT-06): fps thường/nền + durationMs ở nền, vào docs/v1/ (cần `pnpm -C vscode build`)
 node scripts/kiem-c1.mjs      # bằng chứng C1: giữ V nói → bridge nhận chữ → user.speech → Gen phản ứng, vào docs/c1/ (CHẠY MỘT LẦN)
+node scripts/kiem-d1b.mjs     # bằng chứng D1b: mỹ thuật + hiệu năng (calls/tam giác/FPS) vào docs/d1b/ (CHẠY MỘT LẦN)
 bash scripts/fetch-anim.sh    # tải bộ chuyển động CC0 (Quaternius) về public/anim/ — chạy 1 lần sau khi clone
-bash scripts/fetch-stt.sh     # C1: venv + model PhoWhisper-small ct2 vào .cache/stt/ — chạy 1 lần (chay.sh gọi sẵn)
+bash scripts/fetch-stt.sh     # C1: venv + model PhoWhisper-small ct2 vào .cache/stt/ — chạy 1 lần (cai-dat.sh gọi sẵn)
+node scripts/kiem-f2.mjs      # bằng chứng F2: điều khiển mượt trên FIREFOX + GPU THẬT, vào docs/f2/ (CHẠY MỘT LẦN)
+node scripts/kiem-e1.mjs      # bằng chứng E1: UI 390 px, não diễn thật, /tts retry, hiểu "Javis", cài 1 lệnh, vào docs/e1/ (CHẠY MỘT LẦN)
 ```
 
 ## Quy ước
@@ -71,7 +82,9 @@ bash scripts/fetch-stt.sh     # C1: venv + model PhoWhisper-small ct2 vào .cach
   Tên biến/hàm tiếng Việt không dấu cho phần nghiệp vụ cảnh (`phong`, `nhanVat`…);
   **tên lệnh, tên tham số, khoá JSON trong Actor API giữ nguyên tiếng Anh** theo
   spec (`actor.moveTo`, `durationMs`, `distances`) — đổi là phá hợp đồng với agent.
-- **Hiệu năng**: pixel ratio ≤ 2, shadow map 2048, chạy mượt trên điện thoại.
+- **Hiệu năng**: pixel ratio ≤ 1,5, **shadow map 1024 CỐ ĐỊNH** (chỉ lên 2048 khi
+  đo thật ≥ 50 FPS liên tục 5 s — không gate theo `maxTextureSize`), chạy mượt
+  trên điện thoại.
   Khung bóng của đèn chính phải **bó sát cảnh** (`shadow.camera.near/far`): để
   khoảng near/far rộng quá thì depth loãng và cả mặt sàn tự che bóng chính mình.
 - **Không viết số euler cho xương tay.** Mọi cử chỉ dùng tay đi qua
@@ -135,7 +148,7 @@ biết registry, **giao diện** không gọi thẳng vào sân khấu.
 | `src/ui/panel.ts` | Bảng lệnh **tự sinh** từ `stage.bootstrap` — không viết tay nút nào |
 | `src/ui/script-box.ts` | Ô kịch bản: JSON hoặc dạng ngắn `gen moveTo ban-2` |
 | `src/ui/log-view.ts` | Nhật ký cuộn + Sao chép / Xuất JSON |
-| `src/ui/phim.ts` | Điều khiển bằng phím (WASD/1–0/Space/C/E/R/?) — **mọi phím gọi `dispatcher.run`**, tắt khi con trỏ đang ở ô nhập. B1: WASD gửi `actor.steer` mỗi 100 ms cho actor `controlledBy: "owner"` |
+| `src/ui/phim.ts` | Điều khiển bằng phím (WASD/1–0/Space/C/E/R/?) — **mọi phím gọi `dispatcher.run`**, tắt khi con trỏ đang ở ô nhập. **F2 (#56)**: WASD gửi MỘT `actor.steer` (`ms` 700) rồi **gia hạn** mỗi 200 ms cho actor `controlledBy: "owner"`; nhả phím / `blur` / `visibilitychange` là dừng NGAY |
 | `src/events.ts` · `src/log.ts` | Bus sự kiện · nhật ký JSON mọi lệnh và sự kiện |
 | `src/bridge-client.ts` | Nối trình duyệt với bridge (mặc định bật, tắt bằng `?bridge=0`) |
 | `bridge/server.ts` | Bridge WebSocket Node — mặc định chỉ nghe `127.0.0.1`; mở ra ngoài phải có `--host` + `GEN_STAGE_TOKEN`. Bật luôn TTS (8788) và MCP HTTP (8789) |
@@ -148,6 +161,8 @@ biết registry, **giao diện** không gọi thẳng vào sân khấu.
 | `scripts/nao-local.mjs` | **V1 — DRIVER NÃO LOCAL** (Ollama): cùng khung `nao-agy.mjs` (import, không chép), 10 tool danh sách trắng sinh bằng `toolTuLenh`, mọi tool_call qua `lyDoCamNao`; persona `scripts/nao-local/<actor>.md` (ghi đè bằng `.cache/nao-local/<actor>.md`) |
 | `vscode/src/thuan/giac-quan.ts` | **V3 — GIÁC QUAN IDE** (thuần): lưu file (gộp 5 s) / lỗi biên dịch 0⇄>0 (debounce 3 s) / task-test exit code / git commit → `stage.notice`; lọc đường dẫn, setting, workspace trust |
 | `scripts/tai-nghe.mjs` | **V2 — TAI NGHE** (thu giọng NGOÀI trình duyệt): ffmpeg → PCM qua pipe → RMS/VAD (`timDaiNoi` của `src/audio/vad.ts`) → `POST /stt` → `stage.hear` qua ws (vai client). Bán song công CNS-004. CLI là hợp đồng với extension `vscode/` |
+| `src/api/commands/demo.ts` | **E1 (#48)** — lệnh gói **`module.demo`**: một lời gọi chạy trọn chuỗi `screen.focus` → `screen.stream` → `module.build` → `actor.emote` → `actor.say`, qua `ctx.run` nên không thêm phương thức `StageWorld` nào |
+| `scripts/cai-dat.sh` · `gen-stage.desktop` | **E1 (#48)** — cài một lần (asset + model giọng 930 MB) và tạo biểu tượng `~/.local/share/applications/gen-stage.desktop`. `chay.sh` chỉ BẬT |
 | `scripts/nao-demo.mjs` | **B3** — não mẫu rule-based (không LLM) chạy qua MCP stdio thật, làm bằng chứng vòng kín khi không có agy |
 | `bridge/tts.ts` | **B2** — giọng tiếng Việt: `GET /tts` (cổng 8788) gọi thẳng WebSocket Edge, trả mp3, cache `.cache/tts/<sha1>.mp3` |
 | `src/audio/tts-client.ts` | **B2** — tải + giải mã mp3, đo `durationMs` thật, phát bằng Web Audio, đẩy biên độ RMS mỗi 50 ms sang nhân vật |
@@ -155,11 +170,12 @@ biết registry, **giao diện** không gọi thẳng vào sân khấu.
 | `src/audio/nut-tieng.ts` | **B2** — nút "🔊 Bật tiếng" mở khoá autoplay, nhớ bằng `localStorage` |
 | `bridge/stt.ts` | **C1** — nhận dạng giọng Việt: `POST /stt` (cổng 8790) → ffmpeg 16 kHz mono → thợ python (PhoWhisper-small ct2 int8) → `{ text, confidence, durationMs, goiGen }`, cache `.cache/stt/cache/<sha1>.json` |
 | `bridge/stt-worker.py` | **C1** — thợ nhận dạng chạy mãi: nạp model + hâm máy một lần lúc bật bridge, mỗi dòng stdin là một wav |
-| `src/audio/so-tu.ts` | **C1** — SỔ TỪ NHÀ: sửa tên riêng (`Gen`, `connector`, `Baserow`, `module`, `Kho Ryan`) sau nhận dạng. Hạ WER 47 % → 5 %; khớp mờ cho tên dài, đồng âm khai tay cho tên ngắn |
+| `src/audio/so-tu.ts` | **C1** — SỔ TỪ NHÀ: sửa tên riêng (`Gen`, `connector`, `Baserow`, `module`, `Kho Ryan`) sau nhận dạng. Hạ WER 47 % → 5 %; khớp mờ cho tên dài, đồng âm khai tay cho tên ngắn. **G3 (#67)** thêm `suaTenDauCau()`: viết đúng "Nhi"/"Nam" khi tên ở ĐẦU câu + theo sau là động từ lệnh (không khai vào `SO_TU` — sổ đó viết đè ở bất kỳ đâu, mà `nghi` cũng là "nghĩ") |
 | `src/audio/mic.ts` | **C1** — giữ phím **V** (hoặc giữ nút 🎤) để nói: `MediaRecorder` + đo RMS → `POST /stt` → chữ vào ô chat 1,5 s cho Boss sửa |
-| `src/audio/vad.ts` | **C1** — cắt im lặng đầu/cuối theo RMS (ngưỡng tương đối theo đỉnh, chừa 120 ms mỗi đầu). Không phụ thuộc DOM |
+| `src/audio/vad.ts` | **C1** — cắt im lặng đầu/cuối theo RMS (ngưỡng tương đối theo đỉnh, chừa **200 ms** mỗi đầu từ **G3 #62** — giọng thật vào câu ngay khi vừa bấm, 120 ms làm mất phụ âm đầu). Không phụ thuộc DOM |
 | `src/audio/so-giong.ts` | **C1** — sổ nối mic ↔ `commands/actor.ts`: phiếu dùng một lần để `actor.say` biết câu này Boss NÓI chứ không gõ |
-| `scripts/do-stt.mjs` | **C1** — bàn đo: sinh 20 wav bằng TTS của bridge, chấm WER/độ trễ từng engine (`docs/c1/so-sanh.md`) |
+| `scripts/do-stt.mjs` | **C1** — bàn đo: sinh 20 wav bằng TTS của bridge, chấm WER/độ trễ từng engine (`docs/c1/so-sanh.md`). **G3 (#62)**: `ban` sinh bộ TTS **làm bẩn như mic laptop**, `ten` + `do-ten` đo **đúng người nhận** end-to-end, `thu` dựng bộ từ giọng thật, `chay <tên> <model>` chạy đúng thợ của bridge (`docs/g3/ket-qua.md`) |
+| `scripts/kiem-g3.mjs` | **G3 (#62)** — bằng chứng trên Firefox thật: bridge lưu audio thô mỗi lượt, nút "✎ Sửa" ghi cặp (giọng, chữ đúng), ràng buộc mic, 15 câu đời thường. Chạy **một lần** (cờ `docs/g3/.da-chay`) |
 | `src/api/__tests__/` | `san-khau-gia.ts` (sân khấu giả, không WebGL) + test dispatcher/describe/script/A3 |
 
 ### Thêm một lệnh mới
@@ -534,6 +550,55 @@ Số đo đầy đủ và lý do loại từng lựa chọn: **`docs/c1/so-sanh.
   trắng** làm Chrome tự tắt sau 4 s, không một dòng lỗi. Thư mục dự án của Boss
   có khoảng trắng, nên `scripts/kiem-c1.mjs` chép wav sang `/tmp` trước.
 
+## Quyết định G3 — giọng THẬT của Boss (28/10, Issue #62 · review #67)
+
+Số đo đầy đủ: **`docs/g3/ket-qua.md`**. Boss: *"nhận diện giọng nói tào lao
+quá"*.
+
+- **Số của C1 (WER 7,9 %) đúng nhưng vô dụng**: đo trên giọng TTS — sạch,
+  chậm, chuẩn dấu, băng rộng. Trên bộ TTS **làm bẩn như mic laptop** (nói
+  nhanh +20…40 %, lọc 300–3400 Hz, nhiễu hồng −30 dBFS, reverb, nén động):
+  WER **31,8 %**. Đó mới là con số Boss nghe thấy.
+- **Và trước G3 KHÔNG THỂ đo trên giọng Boss**: bridge chỉ giữ chữ
+  (`.cache/stt/cache/*.json`), không giữ âm — 16 tệp json, 0 tệp audio. Nên
+  việc đầu tiên là **mở sổ thu** (`.cache/stt/thu/<ts>.ogg` + `.json`, vòng 50
+  tệp) và nút **"✎ Sửa"** ở ô chat ghi cặp `(giọng thật, chữ đúng)` vào
+  `.cache/stt/mau/`. Bộ kiểm chuẩn tự dài ra mỗi lần Boss sửa.
+- **Nâng cỡ model KHÔNG chữa được.** PhoWhisper-medium (gấp 3 cỡ): WER 31,1 %
+  so với 31,8 % — chênh 0,7 điểm, mà trễ trung vị 13,8 s so với 3,9 s (**3,5
+  lần**, vượt mốc 5 s). Cùng hình với C1 mục 3, khác chỗ nghẽn: lần này cái
+  làm engine nghe sai là **âm học**, và thêm tham số cho model không sinh ra
+  thông tin đã mất ở micro. → **giữ PhoWhisper-small**, đổ tiền vào tín hiệu
+  vào và lớp hiểu lệnh.
+- **KHÔNG làm 2 tầng** (small trả nhanh, bộ lớn chốt lại) dù Issue gợi ý: lấy
+  0,7 điểm WER mà phải thêm `user.text` sửa lại cho mọi lớp nghe sự kiện học,
+  tranh CPU với tầng nhanh, và hoàn tác hành động Nhi vừa diễn — lỗ. Cửa còn
+  mở: đo lại bằng một lệnh khi có bộ mẫu giọng thật.
+- **Gọi tên bằng GIỌNG phải dựa vào VỊ TRÍ, không dựa vào dấu phẩy.** Review
+  #67: gọi tên mới chỉ 5/10 đúng người. "Nhi" dài 3 ký tự nên ngưỡng fuzzy là
+  **0** (`nia`/`nghi`/`ni` trượt hết), và giọng nói **không bao giờ có dấu
+  phẩy** nên luật "gọi trần + phẩy" vô nghĩa. Luật mới: tên ở **đầu câu** +
+  theo sau là "ơi"/"à" hoặc một **động từ lệnh**. Động từ ở cổng so **khớp y,
+  không fuzzy** — fuzzy thì `cham` cách `chao` 1 ký tự và "nam châm hút sắt"
+  lọt. Cách nghe chệch trùng hẳn từ thường (`nghi` = "nghỉ") cần động từ không
+  mơ hồ. `TIN_HIEU_GOI` không chứa `nay` vì "**năm nay** nhà mình…" khớp ngay.
+  **Thà bỏ sót một lời gọi hơn là bắt nhân vật diễn giữa câu Boss nói chuyện.**
+- **Bỏ bí danh `gien`**: fuzzy ≤1 ký tự bắt luôn `mien` → "miền nam" thành gọi
+  Nhi.
+- **Câu đời thường phải khai `kêu`/`bảo`/`nhờ` thành TỪ KHOÁ của mẫu**, không
+  để máy bỏ qua: mỗi từ không dùng tới bị trừ 0,7 điểm (`diemThat`) nên hai ba
+  từ đệm đầu câu đẩy mẫu xuống dưới ngưỡng 1,5 — đó là lý do "tôi kêu bạn đi
+  kiếm chỗ ngồi" **nghe đúng từng chữ mà vẫn mất lệnh**.
+- **Câu có tên mà không khớp mẫu → `user.text` mang `hint: 'co-the-la-lenh'`**.
+  Chỉ thêm một trường, không đổi luồng, không tự đoán: đoán sai là Nhi làm sai
+  việc, hỏi lại một câu thì không mất gì.
+- **Mic**: xin thêm 16 kHz mono (dạng **trần**, không `exact` — `exact` làm mic
+  cũ ném `OverconstrainedError` và Boss mất hẳn mic); VAD chừa **200 ms** thay
+  120 (log thật: "Gen ơi, qua ghế ngồi đi" → "**dạ nơi** qua ghế ngồi đi");
+  **toast tên thiết bị mic** một lần/phiên (laptop có 3 mic, Firefox lấy "mặc
+  định hệ thống"); **chạm nhanh = bật/tắt** thay vì bỏ lượt im lặng (skill
+  `input-systems`: hành động chỉ-giữ phải có bản bật/tắt tương đương).
+
 ## Quyết định HEARTBEAT + RECONNECT + WATCHDOG (26/10, Issue #37)
 
 Báo cáo E2E: "`scripts/nao-agy.mjs` rớt kết nối ws tới bridge âm thầm sau vài
@@ -765,6 +830,7 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
   `dt` khung kế là thời gian thật; `dt` kẹp 0,1 s khi nền (1/20 s khi thường) để
   lerp trang trí không chậm 25 %. Hành động có thời lượng vẫn nội suy theo đồng
   hồ + hẹn giờ huỷ được → `durationMs` không đổi.
+- **Sau khi gộp Gen-Stage D1b (bỏ hẳn bloom, 28/10)**: nền = ≤ 15 fps + pixel ratio 1 + **tắt bóng đổ** (thứ đắt nhất còn lại); `daHaChatLuong` (FPS thấp) giữ nguyên qua nền; `theoDoiFps` dùng `DoFps` (đồng hồ thật) cho cả hạ chất lượng lẫn cổng nâng bóng 2048; sự kiện `stage.renderMode` giữ khoá `bloom` (luôn `false`) + thêm `shadow`. Đoạn dưới mô tả bản trước gộp.
 - **Khôi phục đúng cấu hình cũ**: vào nền nhớ `bloomTruocNen` (có thể đang tắt vì
   FPS thấp) rồi tắt bloom; ra nền trả đúng giá trị đó, reset bộ đếm FPS thấp.
   `theoDoiFps` **không chạy khi nền** (15 fps là cố ý, không phải máy yếu).
@@ -817,7 +883,7 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
   header chưa có độ dài thật.
 - **VAD dùng lại `timDaiNoi` của C1, không chép**: tự dừng = chạy lại hàm đó
   (`chuaMs: 0`) trên chuỗi RMS đến giờ; cắt trước khi gửi = cùng hàm, cấu hình
-  mặc định (chừa 120 ms). Muốn `node` thuần import được `src/audio/vad.ts` thì
+  mặc định (chừa 200 ms từ G3 #62). Muốn `node` thuần import được `src/audio/vad.ts` thì
   file đó chỉ được dùng **cú pháp TS xoá-được** (type stripping, Node ≥ 22.18):
   constructor `SoDoAm` bỏ "parameter property". Node cũ hơn ⇒ một dòng
   `loi tham-so` nói rõ (hoặc chạy bằng `npx tsx scripts/tai-nghe.mjs`).
@@ -895,3 +961,350 @@ phút → `brainConnected` về 0, Gen nói 'chưa có não', không có dòng l
   API git không có trong `@types/vscode` → khai interface tối thiểu `GitExtensionToiThieu` trong `giac-quan.ts`.
 - Kiểm: `src/api/__tests__/v3-giac-quan.test.ts`, `b3-mcp.test.ts` (stage_notice bị chặn), `scripts/__tests__/nao-agy.test.mjs` +
   `nao-local.test.mjs` (mục V3), `vscode/test/giac-quan.test.mjs`, và **VS Code 1.143.1 thật** (`scripts/kiem-vscode-that.mjs`, 6 bước V3: save/diag bad/diag good/test/task/git → `ide.event`, 19/19 — `docs/e2e/BAO-CAO-E2E.md`). Chưa kiểm thật: dòng 👁 chatroom, câu não nói.
+
+## Quyết định E2 — màn hình giữ nội dung, module vào tay, nhìn nhau (26/10, Refs #48)
+
+Bằng chứng: `node scripts/kiem-e2.mjs` (CHẠY MỘT LẦN, cờ `docs/e2/.da-chay`) —
+cổng riêng vite 5220 + stub TTS 8851, **không đụng** 5173/8787-8790 của Boss.
+
+- **Màn hình KHÔNG hề mất nội dung sau `screen.stream`** — đo lại trên bản
+  thật: chunks lẫn `source:"agent"` đều giữ `showing`/`lines`/`chars` đúng,
+  pixel vùng màn hình đổi 4053 điểm sau khi stream 6 mẩu code. Cái reviewer
+  thấy ("— trống —", `lines: 0`) là **màn hình chưa có nội dung**, không phải
+  texture chết: `screen.focus` một màn hình trắng, hoặc `screen.stream
+  { source:"agent" }` mà não không `feed` mẩu nào (đúng cảnh dòng 6 — não bị
+  chặn ở 2 lệnh), đều vẽ ra y hệt màn hình tắt. `man-hinh.ts` giờ phân biệt
+  hai trạng thái: **đang stream mà chưa có chữ → "đang nhận…" + con trỏ**,
+  thật trống mới "— trống —".
+- **`actors[].holding` suy ra TỪ bảng prop (`camBoi`)**, không đọc
+  `NhanVat.dangCam` nữa — `describe()` và `props[].state.heldBy` giờ cùng đọc
+  một chỗ nên không thể lệch. (Chỗ lệch thật đã tìm ra: `moduleBuild().cancel()`
+  xoá prop khỏi bảng mà không trả tay người đang cầm.)
+- **`module.build` phải THỬ LẠI `actor.hold`.** Bản cũ gọi đúng một lần rồi
+  nuốt lỗi; nhân vật đang nói/đi là module ở lại sàn vĩnh viễn trong khi sự
+  kiện vẫn báo "built". Nay thử tới 6 lần cách nhau 450 ms và báo `heldBy` +
+  `error` thật lên `module.built`. Đo trên renderer phần mềm: module vào tay
+  sau **8,0 s** kể từ lệnh (hiệu ứng kết tinh cần nhiều khung hình) — vì thế
+  mọi script bằng chứng phải **chờ theo điều kiện**, không `sleep` cố định.
+- **Màn hình đứng đúng trên mặt bàn, đo chứ không đoán.** Chiều cao mặt bàn
+  KHÔNG suy ra được từ `bo-cuc.ts` (model Kenney chuẩn hoá theo `rong`/`cao`
+  lúc dựng), nên `screenSpawn` đo `Box3` của khối `khoi:<id>` trong cảnh rồi hạ
+  chân màn hình đúng lên đó. `ScreenSnapshot` thêm `bottomY` + `restsOn` để
+  kiểm được bằng số: đo thật `bottomY = 0,53 m` = mặt bàn `0,53 m`, lệch 0.
+- **Hai nhân vật nhìn nhau: nguồn sự thật là `actor.say`, không phải
+  `user.text`.** Người nghe giờ quay **cả thân** (`actorFaceTo`), không chỉ
+  mắt — đó là lý do "Javis nói với Gen" mà Gen vẫn đứng hướng máy quay. Và
+  phản xạ lấy cặp hội thoại từ **`actor.sayStart` (đã mang thêm `to`)**: lớp
+  hiểu lệnh đánh dấu `handled: true` cho mọi câu nó khớp, nên nghe `user.text`
+  thì phản xạ bị bỏ qua đúng trường hợp cần nhất. Đo thật: giữa câu **0,3°**
+  cho cả hai, **vẫn 0,3° sau khi đổi `camera.preset` giữa câu**.
+- **Nói xong người nghe liếc máy quay** (`actor.say` đổi mắt người nghe về
+  `camera`, phản xạ giữ cú liếc `liecMs = 700 ms`). Cú liếc chỉ sống dưới 1
+  giây rồi Gen vào câu trả lời của mình, nên **không đo được bằng một lần
+  `describe()`** — bằng chứng lấy mẫu 60 ms/lần trong trang: liếc sau **30 ms**
+  kể từ `actor.sayDone` của Javis.
+- **Phản xạ im khi câu không gửi cho Gen** (`to` khác `camera` và khác id của
+  Gen): không câu đệm, không não rule-based. Đo thật với nhân vật thứ ba (Lan).
+- **`choSauBridge` là CỬA ĐỂ SẴN cho E1** (`ThamSoPhanXa`): trả `true` trong
+  khoảng chờ sau `bridge.connected` thì phản xạ không nói "Em chưa có não".
+  Mặc định `() => false` — hành vi E2 không đổi, E1 chỉ nối dây ở `main.ts`.
+## Quyết định E1 — UI điện thoại, não diễn thật, TTS bền, hiểu "Javis" (26/10, Issue #48)
+
+Năm cái dưới đây đều **đã đo thấy sai** trên bản chạy thật (bảng kiểm độc lập
+trong comment cuối của #48), nên mỗi cái có một test giữ trong
+`src/api/__tests__/e1-ui-nao-tts-giong.test.ts` (và `scripts/__tests__/nao-agy.test.mjs`).
+
+- **Bảng lệnh không bao giờ rộng 100vw.** Bản cũ đặt `--bang-rong: 100vw` trong
+  khối ≤760 px: mở bảng là sân khấu 3D biến mất sạch. Lời hứa mới được giữ ở
+  **ba chỗ cùng lúc**, cố ý không dồn một chỗ: `index.html` khai sẵn
+  `class="thu-gon"` (không loé bảng trong lúc chờ JS), `style.css` kẹp
+  `--bang-rong: min(86vw, 340px)` (mở hết vẫn còn dải 3D), và `src/ui/index.ts`
+  theo `matchMedia('(max-width: 899px)')` — **thu lại khi màn hẹp đi**, không
+  chỉ lúc nạp trang. Nút kéo bảng và nút 🎤 lên 44 px (mốc chạm WCAG 2.5.5).
+- **Trần "diễn tối đa 2 lệnh" là nguyên nhân gốc của "não chỉ nói".** Chuỗi
+  dựng connector cần 5 lệnh, nên cái trần trong `promptDau` làm não không bao
+  giờ diễn xong (`props: []`, `holding: null`, `lines: 0`). Bỏ trần, **và**
+  thêm lệnh gói `module.demo` để đường ngắn nhất cũng là đường đúng: não gọi
+  `actor_say` rồi `module_demo` — hai lệnh, vẫn trong tầm một lượt agy.
+- **`screen: "main"` là id chết.** Id thật đọc từ `MAC_DINH_MAN_HINH`:
+  `may-tinh`, `tivi`. `MAN_HINH_THAT` trong `scripts/nao-agy.mjs` là nguồn duy
+  nhất cho nhắc đầu phiên **và** `AGENTS.md` (cùng một `promptDau`), nên sửa
+  một chỗ là cả hai đúng. Ví dụ của `module.demo` **cố ý bỏ trống `screen`** —
+  viết cứng một id vào ví dụ là dựng lại đúng cái bẫy đó.
+- **Lỗi tạm của Edge TTS không được thành 502 của ta.** Đo thật: 2/10 lượt
+  `/tts` liên tiếp trả 502, và đúng lượt trả lời đầu của não dính 502 → Gen
+  câm. `goiEdgeThuLai` thử lại 2 lần (backoff 300/800 ms), và `hamCauDem` hâm
+  **8 câu đệm/đáp cố định** ngay lúc bridge bật — mấy câu hay dùng nhất không
+  bao giờ phải chờ Edge nữa. Hàm thử lại nhận `goi`/`nghi` tiêm được nên test
+  không cần mạng.
+- **Hai lớp tên riêng phải khớp nhau.** PhoWhisper không bao giờ nghe ra
+  "Javis" (nó ra `david`/`gia viết`), nên cần CẢ `bridge/so-tu.ts` (sửa chữ)
+  LẪN `BI_DANH_NHAN_VAT.owner` (tách người nhận). Thiếu một bên là câu vẫn
+  chạy sang Gen — đúng lỗi đo được. Khai `david` là an toàn (tiếng Việt không
+  có từ nào đọc thành thế), khác hẳn chuyện khai `ghê` cho `Gen`.
+- **"Chưa có não" phải đợi mới được nói.** Hai lớp: bridge gửi `bridge.brain`
+  là **gói đầu tiên** sân khấu nhận (trước `bridge.stageOnline`), và phản xạ
+  chờ `choXacNhanNaoMs = 3000` kể từ `bridge.connected` rồi **đọc lại**
+  `coNao()` trong hẹn giờ — não tới trong lúc chờ thì câu đó bị bỏ, không phát
+  ra tiếng nào.
+- **Giết theo PID, không `fuser -k` cổng mù.** Bản cũ giết bất cứ tiến trình
+  nào giữ 8787-8790/5173, kể cả thứ không phải của Gen-Stage. Giờ mỗi tiến
+  trình `chay.sh` bật đều ghi PID vào `.cache/pid/<tên>.pid`, và `tat` **đối
+  chiếu `/proc/<pid>/cmdline`** trước khi giết (PID có thể đã bị hệ điều hành
+  cấp lại cho người khác), rồi giết cả cây (watchdog là bash, node là con).
+  Cổng đổi được bằng biến môi trường (`GEN_STAGE_PORT`, `GEN_STAGE_WEB_PORT`…)
+  nên bằng chứng chạy bộ riêng 8840-8843/5210 mà không chạm bộ của Boss.
+- **`pnpm start` ≤90 s chỉ đúng khi đã cài.** Trên máy sạch phải tải 46 MB
+  asset + ~930 MB bộ nhận giọng — không có cách nào ≤90 s. Nên tách
+  `scripts/cai-dat.sh` (một lần, lâu bao nhiêu cũng được, tạo luôn biểu tượng
+  từ `gen-stage.desktop` trong repo) khỏi `scripts/chay.sh` (mỗi ngày, không
+  tải gì nữa). `chay.sh` nhận ra đã cài bằng cờ `.cache/da-cai-dat`; chưa cài
+  thì vẫn chạy được, chỉ chậm lần đầu.
+## Quyết định D1b — mỹ thuật căn nhà + tối ưu đồ hoạ (26/10, Issue #48)
+
+Boss sau D1: "cảnh còn **trống và thô**" → rồi ngay sau đó: "**tối ưu đồ hoạ,
+đừng đòi GPU lớn**". Hai yêu cầu đó kéo ngược nhau, và cách giải là: **đẹp
+bằng ánh sáng + màu + chất liệu + bố cục, KHÔNG bằng hậu kỳ**.
+
+- **BỎ HẲN HẬU KỲ.** Không SSAO, không DOF, không vignette, và **gỡ luôn bloom
+  chọn lọc của C3 (#40)**: hai `EffectComposer`, `UnrealBloomPass`, `mixPass`
+  và lượt "tô đen mọi vật rồi trả lại vật liệu" mỗi khung hình đã đi hết. Giờ
+  `veMotKhung()` chỉ còn `renderer.render(scene, camera)`. `batSang()` ở
+  `bloom-layer.ts` giữ nguyên nhưng thành **vô hại** (chỉ bật một bit layer,
+  không ai đọc) nên `phong.ts`/`fx/*.ts` không phải sửa dòng nào.
+- **Ngân sách GPU tự đặt, đo bằng số** (`window.stage.hieuNang()` →
+  `renderer.info.render`): pixel ratio ≤ **1,5** (cũ 2), **một** đèn đổ bóng
+  với shadow map **1024** (2048 chỉ khi `renderer.capabilities.maxTextureSize
+  ≥ 8192`), texture procedural ≤ **1024 px** và dùng chung một bản, đồ nhỏ
+  **không đổ bóng** (chỉ `receiveShadow`), hàng rào + tán cây sân vườn dùng
+  `InstancedMesh`. FPS tụt < 24 quá 2 s thì `haChatLuong()` tắt bóng đổ + hạ
+  pixel ratio về 1 (thay cho "tự tắt bloom" cũ).
+- **`gopTinh()` gộp mesh tĩnh theo (vật liệu, có đổ bóng hay không)** sau khi
+  dựng xong nhà. Mấu chốt làm nó có tác dụng nằm ở `chat-lieu.ts`: vật liệu
+  dẫn xuất được **cache theo `(vật liệu gốc, nhóm, màu nhuộm)`** chứ không
+  `clone()` mỗi mesh một bản — clone mỗi mesh thì mỗi mesh một vật liệu, không
+  gộp được gì. Đo thật: **nhà 116 mesh**; phần còn lại là VRM nhân vật
+  (`owner` 131 mesh, `gen` 18 — có từ trước D1b, không đụng).
+  **Chưa đạt mốc `calls ≤ 150`** (đo 461): hơn 2/3 số mesh của cảnh là của
+  model VRM, gộp chúng thì mất skinning + morph target của mặt. Ghi nợ.
+- **Chất liệu phủ lên Kenney bằng texture VÂN TRUNG TÍNH** (`vanGo`/`vanVai`/
+  `vanKimLoai`, trung bình ≈ trắng): nhân vào `color` sẵn có của model nên
+  model giữ đúng màu gốc mà hết phẳng lì — đúng bài học "vật liệu không nhân
+  màu hai lần", lần này dùng làm lợi thế. Texture **mang màu** (sàn ván gỗ
+  12 cm, thảm hoa văn, tranh, bảng ghim, cỏ, trời) thì `color` phải để trắng.
+  `nhuom()` chỉ đổi những vật liệu đủ sáng + đủ bão hoà (mảng vải lớn), bỏ qua
+  chân gỗ/khung tối — nhờ vậy nhuộm sofa sang olive mà chân sofa không đổi màu.
+- **Thảm KHÔNG dùng model Kenney.** UV của Kenney là **atlas bảng màu** (mỗi
+  mặt trỏ vào một ô vài pixel): dán hoa văn lên đó ra một mảng màu trơn. Thảm
+  dựng bằng một tấm phẳng UV 0…1 của riêng mình.
+- **Bảng bố cục nhận 4 trường mới** (vẫn là dữ liệu thuần): `datY` (đồ treo
+  tường), `tren` (đặt lên **nóc đo được** của khối khác — mặt bàn Kenney mỗi
+  model một cao độ, không được viết số tay), `lech` (đồ nhỏ bày lệch khỏi tâm
+  ô lưới; `kiemLuoi()` vẫn soi `tai` nên lưới 0,5 m của nội thất lớn còn
+  nguyên), `chat`/`mauVai`. Thêm **26 khối**: 2 ghế đơn, gối, sách/cốc bàn
+  trà, 3 tranh, bàn cạnh sofa + đèn bàn, cây thứ ba, bàn phím/chuột/đèn/sách/
+  cốc/bảng ghim ở bàn làm việc, tủ trên/dưới + bồn rửa + hút mùi + lò vi sóng
+  + máy cà phê ở bếp, bình hoa + đĩa trái cây trên bàn ăn, kệ giày + móc áo +
+  thảm chùi chân ở hành lang. Test mới: **không hộp chắn nào chồng nhau**,
+  mọi hộp nằm trong nhà, `tren` chỉ trỏ tới khối đứng trước.
+- **Ghế Kenney từng bị chuẩn hoá `cao: 0.46`** — đó là cao độ MẶT NGỒI, không
+  phải chiều cao ghế → ghế ăn bé như ghế búp bê (thấy rõ ở ảnh D1b vòng 1).
+  Sửa thành chiều cao thật 0,88–0,9 m, và `datSeatY` đo mặt ngồi ≈ **55 % chiều
+  cao ghế** (kẹp ≤ 0,52 m) thay cho `min(bbox.max.y, 0.55)`.
+- **Ngoài cửa sổ là SÂN VƯỜN thật** (cỏ, hàng rào, 8 bụi cây, rồi mới tới phông
+  trời chiều ở xa), không còn một tấm ảnh dán lên mặt kính. **Khung chia ô của
+  cửa sổ đổ bóng** — vệt nắng chiều có nét trên sàn là điểm nhấn của cả cảnh.
+- **Bụi nắng phải là hạt TRÒN.** `PointsMaterial` không có `map` cho ra **ô
+  vuông xám** lổn nhổn giữa không khí (ảnh D1b vòng 1). Thêm một texture 32 px
+  gradient tròn + `AdditiveBlending`.
+- **Bảng lệnh mobile: phải nghe cả `resize`.** Code cũ chỉ kiểm `innerWidth <
+  900` **một lần lúc dựng**, nên mở trang ở 1440 px rồi thu cửa sổ (hoặc ảnh
+  bằng chứng đổi viewport) thì bảng vẫn mở che kín màn 390 px — đúng cái Boss
+  thấy ở D1, không phải tại cảnh. Thêm listener, và **không đè lên ý Boss** khi
+  Boss đã tự bấm nút mở/đóng.
+- **Cạm bẫy đo bằng chứng**: máy kiểm chạy ~0,8 fps, **một khung hình > 1
+  giây**, nên handler `resize` không kịp chạy trong 600 ms — phải chờ 3 s mới
+  đọc được `#bang.thu-gon`.
+- **Luma mặt phải đo ĐÚNG VÙNG DA.** Bản D1 lấy một ô vuông 380 px giữa ảnh;
+  D1b chiếu xương `head` ra điểm ảnh (`window.stage.chieuDiem()`) rồi lấy hộp
+  **thấp hơn gốc xương 6,8 cm, rộng 7,8 cm** — gốc xương `head` của VRM nằm ở
+  chân sọ, lấy hộp quanh nó là trùm tóc đen (đo thật: p5 = 1,4 trong khi mặt
+  sáng bình thường).
+
+### Vòng 2 — sau kiểm độc lập trên main (chấm cảnh 2,0/5)
+
+- **Model Kenney đã có `map` thì KHÔNG thay `map` được.** `map` của Kenney là
+  **atlas bảng màu** (mỗi mặt trỏ vào một ô vài pixel) — thay bằng vân là mất
+  sạch màu phân biệt từng bộ phận, để nguyên thì khối phẳng lì (đúng điểm bị
+  chấm "sofa/ghế/bàn là khối phẳng"). Cách rẻ mà thật: `onBeforeCompile` tiêm
+  một dòng vào shader chuẩn — **nhân** màu khuếch tán với vân, toạ độ vân lấy
+  từ **vị trí đỉnh trong không gian model** (không dùng `uv` atlas). Không
+  thêm pass, không thêm render target, chỉ một `texture2D` nữa mỗi điểm ảnh.
+  Phải khai `customProgramCacheKey` không thì three dùng lại chương trình đã
+  biên dịch của vật liệu khác.
+- **Luma toàn cảnh**: `toneMappingExposure` 1,0 → **0,86**, nắng 1,35 → 1,15,
+  hemisphere 1,05 → 0,95 (và màu đất hemisphere sáng lên 0x9c7f5c cho trần
+  khỏi nâu xỉn — trần hứng đúng màu ĐẤT của hemisphere vì pháp tuyến quay
+  xuống). Mốc mới có trong script bằng chứng: toàn cảnh p95 ∈ [205, 230].
+- **Chiều cao nhân vật KHÔNG đo bằng hộp bao.** `Box3.setFromObject` trên
+  `SkinnedMesh` trả hộp **tư thế bind**, không phản ánh gì việc đã scale
+  xương: đo thật Gen có hộp bao 1,74 m trong khi gốc xương `head` chỉ ở
+  0,96 m. Thước đúng là **xương bàn chân → gốc xương đầu** (`caoXuong`, thêm
+  vào `doChibi()`), chuẩn hoá về **1,01 m** — đúng số của Javis, nên Javis
+  không đổi gì còn Gen về bằng. Kết quả: 1,013 vs 1,007 (trước: 1,656 vs
+  1,522 theo thước hộp bao).
+- **Cân tầm vóc + đóng mốc spring bone phải làm ở KHUNG HÌNH THỨ 3, sau
+  `vrm.update()`** — không phải trong hàm dựng. `@pixiv/three-vrm` diễn hoạt
+  trên rig **normalized** rồi mới chép xuống xương RAW trong `vrm.update()`;
+  đọc xương raw trước lượt update đầu là đọc **tư thế bind** (đo thật: bàn
+  chân ở y = 0,49 m) → scale theo số đó ra một ông khổng lồ đụng trần. Đây
+  cũng là chỗ gọi lại `springBoneManager.setInitState()` + `reset()` cho tóc
+  Gen hết văng/xuyên vai.
+- **Góc `toan-canh` đặt ở ngang tầm mắt, chéo từ góc phòng khách sang bếp**
+  (`vt (-6,0, 1,82, 4,2)` → `tam (2,5, 1,0, -1,6)`, fov 66): thấy đủ 3 khu, và
+  **cả Javis lẫn Gen nằm quanh trục giữa khung**, không rơi vào dải 390 px bên
+  phải mà bảng lệnh che. Đặt máy cao sát trần thì trần chiếm 40 % khung hình —
+  phòng chỉ cao 2,8 m, máy càng cao càng thấy trần.
+- Thêm: màn hình `may-tinh` hạ xuống **đứng trên mặt bàn** (tâm panel 0,97 m);
+  kệ sách đổi sang `bookcaseOpen` + **2 chồng sách trên kệ**; ngoài vườn thêm
+  **2 mái nhà hàng xóm** (tường + mái dốc + ô cửa sáng đèn) và tán cây 3 lớp
+  thay quả cầu mờ; bụi nắng co về đúng luồng nắng cửa sổ (48 hạt, 0,022 m).
+- Bằng chứng: `scripts/kiem-d1b.mjs` (CHẠY MỘT LẦN, cờ `docs/d1b/.da-chay`,
+  cổng riêng **5252**).
+
+### Vòng 3 — sau kiểm độc lập PR #51 (3 điểm chặn)
+
+- **Shadow map 1024 là CỐ ĐỊNH, không gate theo `maxTextureSize`.** Gate cũ
+  (`>= 8192` thì 2048) vô dụng: swiftshader cũng báo 8192, GPU tích hợp báo
+  16384 → nhánh 2048 **luôn** trúng, 1024 không bao giờ chạy. Nay chỉ nâng khi
+  **đo thật** ≥ 50 FPS liên tục 5 s (`theoDoiFps`), nâng một lần, không nhảy
+  qua nhảy lại.
+- **Draw call phần nhà: 190 → 39.** Nút thắt KHÔNG phải số mesh mà là
+  **`color`**: 119 vật liệu Kenney khác nhau *chỉ ở `color`* nên khoá gộp theo
+  `vl.uuid` không gộp được gì. Vòng 3 **nướng `color` vào màu đỉnh**
+  (`chuanHoaThuocTinh`) rồi gộp theo chữ ký vật liệu BỎ MÀU (`khoaGop`: texture
+  + nhám + kim + trong suốt + chữ ký shader + cờ đổ bóng), vật liệu gộp để
+  `color` trắng + `vertexColors` → không nhân màu hai lần. Nhà còn **34 mesh**
+  (trước 122). Cạm bẫy: `Material.copy()` **không** mang theo `onBeforeCompile`
+  / `customProgramCacheKey` (thuộc tính riêng) — quên chép tay là mất sạch vân.
+  Tường cũng bỏ `khongGop` (7 mảnh chung một vật liệu → 1 mesh).
+- **Model Kenney KHÔNG có UV dùng được.** Vòng 2 gán `ban.map = van` cho model
+  không có `map` → mọi đỉnh lấy cùng một điểm texture = **khối màu phẳng**
+  (đúng điểm kiểm độc lập chấm). Nay **luôn** phủ vân bằng `onBeforeCompile`
+  với toạ độ lấy từ vị trí đỉnh; tần số theo nhóm (`TAN_SO_VAN`): gỗ 1,6 · vải
+  **0,6** · kim loại 1,2, và vân vải tăng tương phản cho khớp tần số mới.
+- **FPS phải đo trên GPU thật.** Script bằng chứng chạy swiftshader, nhiễu
+  ±40 % — LỚN HƠN mọi chênh lệch D1/D1b nên không kết luận được gì. Thêm thước
+  trong app: mở **`?fps=1`** (`src/ui/do-fps.ts`) → đếm 10 s rồi chốt FPS trung
+  bình / 1 % xấu nhất / lượt vẽ nhà / lượt vẽ VRM / cỡ shadow map. Thước chính
+  của PR vẫn là **calls / triangles / shadow size**.
+- `window.stage.hieuNang()` **tách `callsNha` và `callsVrm`** bằng cách vẽ một
+  khung với VRM ẩn rồi đọc `renderer.info` — số thật, không ước lượng.
+- Luma cảnh đo **cả khung đã ẩn giao diện**, bỏ ô cắt tay `{300,110,720,560}`.
+  Cờ `docs/d1b/.da-chay` ra khỏi git (`.gitignore`), script nhận `--lai`, và
+  ảnh bằng chứng được nén về ≤ 1280 px (docs/d1b: 4,5 MB → 1,6 MB).
+- `bloom-layer.ts` + mọi `batSang()` đã xoá hẳn (bloom bỏ từ vòng 1, chỉ còn là
+  bit layer không ai đọc).
+
+## Quyết định F2 — điều khiển mượt trên GPU thật (26/10, Issue #56 mục 2)
+
+Boss: "điều khiển loạn tùm lum" khi mở **Firefox + GPU thật**, trong khi mọi
+bằng chứng B1/D1b (Chromium + **swiftshader, ~1 FPS**) đều sạch. Gốc, số đo
+và cách tái hiện: **`docs/f2/GOC-DIEU-KHIEN-LOAN.md`**.
+
+- **~1 FPS CHE LỖI, không phải phát hiện lỗi.** Gần như mọi chỗ làm mượt trong
+  repo viết dạng `x += (muc − x) * min(1, dt * k)`. Ở `dt ≈ 1 s` thì `dt*k`
+  vượt 1 rồi **bị kẹp về 1** → bám **tức thì**: không trễ, không vọt, không
+  giật, và **không kiểm được gì**. Lên 60 FPS mới thực sự nội suy. Từ nay mọi
+  giao kèo về độ mượt phải có test chạy ở **nhiều FPS** (1/10/60/144), và
+  bằng chứng về cảm giác điều khiển phải đo trên **Firefox GPU thật**
+  (`scripts/kiem-f2.mjs`), không đo trên swiftshader.
+- **Nội suy theo thời gian dùng `heSoBam(dt, τ) = 1 − e^(−dt/τ)`**
+  (`src/stage/nhanvat.ts`, xuất ra để test). `min(1, dt/τ)` lệch 7 % ở 60 FPS
+  và **47 % ở 10 FPS** — tức tốc độ hội tụ phụ thuộc FPS.
+- **Gọi lại `actor.steer` CÙNG vector là GIA HẠN, không phải lệnh mới.**
+  `NhanVat.lai()` so (vx, vz) với lần lái đang chạy; khớp thì đẩy `han` và trả
+  lại đúng `Action` cũ. Bản B1 gửi lệnh mới mỗi 100 ms, mỗi lệnh chạy trọn
+  `huyViec()` + `clip = null` + `batDauViec()` → `state` nháy
+  `walking → idle → walking` 10 lần/giây, và hiệu lực 180 ms chỉ hơn nhịp
+  100 ms có 80 ms nên một lượt GC là vận tốc tụt về 0 rồi vọt lại (đo được:
+  1,60 → 0,32 → 1,15 m/s trong 3 khung liền). Mặc định `ms` của `actor.steer`
+  đổi 150 → **700**; bên gọi nên gia hạn **thưa** (200 ms), đừng gối dày.
+- **Đụng vật cản: vận tốc trục = QUÃNG THẬT ĐÃ ĐI của trục đó chia `dt`.**
+  Bản B1 nhân 0,2 → **điểm cân bằng khác 0** (0,23 m/s mà toạ độ không nhích
+  = "chạy bộ tại chỗ"). Bản F2 vòng 1 xoá hẳn về 0 → mất cả vận tốc khi chỉ bị
+  kẹp 1 % của bước, trượt dọc mép bàn giật theo chu kỳ. Một quy tắc lo cả hai:
+  chặn hoàn toàn ⇒ quãng 0 ⇒ vận tốc 0; kẹp một phần ⇒ giữ đúng phần đi được.
+  So "bị chặn" theo **tỉ lệ** (`1 − 1e-9`), không theo hằng số tuyệt đối: ở 60
+  FPS một bước chỉ 0,027 m nên ngưỡng tuyệt đối hoặc báo chặn oan ("nửa bước"
+  của B1) hoặc không bao giờ báo (trừ `1e-6` làm vế phải âm).
+- **"Đang đi" tính SAU va chạm, từ quãng thật của khung — không từ `|v|`.**
+  Vòng F2 đầu đọc `|v|` *trước* va chạm nên ép vào sofa thì `|v|` = 0, toạ độ
+  đứng im, mà `state` vẫn `walking` vĩnh viễn ⇒ clip đi vẫn chạy, thân vẫn
+  nhún: **sửa nửa gốc, mắt Boss vẫn thấy chạy tại chỗ**. Ba chỗ cùng sai một
+  kiểu — `dangDi`, nhánh nhả thân bị `hetHan` chặn (giữ phím thì `hetHan` luôn
+  `false`), và sàn 0,35 của `phaBuoc`. Bị chặn cứng thì báo `idle` **ngay**,
+  nhưng cố ý **không** huỷ `dangLai`: lệnh lái vẫn giữ thân nên xoay sang
+  hướng thoáng là đi tiếp; huỷ thì `state` nháy `walking ↔ idle` theo nhịp gia
+  hạn.
+- **Một hằng số đừng làm hai việc.** `NGUONG_PHANH` (0,12 m/s, chỉ lúc phanh)
+  tách khỏi `NGUONG_DI` (0,04 m/s: clip đi, nhún thân, hướng mặt). Gộp làm một
+  thì khung đầu tăng tốc từ 0 bị coi là đứng im ⇒ `state` nháy ở FPS cao.
+- **Vật lý một khung lái nằm trong hàm THUẦN `buocLai()`** (`nhanvat.ts`),
+  `capNhat` chỉ gọi. Lý do rất thực dụng: dựng `NhanVat` cần model VRM, nên
+  trước đó **không test nào chạm được vào gốc va chạm** — và đó đúng là gốc bị
+  sửa nửa vời. Giao kèo nào không có test thì sớm muộn cũng chỉ còn là lời văn
+  trong PR.
+- **Quay người có trần tốc độ góc** (`TOC_XOAY_LAI` = 2π rad/s) ngoài nội suy
+  theo thời gian, và quay theo vận tốc **mục tiêu** chứ không theo vận tốc
+  hiện tại (đổi A→D thì vận tốc đi qua 0, lấy hướng của nó là quay loạn).
+  `lechGoc()` chốt mốc ±π về `+π` cho **xác định** — để nhiễu số học không làm
+  hai khung liền nhau chọn hai chiều ngược nhau.
+- **Camera `theo-owner` dùng lò xo giảm chấn TỚI HẠN** (`buocLoXo` trong
+  `world.ts`, semi-implicit nên ổn định ở mọi `dt`; tới hạn nên không vọt quá
+  → không dội → không rung). ω = 9 rad/s: trễ xác lập `2v/ω` = 0,36 m khi đi
+  1,6 m/s, so với `v/k` = 0,62 m của lerp bậc một cũ.
+- **Dừng là việc của handler, không phải của nhịp.** `keyup` / `blur` /
+  `visibilitychange` / `pagehide` gửi lệnh vận tốc 0 **ngay trong cùng tick**.
+  Bản B1 chờ nhịp 100 ms, mà tab bị ẩn thì trình duyệt hạ `setInterval` xuống
+  ~1 lần/giây → lệnh dừng tới muộn cả giây. `HIEU_LUC_STEER` 0,7 s là dây an
+  toàn cuối nếu cả lệnh đó cũng không đi được.
+- **Phanh có hằng số riêng** (`LERP_PHANH` 0,08 s, ga 0,12 s): một τ chung thì
+  hoặc vào trễ, hoặc ra cụt. Nhả phím → dừng trong **0,21 s** (lời hứa ≤ 0,3 s).
+- **`dangGoChu()` soi cả `shadowRoot`, và `keydown` bỏ qua `isComposing`** —
+  bộ gõ telex dùng `w`, `s`, `d` làm nguyên liệu chữ. Đang giữ phím mà nhảy
+  vào ô nhập thì **dừng nhân vật**: `keyup` sau đó rơi vào ô nhập, không về
+  tới sân khấu.
+- **Thước FPS `?fps=1` từng bịa số.** `trungBinh([])` trả `1000/60` → in
+  "FPS trung bình 60.0" khi không có mẫu nào, và phân vị trên mảng rỗng → NaN;
+  khung đầu mất > 10 s trên renderer phần mềm là rơi đúng vào đó. Nay phần
+  tính tách ra `chotFps()` (test được), cắt warmup theo **thời gian** (0,5 s)
+  và chỉ khi còn ≥ 8 mẫu, phân vị nearest-rank, đo tới khi **đủ cả thời gian
+  lẫn đủ khung** (trần 40 s), và **thiếu mẫu thì nói thiếu mẫu**. Thẻ hiện
+  thêm số khung đếm được + thời gian khung đỉnh (ms).
+- **Sân khấu TỰ GHI SỔ từng khung** (`NhanVat.soLai`, `World.soMay`), script
+  bằng chứng đọc một lần ở cuối. Vòng dò đầu tiên lấy mẫu bằng
+  `stage.describe()` + `doXuong()` mỗi khung và **tự kéo FPS 60 → 8,5** —
+  dụng cụ đo làm hỏng đúng cái cần đo. Cũng vì thế `vanToc()` trả `x`/`z`
+  **4 chữ số**: `describe().pos` làm tròn 2 chữ số, mà 0,027 m/khung ở 60 FPS
+  lọt hết vào chữ số bị cắt nên "đi rất chậm" trông y hệt "đứng im".
+- **Bằng chứng phải chạy ĐÚNG CHỖ TẬT XẢY RA.** Mục
+  `2-khong-chay-bo-tai-cho` vòng đầu chấm trên hai lượt đã được lái ra **chỗ
+  trống** nên đạt một cách tầm thường, trong khi tật chỉ hiện khi **ép vào vật
+  cản mà vẫn giữ phím**. Mục `7-ep-vat-can-*` giờ ép vào **tường phòng** (luôn
+  có, không phụ thuộc F1 dọn đồ) và **đòi cờ `chặn ≠ 0`** để không thể đạt vì
+  đi trong chỗ trống; va chạm với từng món đồ do test đơn vị lo, tự dò hộp từ
+  `hopChan()` thay vì ghi cứng toạ độ sofa (ghi cứng là rebase qua F1 #57 đỏ
+  ngay, dù giao kèo chẳng liên quan sofa nằm đâu).
+- **Cạm bẫy môi trường đã đo**: (1) Playwright **Firefox + Wayland + nouveau**
+  làm tiến trình GPU gãy ("Exiting due to channel error") — chạy qua X11
+  (`MOZ_ENABLE_WAYLAND=0`), WebGL vẫn là GPU thật; (2) `recordVideo` của
+  Playwright với Firefox ra file **1,0 giây** cho cả 25 giây thao tác — quay
+  bằng `ffmpeg -f x11grab` thay vào; (3) ngưỡng "nhả phím → dừng ≤ 0,3 s" khi
+  chấm trên máy thật phải **cộng 2 khung hình đo từ chính sổ**, không thì đang
+  đo tốc độ GPU của máy kiểm chứ không đo đường cong phanh.
+
+## Quy tắc đo trên Firefox thật (Boss 27/10: "bị gì mà cứ mở tắt trình duyệt hoài vậy")
+- Mỗi lượt đo mở Firefox **đúng một lần** (một browser/context/page), tải lại bằng `reload/goto`, đóng khi xong hẳn. Không chạy lặp script "cho chắc".
+- **Một lúc chỉ một agent** dùng Firefox thật: trước khi mở, `pgrep -f firefox-1543` phải trống; phần không cần trình duyệt (đọc code, test, build, merge-tree, viết script) làm trước trong lúc chờ.
+- Lý do: cửa sổ nhấp nháy làm phiền Boss, và nouveau gãy (`kernel rejected pushbuf`) khi ≥3 phiên Firefox GPU cùng lúc.

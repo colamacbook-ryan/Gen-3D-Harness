@@ -289,11 +289,13 @@ describe('stage.bootstrap là sách hướng dẫn tự sinh', () => {
       if (c.cmd === 'prop.remove' || c.cmd.startsWith('prop.') || c.cmd === 'actor.hold') {
         await d.run('prop.spawn', { id: 'so-tay', shape: 'book' });
       }
-      // A3: đảm bảo màn hình "main" đang có trước mọi ví dụ screen.*/module.build
-      // (ví dụ screen.remove tự xoá "main" đi ngay trước đó trong vòng lặp này)
+      // đảm bảo màn hình "may-tinh" (id thật của căn nhà) có trước mọi ví dụ screen.*/module.build
+      // (ví dụ screen.remove tự xoá nó đi ngay trước đó trong vòng lặp này). Ví dụ KHÔNG dùng "main":
+      // id chết từ D1 mà model local chép y nguyên (E2E 28/10).
       if ((c.cmd.startsWith('screen.') && c.cmd !== 'screen.spawn') || c.cmd === 'module.build') {
-        await d.run('screen.spawn', { id: 'main' });
+        await d.run('screen.spawn', { id: 'may-tinh' });
       }
+      expect(JSON.stringify(c.example.args ?? {}), `ví dụ của ${c.cmd} còn dùng id chết "main"`).not.toMatch(/"main"/);
       const kq = await d.run(c.example.cmd, c.example.args);
       expect(kq.ok, `ví dụ của ${c.cmd} chạy lỗi: ${kq.ok ? '' : kq.error}`).toBe(true);
       await d.run('actor.stop', { actor: 'gen' });

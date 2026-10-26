@@ -164,7 +164,7 @@ describe('tai-nghe — hàm thuần', () => {
     expect(Array(100).fill(0).some((x) => chiIm.them(x))).toBe(false);
   });
 
-  it('catIm + taoWav + rmsKhoi: cắt theo VAD C1 (chừa 120 ms), header wav đúng', () => {
+  it('catIm + taoWav + rmsKhoi: cắt theo VAD (chừa 200 ms từ G3 #62), header wav đúng', () => {
     const pcm = Buffer.alloc(16000 * 2); // 1 s
     for (let i = 8000; i < 16000; i++) pcm.writeInt16LE(i % 2 ? 8000 : -8000, i * 2); // nửa sau to
     const rms = [];
@@ -172,8 +172,8 @@ describe('tai-nghe — hàm thuần', () => {
     expect(rms[0]).toBe(0);
     expect(rms.at(-1)).toBeCloseTo(8000 / 32768, 3);
     const c = catIm(pcm, rms);
-    expect(c.tuMs).toBe(500 - 100); // chừa 120 ms → làm tròn 2 nhịp 50 ms
-    expect(c.pcm.length).toBe((1000 - 400) * 32);
+    expect(c.tuMs).toBe(500 - 200); // chừa 200 ms (G3) = 4 nhịp 50 ms
+    expect(c.pcm.length).toBe((1000 - 300) * 32);
     expect(catIm(Buffer.alloc(3200), [0, 0])).toBeNull();
     const w = taoWav(c.pcm);
     expect(w.subarray(0, 4).toString()).toBe('RIFF');
@@ -200,12 +200,12 @@ describe('tai-nghe — CLI thật', { timeout: 20_000 }, () => {
     // tự dừng ~ 0,4 + 0,8 + 0,6 s — KHÔNG đọc hết 3,2 s của file
     expect(r.loiChu).toMatch(/tự dừng/);
     expect(r.ms).toBeLessThan(3000);
-    // wav gửi STT: đoạn tiếng 0,8 s + lề ≤ 2×120 ms, có header RIFF
+    // wav gửi STT: đoạn tiếng 0,8 s + lề ≤ 2×200 ms (G3), có header RIFF
     expect(stt.yeuCau).toHaveLength(1);
     expect(stt.yeuCau[0]).toMatchObject({ url: '/stt', type: 'audio/wav', riff: 'RIFF' });
     const ms = (stt.yeuCau[0].byte - 44) / 32;
     expect(ms).toBeGreaterThanOrEqual(800);
-    expect(ms).toBeLessThanOrEqual(1100);
+    expect(ms).toBeLessThanOrEqual(1200);
     expect(br.lenh.map((l) => l.cmd)).toEqual(['stage.describe', 'stage.hear']);
     expect(br.lenh[1].args).toEqual({ text: 'Gen ơi mở màn hình', to: 'gen', confidence: 0.9, durationMs: 321 });
     // vai client, KHÔNG role=nao

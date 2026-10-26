@@ -16,6 +16,8 @@ import {
   docPersona,
   chonNguoiTraLoi,
   sachNoiDung,
+  CAU_DA_LAM,
+  CAU_DU_PHONG,
   boSungGiaTri,
   taoToolSong,
   sinhToolLocal,
@@ -334,6 +336,17 @@ describe('nao-local — driver chạy thật với bridge + Ollama giả', () =>
     // không actor_say nào, không content → driver nói câu dự phòng đúng một lần
     expect(lenhSay()).toHaveLength(1);
     expect(lenhSay()[0].args.actor).toBe('gen');
+  });
+
+  it('model đi ra cửa sổ mà không nói gì → driver đáp "Dạ, em làm ngay ạ" KHÔNG cắt ngang cú đi (E2E 26/10)', async () => {
+    await bat();
+    ollama.kichBan.push({ tool_calls: [goiTool('actor_moveTo', { actor: 'gen', to: 'cua-so' })] }, { content: '' });
+    await sepNoi({ text: 'Gen ơi, ra cửa sổ đi' });
+    expect(bridge.lenh.some((l) => l.cmd === 'actor.moveTo' && l.args.to === 'cua-so')).toBe(true);
+    const say = lenhSay().filter((l) => l.args.text === CAU_DA_LAM);
+    expect(say).toHaveLength(1);
+    expect(say[0].args.interrupt).toBe(false);
+    expect(lenhSay().some((l) => l.args.text === CAU_DU_PHONG)).toBe(false);
   });
 
   it('model quên "actor" → điền người trả lời, không bao giờ owner', async () => {
