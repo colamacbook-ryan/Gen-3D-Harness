@@ -190,9 +190,9 @@ describe('stage.hear × lớp hiểu lệnh + phản xạ', () => {
     world.lichSu.length = 0;
     await d.run('stage.hear', { text: 'Gen ơi', to: 'camera' });
     await nhip();
-    // Gen quay về máy quay + chú ý ngay, không chờ não
+    // Gen quay về máy quay + ngẩng mặt chú ý ngay, không chờ não (I1 #74: `actor.express`, không chiếm thân)
     expect(world.lichSu).toContain('faceTo:gen:camera');
-    expect(world.lichSu.some((x) => x.startsWith('emote:chu-y'))).toBe(true);
+    expect(world.lichSu).toContain('express:surprised');
     may.dung();
   });
 });
