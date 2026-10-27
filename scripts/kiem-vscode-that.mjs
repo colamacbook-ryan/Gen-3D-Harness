@@ -81,7 +81,15 @@ async function soiWebview() {
   const daGan = new Set();
   const het = Date.now() + 70000;
   // soi chi tiết 70 s đầu; sau đó vẫn chạy (nhẹ) tới khi VS Code tắt để bắt dòng 👁 của V3 trong chatroom
+  // E2E_VSC_ANH_DIR=<thư mục>: chụp cửa sổ VS Code mỗi ~2,5 s (để Sếp XEM lượt chạy, không phải để chấm)
+  const thuMucAnh = process.env.E2E_VSC_ANH_DIR;
+  let lanChup = 0;
   while (Date.now() < het || !soi.dung) {
+    if (thuMucAnh && Date.now() - lanChup > 2500) {
+      lanChup = Date.now();
+      const cuaSo = br.contexts().flatMap((c) => c.pages()).find((p) => /workbench/.test(p.url()));
+      if (cuaSo) await cuaSo.screenshot({ path: path.join(thuMucAnh, `${String(Date.now() - t0).padStart(7, '0')}.png`) }).catch(() => {});
+    }
     for (const ctx of br.contexts())
       for (const pg of ctx.pages()) {
         if (!daGan.has(pg)) {
@@ -174,7 +182,7 @@ try {
     vscodeExecutablePath: exe,
     extensionDevelopmentPath: path.join(GOC, 'vscode'),
     extensionTestsPath: path.join(GOC, 'scripts/e2e-vscode/suite.cjs'),
-    extensionTestsEnv: { E2E_VSC_RA: RA_TRONG, E2E_VSC_CONG: JSON.stringify(C), GEN_STAGE_MCP_PORT: String(C.mcp) },
+    extensionTestsEnv: { E2E_VSC_RA: RA_TRONG, E2E_VSC_CONG: JSON.stringify(C), GEN_STAGE_MCP_PORT: String(C.mcp), E2E_VSC_DUNG_MS: process.env.E2E_VSC_DUNG_MS ?? "" },
     launchArgs: [GOC, '--user-data-dir', UD, '--extensions-dir', EXTD, '--disable-workspace-trust', '--skip-welcome', '--skip-release-notes', '--disable-gpu-sandbox', '--no-sandbox', ...(process.env.E2E_VSC_CDP ? [`--remote-debugging-port=${CDP}`] : []), ...(process.env.E2E_VSC_GL ? process.env.E2E_VSC_GL.split(' ') : [])],
   });
 } catch (e) {

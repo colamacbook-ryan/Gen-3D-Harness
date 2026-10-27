@@ -222,6 +222,8 @@ exports.run = async function run() {
     if (dsc) {
       const say = await hoiBridge('actor.say', { actor: 'gen', text: 'Chào từ VS Code thật' });
       ghi('lệnh actor.say qua bridge tới sân khấu trong webview', say.ok, say.ok ? { durationMs: say.result && say.result.durationMs } : say.error);
+      // E2E_VSC_DUNG_MS: giữ sân khấu trên màn hình một lúc trước V3 (V3 mở editor che tab sân khấu) — để chụp ảnh xem
+      if (+process.env.E2E_VSC_DUNG_MS > 0) await ngu(+process.env.E2E_VSC_DUNG_MS);
       try {
         await kiemV3(ghi, kq);
       } catch (e) {
