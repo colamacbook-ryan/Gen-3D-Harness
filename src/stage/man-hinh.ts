@@ -8,7 +8,6 @@
  * `screen.*` (tham số, sự kiện) — chỉ đổi DIỆN MẠO.
  */
 import * as THREE from 'three';
-import { KHOI_CANH } from './bo-cuc';
 
 /** Cao của trụ chân đế (m) — dùng cả khi dựng và khi tính `beDuoi()`. */
 const CHAN_CAO = 0.05;
@@ -22,29 +21,6 @@ const DOI_MAU: Record<string, { vien: number; chu: number; nen: number }> = {
   chart: { vien: 0xd8c9a8, chu: 0xf5ead2, nen: 0x1c140c },
   image: { vien: 0xd8c9a8, chu: 0xf5ead2, nen: 0x18130c },
 };
-
-/**
- * Vị trí + góc mặc định của 2 màn hình — tính từ bảng bố cục (`bo-cuc.ts`):
- *   · `may-tinh` = màn hình trên bàn làm việc (`ban-dieu-khien`).
- *   · `tivi` = TV trên kệ phòng khách (`ke-tivi`).
- */
-function tuKhoi(
-  id: string,
-  dy: number,
-  lech: number,
-  size: number,
-): MacDinhManHinh {
-  const k = KHOI_CANH.find((q) => q.id === id)!;
-  const rad = (k.quay * Math.PI) / 180;
-  const dx = Math.sin(rad) * lech;
-  const dz = Math.cos(rad) * lech;
-  return {
-    pos: new THREE.Vector3(k.tai[0] + dx, dy, k.tai[1] + dz),
-    rotY: rad,
-    size,
-    doTren: id,
-  };
-}
 
 export interface MacDinhManHinh {
   pos: THREE.Vector3;
@@ -60,14 +36,15 @@ export interface MacDinhManHinh {
   doTren?: string;
 }
 
+/**
+ * Màn hình mặc định của văn phòng (cảnh duy nhất từ 27/10). Id giữ từ căn nhà
+ * cũ (`may-tinh`, `tivi`) nên não/`MAN_HINH_THAT`/`module.demo` không đổi:
+ * `may-tinh` đứng trên bàn riêng của Nhi (`ban-nhi`, mặt bàn 0,505 m; nhìn +Z
+ * về phía Nhi đứng), `tivi` là màn trình chiếu Phòng họp (nhìn −X vào bàn họp).
+ */
 export const MAC_DINH_MAN_HINH: Record<string, MacDinhManHinh> = {
-  // màn hình máy tính trên bàn — cỡ thật ~0,55 m, không phải tấm hologram lớn
-  // D1b (#48): hạ 1,1 → 0,97 m. Mặt bàn `ban-dieu-khien` đo được ~0,75 m,
-  // panel cao ~0,31 m + chân ~0,06 → tâm panel đúng 0,97 thì màn hình ĐỨNG
-  // TRÊN mặt bàn, không lơ lửng phía trên như ảnh D1.
-  'may-tinh': tuKhoi('ban-dieu-khien', 0.97, 0.2, 0.55),
-  // TV treo trên kệ phòng khách — cỡ thật ~1,1 m
-  tivi: tuKhoi('ke-tivi', 0.95, 0.35, 1.1),
+  'may-tinh': { pos: new THREE.Vector3(2.6, 0.77, -4.42), rotY: 0, size: 0.5, doTren: 'ban-nhi' },
+  tivi: { pos: new THREE.Vector3(9.94, 1.35, 0.3), rotY: -Math.PI / 2, size: 1.5 },
 };
 
 export class ManHinh {

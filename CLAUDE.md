@@ -143,9 +143,9 @@ biết registry, **giao diện** không gọi thẳng vào sân khấu.
 | `src/stage/nhanvat.ts` | Một nhân vật VRM: máy trạng thái + 3 lớp chuyển động (clip thật → cử chỉ → vi mô) + nhép miệng |
 | `src/behavior/chuyen-dong.ts` | Nạp bộ clip CC0, **retarget sang `vrm.humanoid`**, `AnimationMixer` + crossfade 0,25 s; bảng `DANG_NEN`/`NEN_CLIP`/`NEN_EMOTE` |
 | `src/behavior/cu-chi.ts` | Lớp cử chỉ thủ tục trộn lên clip thật; **hướng tay khai bằng hình học** (`huongTay(doCao, raTruoc)`), không viết số euler |
-| `src/stage/bo-cuc.ts` | **BẢNG BỐ CỤC** (B1): cái gì đặt ở đâu theo lưới 1 m (3 vùng), hộp chắn đường + `truotVaCham` cho `actor.steer`. Dữ liệu thuần, KHÔNG import three |
-| `src/stage/phong.ts` | Dựng LAB VIỄN TƯỞNG (A3): phòng 16 × 16 m, trần 5,6 m, sàn vân sáng, bục trung tâm, bàn điều khiển cong, kệ module, máy phát, trần đèn dải (Kenney Space Kit chuẩn hoá theo mét, hoặc fallback geometry emissive) |
-| `src/stage/man-hinh.ts` | Màn hình hologram A3: CanvasTexture + scan-line, stream chữ chạy dần |
+| `src/stage/bo-cuc.ts` | **VA CHẠM + TÌM ĐƯỜNG** (27/10): vật cản + khung sàn nạp bằng `datCanhChan` lúc dựng cảnh, `truotVaCham` cho steer/moveTo/sit, `timDuong` (A\*). Dữ liệu thuần, KHÔNG import three. (Bảng bố cục căn nhà D1–J1 đã bỏ.) |
+| `src/stage/van-phong.ts` | **CẢNH DUY NHẤT** (27/10): văn phòng búp bê diorama 24 × 17 m, 7 khu không vách; đo vật cản lúc dựng. Phần dùng chung (`gopTinh`, `denDiem`, `vanBongDat`, kiểu `Canh`) ở `canh-chung.ts`; búp bê ở `bup-be.ts`. (`phong.ts` căn nhà, `lang.ts` làng, `chat-lieu.ts` đã xoá — Ryan 27/10.) |
+| `src/stage/man-hinh.ts` | Màn hình máy tính/TV ấm (D1): CanvasTexture, stream chữ chạy dần; `MAC_DINH_MAN_HINH` = bàn Nhi + màn phòng họp |
 | `src/fx/*.ts` | A3: hiệu ứng kết tinh module (`hat-ket-tinh.ts`) + `fx.play` (`hieu-ung.ts`) |
 | `src/stage/noi-dung.ts` | Dữ liệu cảnh v0.1: places (gồm `ban-dieu-khien` A3), clips, biểu cảm, emote, preset đèn/máy quay (gồm `truoc-mat` A2) |
 | `src/stage/che-do-nen.ts` | **V1 (INT-06)** — CHẾ ĐỘ NỀN, thuần (không three): ngưỡng có tên (`FPS_NEN` 15, `TY_LE_PIXEL_NEN` 1), `quyetCheDo` (ẩn/focus/tin vỏ VS Code), `docTinVo` (lọc `postMessage`), `nenVeKhung` (bỏ khung theo mốc rAF), `theoDoiCheDoNen` (nối DOM, `main.ts` gọi) |
@@ -2001,31 +2001,37 @@ Boss 27/10: *"nội thất nên thiết kế sát tường để chừa không g
 ## Quyết định VĂN PHÒNG BÚP BÊ — cảnh mặc định (27/10, Ryan)
 
 Ryan xem ảnh làng hanok diorama → "dùng dạng búp bê đó, chất lượng cao hơn, trong không gian một công ty lớn có các
-khu phòng ban rõ ràng nhưng không cần ngăn vách". Cảnh mặc định giờ là `src/stage/van-phong.ts`; `?canh=lang` (bản
-thử làng) và `?canh=nha` (căn nhà D1b/J1) còn mở CHỈ để so — Ryan duyệt hình xong thì xoá.
+khu phòng ban rõ ràng nhưng không cần ngăn vách". Cảnh giờ là `src/stage/van-phong.ts` — **cảnh DUY NHẤT**: Ryan 27/10
+"xoá cảnh nhà cũ và làng đi" ⇒ `phong.ts`, `lang.ts`, `chat-lieu.ts`, bảng bố cục căn nhà trong `bo-cuc.ts` và mọi test
+bố cục căn nhà (B1/D1b/F1/J1) đã xoá; `?canh=` không còn. Các mục quyết định D1/D1b/F1/G1/J1 phía trên giữ làm lịch sử
+(bài học còn đúng: đo lúc dựng vì `gopTinh` dọn nhóm, chuẩn hoá cả hai chiều…), nhưng toạ độ/bảng trong đó không còn chạy.
 
 - **Búp bê là LỚP HÌNH, VRM vẫn chạy ẩn bên dưới** (`src/stage/bup-be.ts`): ẩn TỪNG mesh VRM (không ẩn `vrm.scene`,
   để đồ đang cầm vẫn thấy); `World` chép vị trí/hướng sang búp bê mỗi khung; ngồi = nâng `goc` lên `matGheHienTai`;
   đồ đang cầm bám `BupBe.viTriTay()`. Actor API / bridge / MCP / não không đổi một dòng.
 - **Phân khu bằng màu thảm + biển tên đứng, ngăn mềm bằng kệ thấp + chậu cây** — không vách. 7 khu (`KHU_VP`).
-- **Place văn phòng dùng CÙNG BỘ ID với căn nhà** (`PLACES_VAN_PHONG` trong `noi-dung.ts`, `datPlacesCanh`/`dsPlaces`):
-  lệnh, não, `MAN_HINH_THAT`, 12 hoạt động J2 chạy tiếp không sửa gì. Test giữ "đủ đúng các id + cùng kind".
+- **Place văn phòng dùng CÙNG BỘ ID với căn nhà cũ** (`PLACES` trong `noi-dung.ts`): lệnh, não, `MAN_HINH_THAT`, 12
+  hoạt động J2 chạy tiếp không sửa gì. Test (`b1`) giữ "đủ đúng 12 id".
 - **Va chạm theo cảnh** (`bo-cuc.datCanhChan`): văn phòng ĐO hộp từng con trực tiếp của mỗi món lúc dựng (`datNhom`),
   không gộp cả nhóm (bàn họp + người ngồi gộp một hộp thì phủ luôn ghế trống `actor.sit` cần). Nhánh `userData.khongChan`
   (ghế trống, sofa) không tính — chỗ ngồi phải đi tới được; sofa khai tay lưng tựa + bàn + người ngồi. Khung sàn
-  24 × 17 m thay 14 × 10. `null` = căn nhà, mọi test cũ giữ nguyên.
+  24 × 17 m. `datCanhChan(null)` = sàn văn phòng trống (trước khi dựng / test dọn). Test va chạm (b1, f2, h1) nạp
+  vật cản TỔNG HỢP qua đúng cửa đó — hộp thật chỉ có sau khi dựng bằng three (kiểm trên trình duyệt).
 - **`moveTo`/`sit` đi theo đường A\*** (`bo-cuc.timDuong`, lưới 0,25 m, 8 hướng không cắt góc, kéo căng): đi thẳng +
   trượt mép đủ cho căn nhà trống nhưng kẹt giữa các cụm bàn (đo thật: lối vào → `ke-module` dừng ở Pantry, lệch 7,8 m).
   Lưới chừa thêm lề 8 cm ngoài bán kính thân (sát đúng bán kính thì `truotVaCham` giữ lại ở khe hẹp rồi kẹt luôn);
   đang kẹt thì thoát ra ô thoáng gần nhất trước; đích không nối được thì tới ô tới-được gần nhất (không đi thẳng vào
-  tường); chặng cuối < 0,7 m thì đi thẳng vào đúng đích (ghế sát bàn). Chỉ bật ở cảnh diorama.
+  tường); chặng cuối < 0,7 m thì đi thẳng vào đúng đích (ghế sát bàn).
 - **Mỗi khu phải có LỐI VÀO ≥ 1 m** — Pantry từng khép kín (kệ + quầy + bàn + chậu cây, khe < thân + lề) nên A\* không
   có đường. Đo bằng `window.stage.duongDi(...)` (cùng hàm sân khấu dùng) cho mọi place, không đoán.
 - **`window.stage.vatCan()` / `duongDi()`** để script kiểm đọc ĐÚNG bản `bo-cuc` app đang dùng — `import()` trong trang
   nạp ra một bản module khác (đã đo: trả hộp của căn nhà dù app đang ở văn phòng).
-- **Màn hình cùng id** (`MAN_HINH_VP`): `may-tinh` đứng trên bàn riêng của Nhi cạnh lối đi chính (đáy 0,505 = mặt bàn
+- **Màn hình cùng id** (`MAC_DINH_MAN_HINH` trong `man-hinh.ts`): `may-tinh` đứng trên bàn riêng của Nhi cạnh lối đi chính (đáy 0,505 = mặt bàn
   0,505), `tivi` là màn trình chiếu Phòng họp. `screen.focus` ẩn chân đế (kéo sát máy quay thì chân đế nhỏ thành cái nón
   khổng lồ giữa khung hình).
+- **Máy quay/ánh sáng**: `MAY_NGANG`/`MAY_DOC` là góc diorama; hộp máy `HOP_MAY` nới 30 m (không vách/trần để kẹp),
+  `maxDistance` 45, pan bật; 4 preset khu (`phong-khach`/`ban-lam-viec`/`bep`/`cua-so`, tên giữ vì là hợp đồng) nhìn vào
+  khu nghỉ · bàn Nhi · Pantry · cửa sổ tây (`GOC_KHU`). `PRESET_DEN_SO.sang` = bộ đèn văn phòng (một nguồn với `sceneLight`).
 - Đo (Chromium swiftshader 1280×860): **93 lượt vẽ, 284k tam giác** (căn nhà cũ ~210 lượt vẽ có VRM). Kiểm trên trình
   duyệt thật: 12/12 place tới đúng `at`, ngồi 3/3 ghế, Nam lái không xuyên bàn, `module.demo` → module vào tay Nhi →
   `module.store` lên `ke-module`, 6/6 hoạt động J2 chạy trọn về đúng chỗ.

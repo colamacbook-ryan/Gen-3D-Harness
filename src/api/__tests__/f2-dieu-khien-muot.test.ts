@@ -23,7 +23,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { LERP_PHANH, LERP_VAN_TOC, buocLai, heSoBam, lechGoc } from '../../stage/nhanvat';
-import { biChan, hopChan, kepTrongPhong } from '../../stage/bo-cuc';
+import { biChan, datCanhChan, hopChanHienTai, kepTrongPhong, SAN_MAC_DINH } from '../../stage/bo-cuc';
 import { OMEGA_MAY, buocLoXo } from '../../stage/world';
 import { chotFps } from '../../ui/do-fps';
 
@@ -433,6 +433,20 @@ describe('F2 mục 3 — bàn phím: gia hạn, không gối lệnh; nhả là d
 /** Bán kính thân khi kiểm va chạm — khớp `BAN_KINH_THAN` của `nhanvat.ts`. */
 const BAN_KINH = 0.34;
 
+/*
+ * Vật cản tổng hợp: văn phòng (cảnh duy nhất từ 27/10) đo hộp nội thất lúc dựng
+ * bằng three, nên test thuần nạp một dãy tủ dài + một bàn qua ĐÚNG cửa
+ * `datCanhChan` mà `World` dùng. Giao kèo đang kiểm ("đụng thì dừng thật")
+ * không phụ thuộc đồ nằm đâu — `timChoDamTuong` vẫn tự dò.
+ */
+datCanhChan({
+  hop: [
+    { id: 'day-tu', x0: 2, x1: 2.6, z0: -3, z1: 3 },
+    { id: 'ban', x0: -4, x1: -2.8, z0: 1, z1: 1.8 },
+  ],
+  ...SAN_MAC_DINH,
+});
+
 /**
  * Tự TÌM một chỗ đâm vào tường trong bảng bố cục hiện hành, thay vì ghi cứng
  * toạ độ sofa.
@@ -505,7 +519,7 @@ describe('F2 mục 5 — lái thẳng vào vật cản: dừng THẬT, không ch
   const cho = timChoDamTuong();
 
   it('bảng bố cục thật vẫn có chỗ đi thẳng vào vật cản (nếu không, test dưới vô nghĩa)', () => {
-    expect(hopChan().length).toBeGreaterThan(0);
+    expect(hopChanHienTai().length).toBeGreaterThan(0);
     expect(biChan(cho.x, cho.z, BAN_KINH)).toBeNull(); // chỗ xuất phát: thoáng
     expect(biChan(cho.x + 1.5, cho.z, BAN_KINH)).not.toBeNull(); // 1,5 m nữa: đụng
   });

@@ -7,24 +7,15 @@
  */
 import { afterEach, describe, expect, it } from 'vitest';
 import { biChan, datCanhChan, kepTrongPhong, thongDuong, timDuong, truotVaCham } from '../../stage/bo-cuc';
-import { datPlacesCanh, dsPlaces, PLACES, PLACES_VAN_PHONG, timPlace } from '../../stage/noi-dung';
+import { dsPlaces, PLACES, timPlace } from '../../stage/noi-dung';
 
 afterEach(() => {
   datCanhChan(null);
-  datPlacesCanh(null);
 });
 
-describe('văn phòng — place cùng bộ id với căn nhà', () => {
-  it('đủ và chỉ đúng các id của căn nhà', () => {
-    expect(PLACES_VAN_PHONG.map((p) => p.id).sort()).toEqual(PLACES.map((p) => p.id).sort());
-  });
-
-  it('cùng loại (kind) từng id — ghế vẫn là ghế, bàn vẫn là bàn', () => {
-    for (const p of PLACES_VAN_PHONG) expect(p.kind, p.id).toBe(PLACES.find((q) => q.id === p.id)!.kind);
-  });
-
+describe('văn phòng — place', () => {
   it('mọi chỗ đứng nằm trong sàn văn phòng (x −12…12 · z −9…8)', () => {
-    for (const p of PLACES_VAN_PHONG) {
+    for (const p of PLACES) {
       const [x, , z] = p.standAt ?? p.pos;
       expect(x, p.id).toBeGreaterThanOrEqual(-12);
       expect(x, p.id).toBeLessThanOrEqual(12);
@@ -33,30 +24,24 @@ describe('văn phòng — place cùng bộ id với căn nhà', () => {
     }
   });
 
-  it('datPlacesCanh đổi timPlace/dsPlaces, null trả về căn nhà', () => {
-    datPlacesCanh(PLACES_VAN_PHONG);
+  it('timPlace/dsPlaces đọc đúng bảng văn phòng', () => {
     expect(timPlace('bep')?.pos).toEqual([11.0, 0, 5.0]);
-    expect(dsPlaces()).toBe(PLACES_VAN_PHONG);
-    datPlacesCanh(null);
-    expect(timPlace('bep')?.pos).toEqual(PLACES.find((p) => p.id === 'bep')!.pos);
+    expect(dsPlaces()).toBe(PLACES);
   });
 });
 
 describe('va chạm theo cảnh (datCanhChan)', () => {
   const vp = { x0: -12, x1: 12, z0: -9, z1: 8 };
 
-  it('khung sàn mới: đi được tới x = 11 (căn nhà kẹp ở 6,5)', () => {
-    expect(kepTrongPhong(11, 0)[0]).toBeCloseTo(6.5);
+  it('khung sàn văn phòng: đi được tới x = 11, kẹp ở lề 0,5 m', () => {
     datCanhChan({ hop: [], ...vp });
     expect(kepTrongPhong(11, 0)[0]).toBeCloseTo(11);
     expect(kepTrongPhong(20, -20)).toEqual([11.5, -8.5]);
   });
 
-  it('chỉ hộp của cảnh mới chặn; hộp căn nhà không còn hiệu lực', () => {
-    // giữa phòng khách căn nhà có bàn trà — văn phòng thì trống chỗ đó
-    const coNha = biChan(-5.5, 3, 0.3);
+  it('chỉ hộp đã nạp mới chặn; null = sàn trống', () => {
+    expect(biChan(1.5, 1.5, 0.3)).toBeNull();
     datCanhChan({ hop: [{ id: 'ban-thu', x0: 1, x1: 2, z0: 1, z1: 2 }], ...vp });
-    if (coNha) expect(biChan(-5.5, 3, 0.3)).toBeNull();
     expect(biChan(1.5, 1.5, 0.3)).toBe('ban-thu');
   });
 

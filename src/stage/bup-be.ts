@@ -16,7 +16,7 @@
  */
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { vanBongDat } from './lang';
+import { vanBongDat } from './canh-chung';
 
 export interface KieuBupBe {
   /** Màu áo. */
@@ -354,5 +354,3 @@ export const NHAN_VIEN: KieuBupBe[] = [
   { ao: 0xf4f4f4, duoi: 0x7a6aa0, kieuDuoi: 'vay', toc: 'dai', phuKien: 'the-ten', mauPhuKien: 0x3f9c6c },
   { ao: 0xd9cbb8, duoi: 0x2b2f38, kieuDuoi: 'quan', toc: 'ngan', mauToc: 0x1a1a1a, phuKien: 'kinh' },
 ];
-/** Bí danh cũ (bản làng) — `world.ts` dùng khi actor không có trang phục riêng. */
-export const DAN_LANG = NHAN_VIEN;

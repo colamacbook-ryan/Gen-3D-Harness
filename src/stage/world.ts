@@ -27,19 +27,9 @@ import type {
   Vec3,
 } from '../api/types';
 import type { EventBus } from '../events';
-import {
-  CAO_TUONG,
-  denDiem,
-  dungPhong,
-  KICH_THUOC_PHONG,
-  KICH_THUOC_SAU,
-  MAU_CAM,
-  MAU_CYAN,
-  MAU_DEN_AM,
-} from './phong';
-import { chonCanh, dungLang, type Lang } from './lang';
-import { BupBe, DAN_LANG, KIEU_NHAN_VAT } from './bup-be';
-import { dungVanPhong, MAN_HINH_VP } from './van-phong';
+import { denDiem, MAU_CAM, MAU_CYAN, type Canh } from './canh-chung';
+import { BupBe, KIEU_NHAN_VAT, NHAN_VIEN } from './bup-be';
+import { dungVanPhong } from './van-phong';
 import { datCanhChan, timDuong } from './bo-cuc';
 import { DoFps } from './do-fps';
 import { DT_TOI_DA_NEN, nenVeKhung, TY_LE_PIXEL_NEN, type RenderMode } from './che-do-nen';
@@ -57,9 +47,7 @@ import {
   DAI_CLIP,
   EMOTES,
   layMatGhe,
-  datPlacesCanh,
   dsPlaces,
-  PLACES_VAN_PHONG,
   PRESET_DEN,
   PRESET_MAY,
   TEN_HIEN_THI,
@@ -67,37 +55,14 @@ import {
   type DinhNghiaPlace,
 } from './noi-dung';
 import { noiTiep, hanhDongHenGio } from './hanh-dong';
-import { ManHinh, MAC_DINH_MAN_HINH, type MacDinhManHinh } from './man-hinh';
+import { ManHinh, MAC_DINH_MAN_HINH } from './man-hinh';
 import { KetTinh, maySurfacePoints } from '../fx/hat-ket-tinh';
 import { taoHieuUng, type HieuUng } from '../fx/hieu-ung';
 // C0 (#28) — sổ "có não nối hay chưa" do bridge ghi vào (xem `src/behavior/so-nao.ts`).
 import { coNao } from '../behavior/so-nao';
 
-/**
- * Nền ngoài khung cửa/khoảng hở (D1): trời chiều ấm nhạt — thấy khi camera
- * lùi ra quá mép nhà. Không còn xám-xanh "Tron" của lab.
- *
- * G1 (#56): bỏ trần rồi thì cái nền này **lộ ra ở mọi góc ngửa lên** (trước
- * đây tấm trần che hết), và 0xdce6ea là xám-xanh LẠNH — một vệt lạnh ngay
- * trên mép tường của căn nhà ấm. Đổi sang kem ấm cùng tông với phông trời
- * (`phongTroi()` trong `phong.ts`): chỗ nào phông trời chưa phủ tới cũng
- * không còn cắt màu. Luma 223 (cũ 228) nên không làm cảnh sáng thêm.
- */
-const MAU_NEN_LAB = 0xf0ddc0;
-
-/**
- * BẢN THỬ LÀNG HANOK (`?canh=lang`, Ryan 27/10) — máy quay DIORAMA: cao, chéo
- * từ đông-nam, fov hẹp cho gần kiểu nhìn isometric của ảnh tham chiếu. Khung
- * dọc (panel VS Code hẹp) lùi xa hơn để vẫn ôm sân giữa.
- */
-const MAY_LANG = { vt: new THREE.Vector3(6.4, 10.6, 12.8), tam: new THREE.Vector3(-1.2, 0.3, -2.4), fov: 34 };
-const MAY_LANG_DOC = { vt: new THREE.Vector3(12.5, 21, 26), tam: new THREE.Vector3(-0.5, 0.4, -1.8), fov: 44 };
-/** Nền + sương hoàng hôn tím ấm của làng. */
-const MAU_NEN_LANG = 0x4d5170;
-/** VĂN PHÒNG (mặc định từ 27/10): diorama nhìn chéo từ đông-nam, ôm trọn sàn 24 × 17 m. */
-const MAY_VP = { vt: new THREE.Vector3(11.5, 15.5, 18.5), tam: new THREE.Vector3(0.4, 0.2, 0.2), fov: 36 };
-const MAY_VP_DOC = { vt: new THREE.Vector3(14, 22, 25), tam: new THREE.Vector3(0.4, 0.2, 0.2), fov: 46 };
-const MAU_NEN_VP = 0x2d3242;
+/** Nền tối cho "mô hình" văn phòng nổi khối như ảnh diorama (Ryan 27/10). */
+const MAU_NEN = 0x2d3242;
 
 /** Một bộ số đèn của một preset — xem `PRESET_DEN_SO`. */
 export interface SoDen {
@@ -131,7 +96,7 @@ export interface SoDen {
  * `sceneLight` cũ chưa bao giờ được đo.
  */
 export const PRESET_DEN_SO: Record<string, SoDen> = {
-  sang: { troi: 0.95, nang: 1.15, nangMau: 0xffd79a, vien: 0.22, exposure: 0.86, nen: MAU_NEN_LAB },
+  sang: { troi: 1.05, nang: 1.5, nangMau: 0xffd9ad, vien: 0.3, exposure: 0.95, nen: MAU_NEN },
   toi: { troi: 0.34, nang: 0.22, nangMau: 0x6f9ec8, vien: 0.45, exposure: 0.8, nen: 0x060a0f },
   am: { troi: 0.8, nang: 0.8, nangMau: MAU_CAM, vien: 0.25, exposure: 0.86, nen: 0x1c1208 },
 };
@@ -175,32 +140,30 @@ interface DoVat {
 type GocMay = { vt: THREE.Vector3; tam: THREE.Vector3; fov: number };
 
 /**
- * Góc máy "toàn cảnh" cho CĂN NHÀ 14 × 10 m, trần 2,8 m (D1 #43 → **F1 #56**).
- *
- * F1 đổi chỗ đứng: máy ở góc ĐÔNG-NAM trong nhà, nhìn chéo về tây-bắc. Bản
- * D1b đứng ở góc TÂY-nam nhìn về đông-bắc → cả cụm phòng khách (và kệ TV sát
- * tường tây) nằm **sau lưng camera**, Boss chỉ thấy sàn trống với mấy cái tủ
- * bếp. Góc mới thấy **cả 3 cụm trong một khung**: bàn ăn + bếp chữ L bên phải,
- * góc làm việc chính giữa phía xa, cụm sofa–thảm–kệ TV bên trái.
- */
-/**
- * J1 (#78) — khung `toan-canh` phải THẤY VÙNG GIỮA TRỐNG
- * (`VUNG_HOAT_DONG` x −3…3 · z −2,5…2,5). Bản F1 đứng ở (1,0 · 4,3) ngắm
- * (−0,5 · −3,9): trục nhìn xuyên dọc nhà nên vùng giữa bị nén thành một dải
- * mỏng, còn cụm sofa cũ (giữa sàn) che mất. Nay lùi về góc ĐÔNG-NAM, lên cao
- * 2,6 m và ngắm thẳng vào tâm vùng hoạt động.
+ * Góc máy "toàn cảnh" của VĂN PHÒNG: diorama nhìn chéo từ đông-nam, cao, fov hẹp
+ * (gần kiểu isometric của ảnh tham chiếu) — ôm trọn sàn 24 × 17 m.
  */
 const MAY_NGANG: GocMay = {
-  vt: new THREE.Vector3(3.6, 2.6, 4.4),
-  tam: new THREE.Vector3(-1.2, 0.8, -1.2),
-  fov: 74,
+  vt: new THREE.Vector3(11.5, 15.5, 18.5),
+  tam: new THREE.Vector3(0.4, 0.2, 0.2),
+  fov: 36,
+};
+/** Khung DỌC (điện thoại / panel VS Code hẹp): lùi xa hơn, fov rộng hơn để vẫn ôm sàn. */
+const MAY_DOC: GocMay = {
+  vt: new THREE.Vector3(14, 22, 25),
+  tam: new THREE.Vector3(0.4, 0.2, 0.2),
+  fov: 46,
 };
 /**
- * Khung DỌC 390 × 844 (điện thoại): khung đứng thì hfov rất hẹp — ôm 3 cụm là
- * bất khả. F1 đổi hẳn mục tiêu: nhắm vào **một cụm phòng khách** (sofa ↔ bàn
- * trà ↔ kệ TV) để màn hình hẹp vẫn thấy một căn phòng có hồn, thay vì khung
- * ngang bị cắt còn một dải sàn trống như bản D1b.
+ * Góc máy 4 KHU (`camera.preset` phong-khach/ban-lam-viec/bep/cua-so): chéo từ
+ * trên xuống vào khu nghỉ (sofa) · bàn Nhi · Pantry · cửa sổ tường tây.
  */
+const GOC_KHU: Record<string, { vt: THREE.Vector3; tam: THREE.Vector3 }> = {
+  'phong-khach': { vt: new THREE.Vector3(3.6, 4.2, -2.6), tam: new THREE.Vector3(0.8, 0.4, -6.8) },
+  'ban-lam-viec': { vt: new THREE.Vector3(4.6, 3.4, -0.6), tam: new THREE.Vector3(2.6, 0.6, -4.2) },
+  bep: { vt: new THREE.Vector3(6.4, 4.4, 1.2), tam: new THREE.Vector3(9.6, 0.6, 5.4) },
+  'cua-so': { vt: new THREE.Vector3(-7.4, 4.0, 3.6), tam: new THREE.Vector3(-11.2, 0.8, 0.4) },
+};
 /**
  * Lệch camera so với chủ khi bám (`theo-owner`): chéo 3/4 sau-phải, cao 2 m
  * — nhà trần thấp (2,8 m) nên lệch thấp hơn hẳn bản lab.
@@ -209,29 +172,22 @@ const LECH_THEO_OWNER = /* @__PURE__ */ new THREE.Vector3(1.8, 2.0, 2.6);
 
 /* ======================= H1 (#69) — tay máy & bước cố định ================= */
 
-/** Lề cách tường cho camera (m) — đủ để near plane 0,1 không cắt vào tường. */
-const LE_MAY_TUONG = 0.4;
-/** Lề cách trần cho camera (m): trần 2,8 ⇒ camera cao nhất 2,5. */
-const LE_MAY_TRAN = 0.3;
 /** Camera không được thấp hơn mốc này (m) — không chui xuống dưới sàn. */
 const MAY_Y_MIN = 0.4;
 /**
- * **Hộp trong nhà** mà camera được phép ở (H1 mục 15). Nhà 14 × 10 m, trần
- * 2,8 m — nên hộp là 13,2 × 9,2 × (0,4…2,5).
+ * Hộp camera được phép ở (H1 mục 15). Căn nhà cũ có tường + trần nên hộp bó sát
+ * 13,2 × 9,2 × 2,5 m; văn phòng diorama KHÔNG có vách/trần, máy quay đứng cao
+ * ngoài mép sàn nhìn vào — hộp chỉ còn giữ camera khỏi chui xuống sàn và khỏi
+ * bay quá xa (mép sàn 24 × 17 m + khoảng lùi của góc `toan-canh`).
  */
 const HOP_MAY: HopNha = {
-  hx: KICH_THUOC_PHONG / 2 - LE_MAY_TUONG,
-  hz: KICH_THUOC_SAU / 2 - LE_MAY_TUONG,
+  hx: 30,
+  hz: 30,
   yMin: MAY_Y_MIN,
-  yMax: CAO_TUONG - LE_MAY_TRAN,
+  yMax: 30,
 };
-/**
- * H1 (#69 mục 14) — **`maxDistance` theo kích thước nhà**, không phải hằng 26
- * của bản lab 16 × 16 m. Nhà chỉ 14 × 10 m: nửa đường chéo ≈ 8,6 m đã là
- * khoảng xa nhất có nghĩa trong nhà, 26 m thì OrbitControls cho Boss lùi ra
- * tận ngoài sân rồi mới kẹp.
- */
-const MAY_XA_TOI_DA = Math.hypot(KICH_THUOC_PHONG, KICH_THUOC_SAU) / 2;
+/** H1 (#69 mục 14) — `maxDistance`: đủ lùi ra ôm trọn sàn văn phòng, không hơn. */
+const MAY_XA_TOI_DA = 45;
 /** Tay máy ngắn nhất (m) — khớp `controls.minDistance` để hai bên không giằng. */
 const MAY_GAN_TOI_DA = 0.6;
 /** Lề tay máy với mặt hộp nhà (m) — dùng chung cho `dayTayMay` và `dichCamera`. */
@@ -338,12 +294,6 @@ export function buocLoXo(
   v.addScaledVector(vel, dt);
 }
 
-const MAY_DOC: GocMay = {
-  vt: new THREE.Vector3(-1.3, 1.62, 4.3),
-  tam: new THREE.Vector3(-4.9, 0.85, 0.9),
-  fov: 76,
-};
-
 export class World implements StageWorld {
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
@@ -379,16 +329,7 @@ export class World implements StageWorld {
   private denPreset = 'sang';
   /** C0 (#28) — góc máy hiện tại, để `stage.describe().camera.preset` nói thật. */
   private mayPreset = 'toan-canh';
-  /** Cảnh đang dựng: căn nhà mặc định hay bản thử làng (`?canh=lang`). */
-  private canh: 'nha' | 'lang' | 'van-phong' = chonCanh();
-  /** Cảnh diorama búp bê (làng hoặc văn phòng): ẩn VRM, máy quay cao, không kẹp máy trong nhà. */
-  private get dioRama(): boolean {
-    return this.canh !== 'nha';
-  }
-  /**
-   * LỚP HÌNH búp bê hanbok của từng actor (làng). VRM vẫn chạy bên dưới (ẩn) để
-   * giữ nguyên bộ não hành động; búp bê chép vị trí + hướng mỗi khung.
-   */
+  /** Lớp hình búp bê của từng actor (VRM vẫn chạy ẩn bên dưới — xem `bup-be.ts`). */
   private bupBe = new Map<string, BupBe>();
 
   /*
@@ -495,9 +436,8 @@ export class World implements StageWorld {
     // H1 (#69): số nằm trong `PRESET_DEN_SO.sang` — một nguồn sự thật.
     this.renderer.toneMappingExposure = PRESET_DEN_SO.sang.exposure;
 
-    this.scene.background = new THREE.Color(MAU_NEN_LAB);
-    // fog rất nhẹ (0.015): cho chiều sâu, KHÔNG làm mờ khối ở cuối phòng 16 m
-    this.scene.fog = new THREE.FogExp2(MAU_NEN_LAB, 0.015);
+    // nền tối, KHÔNG fog: "mô hình" văn phòng nổi khối như ảnh diorama
+    this.scene.background = new THREE.Color(MAU_NEN);
 
     this.camera = new THREE.PerspectiveCamera(
       MAY_NGANG.fov,
@@ -514,11 +454,11 @@ export class World implements StageWorld {
     // H1: khớp đúng trần/sàn của tay máy (`MAY_GAN_TOI_DA`) để OrbitControls
     // và spring arm không giằng nhau quanh một khoảng cách khác nhau.
     this.controls.minDistance = MAY_GAN_TOI_DA;
-    // H1 (#69 mục 14): theo kích thước NHÀ (14 × 10 m) — xem `MAY_XA_TOI_DA`.
     this.controls.maxDistance = MAY_XA_TOI_DA;
-    this.controls.maxPolarAngle = Math.PI * 0.49;
+    // không cho máy hạ ngang sàn (diorama nhìn từ trên xuống), cho kéo ngang (pan)
+    this.controls.maxPolarAngle = Math.PI * 0.42;
     this.controls.minPolarAngle = Math.PI * 0.12;
-    this.controls.enablePan = false;
+    this.controls.enablePan = true;
     this.controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
     this.controls.addEventListener('start', () => {
       this.bossDaXoay = true;
@@ -539,110 +479,25 @@ export class World implements StageWorld {
   }
 
   /**
-   * Dàn đèn "sáng có khối" (Boss 25/10, Issue #11). Bản cũ hemi 0.85 / dir 0.8
-   * lạnh ngắt cho ra ảnh kiểu Tron. Bản này:
-   *   · hemisphere 1.2 — nền sáng đều, khối không chìm vào nền;
-   * D1 (Issue #43) — NẮNG CHIỀU qua cửa sổ nam, thay "sáng có khối" của lab:
-   *   · hemisphere trời xanh nhạt / đất ấm (không còn xanh-đen lạnh);
-   *   · directional ẤM 1.0 (~3200 K, 0xffe0b0) từ phía nam-trên (cửa sổ),
-   *     bóng mềm PCFSoft bó sát khung nhà mới (14×10 m, không còn 16×16);
-   *   · fill ấm rất nhẹ phía bắc để mép đồ không đen tịt.
-   * Đèn bàn/đèn sàn (rất nhẹ, có bloom) nằm trong `phong.ts`, không thuộc dàn
-   * đèn cảnh nên `scene.light` không đổi chúng.
+   * Dàn đèn VĂN PHÒNG — chiều muộn ấm: hemisphere sáng đều, nắng ấm chéo từ
+   * đông-nam đổ bóng mềm, vài đèn sàn là điểm ấm (đặt trong `napCanh` theo vị
+   * trí đèn cảnh trả về). Số cường độ nằm trong `PRESET_DEN_SO.sang` (H1 #69 mục
+   * 34: một nguồn sự thật với `sceneLight`).
    */
   private dungAnhSang(): void {
-    // D1b: hemisphere ẤM hẳn (trời vàng nhạt / sàn gỗ nâu) — bản D1 để trời
-    // xanh lạnh 0xcfe3ef nên mảng tối trong nhà ngả xanh, trái hẳn ảnh tham
-    // chiếu "nhà gỗ ấm, nắng chiều mềm".
     const so = PRESET_DEN_SO.sang;
-    this.troi = new THREE.HemisphereLight(0xffe9c8, 0x9c7f5c, so.troi);
+    this.troi = new THREE.HemisphereLight(0xfff1dc, 0x8a7560, so.troi);
     this.scene.add(this.troi);
 
-    // "Nắng chiều": đặt phía NAM (z dương, phía cửa sổ) và cao, chiếu chếch
-    // vào trong nhà — mô phỏng ánh nắng xiên qua cửa sổ lớn buổi chiều.
     this.nang = new THREE.DirectionalLight(so.nangMau, so.nang);
-    // Hạ thấp + đẩy chéo: mặt trời chiều xuống thấp thì VỆT NẮNG qua cửa sổ
-    // dài hẳn ra giữa sàn (bản D1 đèn cao 7 m gần như thẳng đứng, bóng ngắn
-    // cụt — đúng chỗ Boss kêu "thô").
-    this.nang.position.set(-4.5, 4.6, 11.0);
+    this.nang.position.set(9, 14, 10);
     this.nang.castShadow = true;
     /*
-     * BÓNG CỐ ĐỊNH 1024 (Boss 27/10: "đừng đòi GPU lớn"; kiểm độc lập PR #51
-     * vòng 1 chặn đúng chỗ này). Bản cũ gate theo `maxTextureSize >= 8192` —
-     * vô dụng: swiftshader cũng báo 8192, GPU tích hợp báo 16384, nên nhánh
-     * 2048 LUÔN trúng và 1024 không bao giờ chạy.
-     *
-     * Chỉ nâng lên 2048 khi ĐO THẬT đạt ≥ 50 FPS liên tục 5 s (xem
-     * `theoDoiFps`) — tức máy thừa sức, không phải vì bảng thông số.
+     * BÓNG CỐ ĐỊNH 1024 (Boss 27/10: "đừng đòi GPU lớn"; PR #51 vòng 1). Chỉ
+     * nâng lên 2048 khi ĐO THẬT đạt ≥ 50 FPS liên tục 5 s (xem `theoDoiFps`).
      */
     this.nang.shadow.mapSize.set(BONG_CO_BAN, BONG_CO_BAN);
-    // Khoảng near/far PHẢI bó sát cảnh: phòng giờ chỉ 14×10 m (không còn
-    // 16×16), đèn cách điểm xa nhất trong nhà ~18 m → 5…22 là vừa đủ, không
-    // loãng depth (bài học 25/10, vẫn đúng với khung nhà mới).
-    this.nang.shadow.camera.near = 3;
-    this.nang.shadow.camera.far = 26;
-    const nuaRong = KICH_THUOC_PHONG / 2 + 1.5;
-    const nuaSau = KICH_THUOC_SAU / 2 + 1.5;
-    this.nang.shadow.camera.left = -nuaRong;
-    this.nang.shadow.camera.right = nuaRong;
-    this.nang.shadow.camera.top = nuaSau;
-    this.nang.shadow.camera.bottom = -nuaSau;
-    this.nang.shadow.bias = -0.0015;
-    this.nang.shadow.normalBias = 0.05;
-    this.nang.shadow.radius = 2.5;
-    this.scene.add(this.nang);
-
-    this.vien = new THREE.DirectionalLight(MAU_CAM, so.vien);
-    this.vien.position.set(0, 4.2, -5.0);
-    this.scene.add(this.vien);
-
-    /*
-     * Hai đèn ĐIỂM ẤM (D1b) — đúng hai chụp đèn có thật trong cảnh: đèn sàn
-     * phòng khách và đèn bàn làm việc. Tầm ngắn (4 m), cường độ thấp, KHÔNG
-     * đổ bóng: chúng chỉ để góc phòng xa cửa sổ không chết tối, không phải để
-     * chói. Hai point light không bóng gần như miễn phí trên GPU yếu.
-     */
-    this.denAm = [
-      // F1 (#56) → J1 (#78): hai chụp đèn CÓ THẬT trong cảnh, toạ độ luôn đi
-      // theo `bo-cuc.ts` — đèn sàn `den-san` đã về sát tường tây (−6,5; 0) và
-      // đèn bàn `den-ban` theo bàn làm việc nhích sát tường bắc (3,0; −4,35).
-      // Chúng là MỘT chụp đèn, không phải hai thứ: lệch là thấy ngay vệt sáng
-      // không có nguồn (đúng lỗi D1b chiếu vào giữa hành lang trống).
-      denDiem(MAU_DEN_AM, 6.5, 4.2, -6.5, 1.0, 0),
-      denDiem(MAU_DEN_AM, 5.0, 3.6, 3.0, 0.8, -4.35),
-    ];
-    for (const d of this.denAm) this.scene.add(d);
-
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    // 0.25: môi trường chỉ để mép khối không đen tịt. Bản thử 0.42 cộng với
-    // hemisphere 1.1 làm cảnh bệt như phủ sương sữa — mất hết khối.
-    this.scene.environmentIntensity = 0.25;
-
-    // H1 — dựng cảnh và `sceneLight('sang')` phải cho ra ĐÚNG MỘT trạng thái:
-    // chốt cả exposure + nền ở đây theo cùng bảng mà `sceneLight` đọc.
-    this.renderer.toneMappingExposure = so.exposure;
-    this.denPreset = 'sang';
-  }
-
-  /**
-   * BẢN THỬ LÀNG — ánh sáng HOÀNG HÔN (ảnh tham chiếu): trời tím-lam, nắng thấp
-   * cam từ tây, đèn lồng là nguồn sáng ấm chính. Chỉ 4 đèn điểm thật (đèn lồng
-   * gần sân giữa nhất), không đổ bóng; còn lại là vật liệu tự sáng + quầng.
-   */
-  /**
-   * VĂN PHÒNG — chiều muộn ấm: trời sáng đều, nắng ấm chéo từ đông-nam đổ bóng
-   * mềm, đèn sàn là điểm ấm. Nền tối cho "mô hình" nổi khối như ảnh diorama.
-   */
-  private apAnhSangVanPhong(den: THREE.Vector3[]): void {
-    this.scene.background = new THREE.Color(MAU_NEN_VP);
-    this.scene.fog = null;
-    this.troi.color.set(0xfff1dc);
-    this.troi.groundColor.set(0x8a7560);
-    this.troi.intensity = 1.05;
-    this.nang.color.set(0xffd9ad);
-    this.nang.intensity = 1.5;
-    this.nang.position.set(9, 14, 10);
+    // khung bóng BÓ SÁT sàn 24 × 17 m (bài học 25/10: near/far rộng là depth loãng)
     const c = this.nang.shadow.camera;
     c.left = -16;
     c.right = 16;
@@ -650,92 +505,32 @@ export class World implements StageWorld {
     c.bottom = -14;
     c.near = 2;
     c.far = 45;
-    c.updateProjectionMatrix();
+    this.nang.shadow.bias = -0.0015;
+    this.nang.shadow.normalBias = 0.05;
     this.nang.shadow.radius = 3;
-    this.vien.color.set(0xb8c8ff);
-    this.vien.intensity = 0.3;
-    this.vien.position.set(-8, 7, 6);
-    this.scene.environmentIntensity = 0.3;
-    for (const d of this.denAm) this.scene.remove(d);
-    this.denAm = den.slice(0, 4).map((p) => denDiem(0xffb36a, 3.5, 5, p.x, p.y, p.z));
-    for (const d of this.denAm) this.scene.add(d);
-    this.renderer.toneMappingExposure = 0.95;
-    this.controls.maxDistance = 45;
-    this.controls.maxPolarAngle = Math.PI * 0.42;
-    this.controls.enablePan = true;
-    this.kepMay = false;
-    this.datGocMay();
-  }
+    this.scene.add(this.nang);
 
-  private apAnhSangLang(denLong: THREE.Vector3[]): void {
-    this.scene.background = new THREE.Color(MAU_NEN_LANG);
-    this.scene.fog = new THREE.FogExp2(MAU_NEN_LANG, 0.018);
-    this.troi.color.set(0x9fb0e0);
-    this.troi.groundColor.set(0x5a4a48);
-    this.troi.intensity = 0.95;
-    this.nang.color.set(0xffc49a);
-    this.nang.intensity = 0.75;
-    this.nang.position.set(-14, 9, 7);
-    const c = this.nang.shadow.camera;
-    c.left = -18;
-    c.right = 18;
-    c.top = 16;
-    c.bottom = -16;
-    c.near = 2;
-    c.far = 45;
-    c.updateProjectionMatrix();
-    this.vien.color.set(0x8a9ad8);
-    this.vien.intensity = 0.35;
-    this.vien.position.set(6, 8, -12);
-    this.scene.environmentIntensity = 0.18;
-    for (const d of this.denAm) this.scene.remove(d);
-    const gan = [...denLong].sort((a, b) => a.length() - b.length()).slice(0, 4);
-    this.denAm = gan.map((p) => denDiem(0xffa84a, 6, 6, p.x, p.y, p.z));
-    for (const d of this.denAm) this.scene.add(d);
-    this.renderer.toneMappingExposure = 0.92;
-    this.controls.maxDistance = 45;
-    this.controls.maxPolarAngle = Math.PI * 0.42;
-    this.controls.enablePan = true;
-    this.kepMay = false;
-    this.datGocMay();
+    this.vien = new THREE.DirectionalLight(0xb8c8ff, so.vien);
+    this.vien.position.set(-8, 7, 6);
+    this.scene.add(this.vien);
+
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.3;
+
+    this.renderer.toneMappingExposure = so.exposure;
+    this.denPreset = 'sang';
   }
 
   /** Nạp phòng + nhân vật mặc định + 2 màn hình (máy tính + TV). Gọi một lần lúc khởi động. */
-  async napCanh(tienTrinh?: (chu: string) => void): Promise<{ dungKenney: boolean }> {
-    tienTrinh?.(this.canh === 'van-phong' ? 'Đang dựng văn phòng…' : this.canh === 'lang' ? 'Đang dựng làng…' : 'Đang dựng căn nhà…');
-    const phong =
-      this.canh === 'van-phong'
-        ? await dungVanPhong(this.scene)
-        : this.canh === 'lang'
-          ? await dungLang(this.scene)
-          : await dungPhong(this.scene);
-    if (this.canh === 'van-phong') {
-      this.apAnhSangVanPhong((phong as Lang).denLong);
-      // va chạm + place theo VĂN PHÒNG (một chỗ cho steer/moveTo/sit — xem `bo-cuc.datCanhChan`)
-      const vp = phong as Lang;
-      if (vp.vatCan && vp.khungSan) datCanhChan({ hop: vp.vatCan, ...vp.khungSan });
-      datPlacesCanh(PLACES_VAN_PHONG);
-    } else {
-      datCanhChan(null);
-      datPlacesCanh(null);
-    }
-    if (this.canh === 'lang') {
-      this.apAnhSangLang((phong as Lang).denLong);
-      // dân làng trang trí (tĩnh, không phải actor): làm vườn, bưng rổ — như ảnh mẫu
-      const danLang: Array<[number, number, number, number, 'dung-noi' | 'bung-coc' | null]> = [
-        [-5.6, -0.4, 0.4, 0, null],
-        [-8.2, 0.3, -2.6, 0, 'dung-noi'],
-        [-4.6, 3.6, 2.6, 1, 'bung-coc'],
-        [3.6, 2.9, -0.6, 2, 'dung-noi'],
-      ];
-      for (const [x, z, quay, i, tuThe] of danLang) {
-        const bb = new BupBe(DAN_LANG[i]!);
-        bb.goc.position.set(x, 0, z);
-        bb.goc.rotation.y = quay;
-        if (tuThe) bb.tuThe(tuThe);
-        this.scene.add(bb.goc);
-      }
-    }
+  async napCanh(tienTrinh?: (chu: string) => void): Promise<void> {
+    tienTrinh?.('Đang dựng văn phòng…');
+    const phong: Canh = await dungVanPhong(this.scene);
+    // va chạm theo cảnh (một chỗ cho steer/moveTo/sit — xem `bo-cuc.datCanhChan`)
+    datCanhChan({ hop: phong.vatCan, ...phong.khungSan });
+    // đèn sàn ấm: tối đa 4 đèn điểm thật, không đổ bóng (L-42)
+    this.denAm = phong.denLong.slice(0, 4).map((p) => denDiem(0xffb36a, 3.5, 5, p.x, p.y, p.z));
+    for (const d of this.denAm) this.scene.add(d);
     this.nocKhoi = phong.noc;
     this.dayKhoi = phong.day;
     this.matNgoiKhoi = phong.matNgoi;
@@ -762,10 +557,8 @@ export class World implements StageWorld {
     this.actorLookAt(GEN.id, 'ban-dieu-khien');
 
     tienTrinh?.('Đang dựng màn hình…');
-    // Bản thử làng: màn hình máy tính/TV neo vào bàn/kệ của CĂN NHÀ — ngoài sân làng không có chỗ đặt.
-    if (this.canh !== 'lang') for (const id of Object.keys(this.manHinhMacDinh())) await this.screenSpawn({ id });
+    for (const id of Object.keys(MAC_DINH_MAN_HINH)) await this.screenSpawn({ id });
 
-    return { dungKenney: phong.dungKenney };
   }
 
   /* ----------------------------------------------------------- vòng lặp */
@@ -1069,7 +862,7 @@ export class World implements StageWorld {
    * do tính bằng phép slab thay vì `Raycaster`.
    */
   private kepMayTrongNha(): void {
-    if (!this.kepMay || this.dioRama) return;
+    if (!this.kepMay) return;
     const tam = this.controls.target;
     const [tx, ty, tz] = kepTrongHop(tam.x, tam.y, tam.z, HOP_MAY);
     /*
@@ -1300,8 +1093,7 @@ export class World implements StageWorld {
   private datGocMay(): void {
     const tyLe = window.innerWidth / window.innerHeight;
     const t = THREE.MathUtils.clamp((1.3 - tyLe) / (1.3 - 0.6), 0, 1);
-    const [ngang, doc] =
-      this.canh === 'van-phong' ? [MAY_VP, MAY_VP_DOC] : this.canh === 'lang' ? [MAY_LANG, MAY_LANG_DOC] : [MAY_NGANG, MAY_DOC];
+    const [ngang, doc] = [MAY_NGANG, MAY_DOC];
     this.camera.fov = THREE.MathUtils.lerp(ngang.fov, doc.fov, t);
     this.camera.aspect = tyLe;
     this.camera.updateProjectionMatrix();
@@ -1452,12 +1244,12 @@ export class World implements StageWorld {
     nv.goc.position.copy(v);
     nv.goc.rotation.y = ((place?.facing ?? 20) * Math.PI) / 180;
     this.actors.set(p.id, nv);
-    if (this.dioRama) {
+    {
       // ẩn TỪNG mesh của VRM (không ẩn cả `vrm.scene`): xương vẫn chạy cho bộ não hành động
       nv.vrm.scene.traverse((o) => {
         if ((o as THREE.Mesh).isMesh) o.visible = false;
       });
-      const bb = new BupBe(KIEU_NHAN_VAT[p.id] ?? DAN_LANG[this.bupBe.size % DAN_LANG.length]!);
+      const bb = new BupBe(KIEU_NHAN_VAT[p.id] ?? NHAN_VIEN[this.bupBe.size % NHAN_VIEN.length]!);
       this.scene.add(bb.goc);
       this.bupBe.set(p.id, bb);
     }
@@ -1554,9 +1346,8 @@ export class World implements StageWorld {
     this.nv(id).datNgheNgong(bat, cauHoi);
   }
 
-  /** Đường tránh vật cản (A*) từ chỗ actor đang đứng tới `v` — chỉ ở cảnh diorama (văn phòng/làng). */
+  /** Đường tránh vật cản (A*) từ chỗ actor đang đứng tới `v`. */
   private duongToi(nv: NhanVat, v: THREE.Vector3): Array<[number, number]> | undefined {
-    if (!this.dioRama) return undefined;
     const d = timDuong(nv.goc.position.x, nv.goc.position.z, v.x, v.z, 0.34);
     // A* chừa lề rộng hơn thân; chặng CUỐI ngắn thì đi thẳng vào đúng đích (vd ghế
     // sát bàn họp) — va chạm thường của `buocDiToi` vẫn chặn nếu thật sự kẹt.
@@ -1911,8 +1702,7 @@ export class World implements StageWorld {
     }
     if (name === 'toan-canh') {
       this.bossDaXoay = false;
-      const goc = this.canh === 'van-phong' ? MAY_VP : this.canh === 'lang' ? MAY_LANG : MAY_NGANG;
-      this.tamTuBay = { vt: goc.vt.clone(), tam: goc.tam.clone() };
+      this.tamTuBay = { vt: MAY_NGANG.vt.clone(), tam: MAY_NGANG.tam.clone() };
       return;
     }
     if (name === 'truoc-mat') {
@@ -1954,53 +1744,14 @@ export class World implements StageWorld {
       };
       return;
     }
-    /**
-     * D1 (Issue #43) — 4 góc máy căn nhà khai TAY (không rơi vào
-     * `cameraFocus` chung): offset chéo cố định của `cameraFocus` cộng vào
-     * mục tiêu, mà `cua-so`/`bep` nằm sát tường/cửa sổ nam — offset đó đẩy
-     * camera xuyên ra ngoài tường. Toạ độ chọn tay, đứng trong nhà, nhìn
-     * đúng hướng nội thất của khu đó.
-     */
     /*
-     * F1 (#56): 3 khung khu đóng lại cho ĐÚNG cụm mới (`docs/f1/so-do.md`).
-     * Bản D1b nhắm vào toạ độ D1: khung `bep` ngắm (4,5; 2,6) — nay là giữa
-     * cụm bàn ăn, bếp đã sang góc đông-bắc; khung `ban-lam-viec` ngắm x 4,3
-     * trong khi bàn đã dời về x 3.
+     * 4 góc máy KHU (tên giữ từ căn nhà cũ — `PRESET_MAY` là hợp đồng với
+     * agent): nhìn chéo từ trên xuống vào đúng khu văn phòng tương ứng.
      */
-    if (name === 'phong-khach') {
-      // J1 (#78): cụm đã về góc TÂY-NAM (sofa tường tây · kệ TV tường nam) —
-      // đứng chéo đông-bắc của cụm, nhìn vào góc: thấy sofa + bàn trà + kệ TV.
+    const khu = GOC_KHU[name];
+    if (khu) {
       this.bossDaXoay = true;
-      this.tamTuBay = {
-        vt: new THREE.Vector3(-1.8, 1.8, 0.6),
-        tam: new THREE.Vector3(-6.0, 0.7, 3.6),
-      };
-      return;
-    }
-    if (name === 'ban-lam-viec') {
-      // kệ sách + bàn + ghế + bảng ghim trong một khung
-      this.bossDaXoay = true;
-      this.tamTuBay = {
-        vt: new THREE.Vector3(0.5, 1.7, -1.7),
-        tam: new THREE.Vector3(2.3, 1.0, -4.5),
-      };
-      return;
-    }
-    if (name === 'bep') {
-      // đứng trong lòng chữ L, nhìn chéo đông-bắc: thấy CẢ HAI nhánh + tủ lạnh
-      this.bossDaXoay = true;
-      this.tamTuBay = {
-        vt: new THREE.Vector3(4.0, 2.0, 1.1),
-        tam: new THREE.Vector3(6.3, 0.95, -3.3),
-      };
-      return;
-    }
-    if (name === 'cua-so') {
-      this.bossDaXoay = true;
-      this.tamTuBay = {
-        vt: new THREE.Vector3(-1.0, 1.45, 1.6),
-        tam: new THREE.Vector3(-1.0, 1.1, 4.8),
-      };
+      this.tamTuBay = { vt: khu.vt.clone(), tam: khu.tam.clone() };
       return;
     }
     this.cameraFocus(name, 3.4);
@@ -2008,16 +1759,12 @@ export class World implements StageWorld {
 
   /* ------------------------------------------------- A3: màn hình hologram */
 
-  /** Màn hình mặc định theo cảnh: văn phòng (bàn Nhi + màn phòng họp) hay căn nhà. */
-  private manHinhMacDinh(): Record<string, MacDinhManHinh> {
-    return this.canh === 'van-phong' ? MAN_HINH_VP : MAC_DINH_MAN_HINH;
-  }
 
   async screenSpawn(p: ThamSoSpawnScreen): Promise<ScreenSnapshot> {
     if (!p.id.trim()) throw new Error('"id" không được rỗng');
     if (this.screens.has(p.id)) throw new Error(`Màn hình "${p.id}" đã có`);
 
-    const mac = this.manHinhMacDinh()[p.id];
+    const mac = MAC_DINH_MAN_HINH[p.id];
     let pos: THREE.Vector3;
     let rotY: number;
     if (p.at !== undefined) {
@@ -2335,7 +2082,7 @@ export class World implements StageWorld {
     });
     this.actorIdleStyle(GEN.id, 'cham-chu');
     this.actorLookAt(GEN.id, 'ban-dieu-khien');
-    if (this.canh !== 'lang') for (const id of Object.keys(this.manHinhMacDinh())) await this.screenSpawn({ id });
+    for (const id of Object.keys(MAC_DINH_MAN_HINH)) await this.screenSpawn({ id });
   }
 
   /* -------------------------------------------------------------- describe */

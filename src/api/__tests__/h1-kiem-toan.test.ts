@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { buocDiToi, TOC_DO_STEER, heSoBam } from '../../stage/nhanvat';
-import { biChan, hopChan } from '../../stage/bo-cuc';
+import { biChan, datCanhChan, hopChanHienTai, SAN_MAC_DINH } from '../../stage/bo-cuc';
 import {
   dayTayMay,
   dichCamera,
@@ -219,8 +219,19 @@ describe('H1 mục 34 — bảng đèn một nguồn, bấm R không đổi đ�
 /* ================================= 3. actor.moveTo không xuyên nội thất */
 
 describe('H1 mục 38 + 39 — actor.moveTo đi qua va chạm', () => {
-  /** Hộp chắn của sofa trong `bo-cuc.ts`. */
-  const sofa = hopChan().find((h) => h.id === 'sofa')!;
+  /*
+   * Văn phòng đo hộp nội thất lúc dựng (cần three), nên test nạp một "sofa" +
+   * bàn trà tổng hợp qua đúng cửa `datCanhChan` mà `World` dùng.
+   */
+  datCanhChan({
+    hop: [
+      { id: 'sofa', x0: -1, x1: 0.6, z0: -7.6, z1: -6.6 },
+      { id: 'ban-tra', x0: -0.6, x1: 0.4, z0: -6.0, z1: -5.4 },
+    ],
+    ...SAN_MAC_DINH,
+  });
+  /** Hộp chắn của sofa. */
+  const sofa = hopChanHienTai().find((h) => h.id === 'sofa')!;
   /**
    * Làn tiếp cận: từ ĐÔNG dọc một làn z cố định đi về tây. Vật cản
    * đầu tiên trên đường đúng là mép đông của sofa.
@@ -294,7 +305,7 @@ describe('H1 mục 38 + 39 — actor.moveTo đi qua va chạm', () => {
   });
 
   it('bước/khung ở tốc độ trần nhỏ hơn nửa bề dày vật cản mỏng nhất', () => {
-    const mong = Math.min(...hopChan().map((h) => Math.min(h.x1 - h.x0, h.z1 - h.z0)));
+    const mong = Math.min(...hopChanHienTai().map((h) => Math.min(h.x1 - h.x0, h.z1 - h.z0)));
     // bước con của `buocDiToi` là 0,15 m — bất biến chống lọt xuyên
     expect(0.15).toBeLessThan(mong / 2);
     expect(TOC_DO_STEER / 60).toBeLessThan(mong / 2);
@@ -501,11 +512,14 @@ describe('H1 mục 14 + 15 — tay máy kẹp camera trong nhà', () => {
     expect(nguon).not.toContain("this.mayDich.set(p.x, 0, p.z).add(LECH_THEO_OWNER)");
   });
 
-  it('maxDistance theo kích thước nhà, không còn hằng 26 m của lab', () => {
+  it('maxDistance là MỘT hằng số dùng chung (văn phòng diorama: đủ ôm sàn 24 × 17 m)', () => {
     const nguon = readFileSync(new URL('../../stage/world.ts', import.meta.url), 'utf8');
-    expect(nguon).not.toContain('this.controls.maxDistance = 26');
-    expect(nguon).toContain('const MAY_XA_TOI_DA = Math.hypot(KICH_THUOC_PHONG, KICH_THUOC_SAU) / 2');
-    expect(Math.hypot(14, 10) / 2).toBeLessThan(9);
+    expect(nguon).toContain('this.controls.maxDistance = MAY_XA_TOI_DA');
+    const m = /const MAY_XA_TOI_DA = (\d+(?:\.\d+)?);/.exec(nguon);
+    expect(m).not.toBeNull();
+    // góc `toan-canh` cách tâm ~26 m: maxDistance phải lớn hơn, nhưng không vô hạn
+    expect(Number(m![1])).toBeGreaterThan(Math.hypot(11.1, 15.3, 18.3));
+    expect(Number(m![1])).toBeLessThanOrEqual(60);
   });
 });
 

@@ -215,15 +215,9 @@ window.stage = {
 
 async function khoiDong(): Promise<void> {
   try {
-    const { dungKenney } = await world.napCanh((chu) => {
+    await world.napCanh((chu) => {
       loadingText.textContent = chu;
     });
-    if (!dungKenney) {
-      console.info(
-        '[Gen-Stage] Chưa thấy model Kenney trong public/kenney/ — dùng nội thất tự dựng. ' +
-          'Chạy `bash scripts/fetch-assets.sh` để tải bản CC0.',
-      );
-    }
   } catch (e) {
     console.error('[Gen-Stage] Không nạp được cảnh:', e);
     loadingText.textContent =

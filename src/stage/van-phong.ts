@@ -17,10 +17,8 @@
  */
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { gopTinh } from './phong';
-import { vanBongDat, type Lang } from './lang';
+import { gopTinh, vanBongDat, type Canh } from './canh-chung';
 import { BupBe, NHAN_VIEN } from './bup-be';
-import type { MacDinhManHinh } from './man-hinh';
 import type { HopChan } from './bo-cuc';
 
 /* ---------------------------------------------------------------- kích thước */
@@ -543,7 +541,7 @@ function khuPhongHop(b: Bo): void {
   for (let i = 0; i < 4; i += 1) hop(g, 0.22, 0.006, 0.3, vl(0xfbfaf6, 0.7), -1.2 + i * 0.8, CAO_BAN + 0.04, 0.3 * (i % 2 ? 1 : -1), 0.002, false);
   // màn trình chiếu đứng ở đầu bàn
   hop(g, 0.08, 1.0, 0.08, vl(0x2f3138, 0.4), 2.35, 0.5, 0, 0.02);
-  // khung màn trình chiếu — tấm màn THẬT là `tivi` của sân khấu (`MAN_HINH_VP`)
+  // khung màn trình chiếu — tấm màn THẬT là `tivi` của sân khấu (`MAC_DINH_MAN_HINH`)
   hop(g, 0.08, 0.95, 1.6, vl(0x2a2d34, 0.4), 2.4, 1.35, 0, 0.02);
   const tr = new BupBe(NHAN_VIEN[7]!);
   tr.tuThe('dung-noi');
@@ -692,7 +690,7 @@ function voToaNha(b: Bo): void {
 
 /* ---------------------------------------------------------------- dựng */
 
-export async function dungVanPhong(scene: THREE.Scene): Promise<Lang> {
+export async function dungVanPhong(scene: THREE.Scene): Promise<Canh> {
   const nhom = new THREE.Group();
   nhom.name = 'van-phong';
   const b: Bo = {
@@ -761,7 +759,6 @@ export async function dungVanPhong(scene: THREE.Scene): Promise<Lang> {
   for (const c of b.chan) hopKhoi.set(c.id, { min: c.min, max: c.max });
   return {
     nhom,
-    dungKenney: false,
     gop: { truoc, sau: gopKq.sau },
     noc: new Map([['ban-nhi', CAO_BAN + 0.025]]),
     day: new Map(),
@@ -772,14 +769,3 @@ export async function dungVanPhong(scene: THREE.Scene): Promise<Lang> {
     khungSan: { ...SAN_VP },
   };
 }
-
-/**
- * Màn hình mặc định của văn phòng — CÙNG ID với căn nhà (`may-tinh`, `tivi`) nên
- * não/`MAN_HINH_THAT`/`module.demo` không phải đổi gì: `may-tinh` đứng trên bàn
- * Nhi (mặt nhìn +Z về phía Nhi đứng), `tivi` là màn trình chiếu Phòng họp
- * (nhìn −X vào bàn họp).
- */
-export const MAN_HINH_VP: Record<string, MacDinhManHinh> = {
-  'may-tinh': { pos: new THREE.Vector3(2.6, CAO_BAN + 0.29, -4.42), rotY: 0, size: 0.5, doTren: 'ban-nhi' },
-  tivi: { pos: new THREE.Vector3(9.94, 1.35, 0.3), rotY: -Math.PI / 2, size: 1.5 },
-};
