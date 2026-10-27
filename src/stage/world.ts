@@ -39,6 +39,7 @@ import {
 } from './phong';
 import { chonCanh, dungLang, type Lang } from './lang';
 import { BupBe, DAN_LANG, KIEU_NHAN_VAT } from './bup-be';
+import { dungVanPhong } from './van-phong';
 import { DoFps } from './do-fps';
 import { DT_TOI_DA_NEN, nenVeKhung, TY_LE_PIXEL_NEN, type RenderMode } from './che-do-nen';
 import { heSoBam, NhanVat, TOC_DO_DI, uocThoiLuongNoi } from './nhanvat';
@@ -86,10 +87,14 @@ const MAU_NEN_LAB = 0xf0ddc0;
  * từ đông-nam, fov hẹp cho gần kiểu nhìn isometric của ảnh tham chiếu. Khung
  * dọc (panel VS Code hẹp) lùi xa hơn để vẫn ôm sân giữa.
  */
-const MAY_LANG = { vt: new THREE.Vector3(8.2, 13.2, 16.2), tam: new THREE.Vector3(-0.6, 0.4, -2.2), fov: 34 };
+const MAY_LANG = { vt: new THREE.Vector3(6.4, 10.6, 12.8), tam: new THREE.Vector3(-1.2, 0.3, -2.4), fov: 34 };
 const MAY_LANG_DOC = { vt: new THREE.Vector3(12.5, 21, 26), tam: new THREE.Vector3(-0.5, 0.4, -1.8), fov: 44 };
 /** Nền + sương hoàng hôn tím ấm của làng. */
 const MAU_NEN_LANG = 0x4d5170;
+/** VĂN PHÒNG (mặc định từ 27/10): diorama nhìn chéo từ đông-nam, ôm trọn sàn 24 × 17 m. */
+const MAY_VP = { vt: new THREE.Vector3(11.5, 15.5, 18.5), tam: new THREE.Vector3(0.4, 0.2, 0.2), fov: 36 };
+const MAY_VP_DOC = { vt: new THREE.Vector3(14, 22, 25), tam: new THREE.Vector3(0.4, 0.2, 0.2), fov: 46 };
+const MAU_NEN_VP = 0x2d3242;
 
 /** Một bộ số đèn của một preset — xem `PRESET_DEN_SO`. */
 export interface SoDen {
@@ -372,7 +377,11 @@ export class World implements StageWorld {
   /** C0 (#28) — góc máy hiện tại, để `stage.describe().camera.preset` nói thật. */
   private mayPreset = 'toan-canh';
   /** Cảnh đang dựng: căn nhà mặc định hay bản thử làng (`?canh=lang`). */
-  private canh: 'nha' | 'lang' = chonCanh();
+  private canh: 'nha' | 'lang' | 'van-phong' = chonCanh();
+  /** Cảnh diorama búp bê (làng hoặc văn phòng): ẩn VRM, máy quay cao, không kẹp máy trong nhà. */
+  private get dioRama(): boolean {
+    return this.canh !== 'nha';
+  }
   /**
    * LỚP HÌNH búp bê hanbok của từng actor (làng). VRM vẫn chạy bên dưới (ẩn) để
    * giữ nguyên bộ não hành động; búp bê chép vị trí + hướng mỗi khung.
@@ -618,6 +627,43 @@ export class World implements StageWorld {
    * cam từ tây, đèn lồng là nguồn sáng ấm chính. Chỉ 4 đèn điểm thật (đèn lồng
    * gần sân giữa nhất), không đổ bóng; còn lại là vật liệu tự sáng + quầng.
    */
+  /**
+   * VĂN PHÒNG — chiều muộn ấm: trời sáng đều, nắng ấm chéo từ đông-nam đổ bóng
+   * mềm, đèn sàn là điểm ấm. Nền tối cho "mô hình" nổi khối như ảnh diorama.
+   */
+  private apAnhSangVanPhong(den: THREE.Vector3[]): void {
+    this.scene.background = new THREE.Color(MAU_NEN_VP);
+    this.scene.fog = null;
+    this.troi.color.set(0xfff1dc);
+    this.troi.groundColor.set(0x8a7560);
+    this.troi.intensity = 1.05;
+    this.nang.color.set(0xffd9ad);
+    this.nang.intensity = 1.5;
+    this.nang.position.set(9, 14, 10);
+    const c = this.nang.shadow.camera;
+    c.left = -16;
+    c.right = 16;
+    c.top = 14;
+    c.bottom = -14;
+    c.near = 2;
+    c.far = 45;
+    c.updateProjectionMatrix();
+    this.nang.shadow.radius = 3;
+    this.vien.color.set(0xb8c8ff);
+    this.vien.intensity = 0.3;
+    this.vien.position.set(-8, 7, 6);
+    this.scene.environmentIntensity = 0.3;
+    for (const d of this.denAm) this.scene.remove(d);
+    this.denAm = den.slice(0, 4).map((p) => denDiem(0xffb36a, 3.5, 5, p.x, p.y, p.z));
+    for (const d of this.denAm) this.scene.add(d);
+    this.renderer.toneMappingExposure = 0.95;
+    this.controls.maxDistance = 45;
+    this.controls.maxPolarAngle = Math.PI * 0.42;
+    this.controls.enablePan = true;
+    this.kepMay = false;
+    this.datGocMay();
+  }
+
   private apAnhSangLang(denLong: THREE.Vector3[]): void {
     this.scene.background = new THREE.Color(MAU_NEN_LANG);
     this.scene.fog = new THREE.FogExp2(MAU_NEN_LANG, 0.018);
@@ -653,16 +699,22 @@ export class World implements StageWorld {
 
   /** Nạp phòng + nhân vật mặc định + 2 màn hình (máy tính + TV). Gọi một lần lúc khởi động. */
   async napCanh(tienTrinh?: (chu: string) => void): Promise<{ dungKenney: boolean }> {
-    tienTrinh?.(this.canh === 'lang' ? 'Đang dựng làng…' : 'Đang dựng căn nhà…');
-    const phong = this.canh === 'lang' ? await dungLang(this.scene) : await dungPhong(this.scene);
+    tienTrinh?.(this.canh === 'van-phong' ? 'Đang dựng văn phòng…' : this.canh === 'lang' ? 'Đang dựng làng…' : 'Đang dựng căn nhà…');
+    const phong =
+      this.canh === 'van-phong'
+        ? await dungVanPhong(this.scene)
+        : this.canh === 'lang'
+          ? await dungLang(this.scene)
+          : await dungPhong(this.scene);
+    if (this.canh === 'van-phong') this.apAnhSangVanPhong((phong as Lang).denLong);
     if (this.canh === 'lang') {
       this.apAnhSangLang((phong as Lang).denLong);
       // dân làng trang trí (tĩnh, không phải actor): làm vườn, bưng rổ — như ảnh mẫu
-      const danLang: Array<[number, number, number, number, 'xom' | 'bung-ro' | null]> = [
+      const danLang: Array<[number, number, number, number, 'dung-noi' | 'bung-coc' | null]> = [
         [-5.6, -0.4, 0.4, 0, null],
-        [-8.2, 0.3, -2.6, 0, 'xom'],
-        [-4.6, 3.6, 2.6, 1, 'bung-ro'],
-        [3.6, 2.9, -0.6, 2, 'xom'],
+        [-8.2, 0.3, -2.6, 0, 'dung-noi'],
+        [-4.6, 3.6, 2.6, 1, 'bung-coc'],
+        [3.6, 2.9, -0.6, 2, 'dung-noi'],
       ];
       for (const [x, z, quay, i, tuThe] of danLang) {
         const bb = new BupBe(DAN_LANG[i]!);
@@ -699,7 +751,7 @@ export class World implements StageWorld {
 
     tienTrinh?.('Đang dựng màn hình…');
     // Bản thử làng: màn hình máy tính/TV neo vào bàn/kệ của CĂN NHÀ — ngoài sân làng không có chỗ đặt.
-    if (this.canh !== 'lang') for (const id of Object.keys(MAC_DINH_MAN_HINH)) await this.screenSpawn({ id });
+    if (!this.dioRama) for (const id of Object.keys(MAC_DINH_MAN_HINH)) await this.screenSpawn({ id });
 
     return { dungKenney: phong.dungKenney };
   }
@@ -999,7 +1051,7 @@ export class World implements StageWorld {
    * do tính bằng phép slab thay vì `Raycaster`.
    */
   private kepMayTrongNha(): void {
-    if (!this.kepMay || this.canh === 'lang') return;
+    if (!this.kepMay || this.dioRama) return;
     const tam = this.controls.target;
     const [tx, ty, tz] = kepTrongHop(tam.x, tam.y, tam.z, HOP_MAY);
     /*
@@ -1230,7 +1282,8 @@ export class World implements StageWorld {
   private datGocMay(): void {
     const tyLe = window.innerWidth / window.innerHeight;
     const t = THREE.MathUtils.clamp((1.3 - tyLe) / (1.3 - 0.6), 0, 1);
-    const [ngang, doc] = this.canh === 'lang' ? [MAY_LANG, MAY_LANG_DOC] : [MAY_NGANG, MAY_DOC];
+    const [ngang, doc] =
+      this.canh === 'van-phong' ? [MAY_VP, MAY_VP_DOC] : this.canh === 'lang' ? [MAY_LANG, MAY_LANG_DOC] : [MAY_NGANG, MAY_DOC];
     this.camera.fov = THREE.MathUtils.lerp(ngang.fov, doc.fov, t);
     this.camera.aspect = tyLe;
     this.camera.updateProjectionMatrix();
@@ -1381,7 +1434,7 @@ export class World implements StageWorld {
     nv.goc.position.copy(v);
     nv.goc.rotation.y = ((place?.facing ?? 20) * Math.PI) / 180;
     this.actors.set(p.id, nv);
-    if (this.canh === 'lang') {
+    if (this.dioRama) {
       nv.vrm.scene.visible = false;
       const bb = new BupBe(KIEU_NHAN_VAT[p.id] ?? DAN_LANG[this.bupBe.size % DAN_LANG.length]!);
       this.scene.add(bb.goc);
@@ -1826,7 +1879,7 @@ export class World implements StageWorld {
     }
     if (name === 'toan-canh') {
       this.bossDaXoay = false;
-      const goc = this.canh === 'lang' ? MAY_LANG : MAY_NGANG;
+      const goc = this.canh === 'van-phong' ? MAY_VP : this.canh === 'lang' ? MAY_LANG : MAY_NGANG;
       this.tamTuBay = { vt: goc.vt.clone(), tam: goc.tam.clone() };
       return;
     }

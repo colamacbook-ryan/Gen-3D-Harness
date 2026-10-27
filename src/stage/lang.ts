@@ -86,6 +86,60 @@ function vanNgoi(): THREE.CanvasTexture {
   return texture(c);
 }
 
+/**
+ * PHÁP TUYẾN của hàng ngói tròn — cùng khổ với `vanNgoi()` (64 × 128, một cột =
+ * một hàng ngói). Ánh sáng hoàng hôn quét ngang làm mỗi hàng ngói có sống sáng /
+ * rãnh tối như ảnh mẫu, mà hình học vẫn là một mặt cong trơn (không thêm đỉnh).
+ */
+function phapNgoi(): THREE.CanvasTexture {
+  const [c, g] = canvas(64, 128);
+  const img = g.createImageData(64, 128);
+  for (let y = 0; y < 128; y += 1) {
+    for (let x = 0; x < 64; x += 1) {
+      let nx = 0;
+      let ny = 0;
+      const t = (x - 32) / 26;
+      if (Math.abs(t) < 1) nx = t * 0.9;
+      // gờ chồng mí giữa hai viên ngói (y 60–68): nghiêng xuống dốc
+      if (y >= 60 && y < 68) ny = -0.55;
+      const nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
+      const i = (y * 64 + x) * 4;
+      img.data[i] = Math.round((nx * 0.5 + 0.5) * 255);
+      img.data[i + 1] = Math.round((ny * 0.5 + 0.5) * 255);
+      img.data[i + 2] = Math.round(nz * 255);
+      img.data[i + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  const tx = new THREE.CanvasTexture(c);
+  tx.wrapS = tx.wrapT = THREE.RepeatWrapping;
+  return tx;
+}
+
+/** Vết sáng tròn mềm (dùng cho VŨNG SÁNG đèn lồng trên mặt đất). */
+function vanVungSang(): THREE.CanvasTexture {
+  const [c, g] = canvas(128, 128);
+  const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(255,255,255,1)');
+  gr.addColorStop(0.45, 'rgba(255,255,255,0.45)');
+  gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 128, 128);
+  return texture(c, false);
+}
+
+/** Bóng tiếp xúc: vệt tối mềm dưới chân đồ vật — "neo" vật xuống đất (ảnh mẫu rất rõ). */
+export function vanBongDat(): THREE.CanvasTexture {
+  const [c, g] = canvas(64, 64);
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(0,0,0,0.75)');
+  gr.addColorStop(0.55, 'rgba(0,0,0,0.35)');
+  gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 64, 64);
+  return texture(c, false);
+}
+
 /** Đá hộc xếp: viên tròn cạnh, xám ấm, vữa tối. */
 function vanDa(hat = 7): THREE.CanvasTexture {
   const [c, g] = canvas(256, 256);
@@ -114,7 +168,7 @@ function vanDat(): THREE.CanvasTexture {
   const [c, g] = canvas(512, 512);
   const r = taoNgauNhien(11);
   // ĐẤT NỆN MỊN be-xám (ảnh mẫu) — loang mềm thay cho lấm tấm (lượt chụp 1 trông như sỏi)
-  g.fillStyle = '#cdbfa8';
+  g.fillStyle = '#d4c3a6';
   g.fillRect(0, 0, 512, 512);
   for (let i = 0; i < 90; i += 1) {
     const x = r() * 512;
@@ -122,7 +176,7 @@ function vanDat(): THREE.CanvasTexture {
     const rr = 30 + r() * 90;
     const gr = g.createRadialGradient(x, y, 0, x, y, rr);
     const sang = r() < 0.5;
-    gr.addColorStop(0, sang ? 'rgba(235,225,205,0.22)' : 'rgba(160,140,115,0.14)');
+    gr.addColorStop(0, sang ? 'rgba(240,228,205,0.14)' : 'rgba(165,140,110,0.08)');
     gr.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = gr;
     // vẽ cả 8 bản sao quanh ô: texture lặp lại thì vết loang nối liền, không lộ đường ghép ô
@@ -201,7 +255,7 @@ function taoVatLieu() {
   const std = (o: THREE.MeshStandardMaterialParameters) =>
     new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0, ...o });
   return {
-    ngoi: std({ map: ngoiTex, roughness: 0.6, side: THREE.DoubleSide }),
+    ngoi: std({ map: ngoiTex, normalMap: phapNgoi(), normalScale: new THREE.Vector2(1.4, 1.4), roughness: 0.5, side: THREE.DoubleSide }),
     ngoiNoc: std({ color: MAU.ngoiNoc, roughness: 0.6 }),
     go: std({ color: MAU.go }),
     goSang: std({ color: MAU.goSang }),
@@ -233,6 +287,15 @@ function taoVatLieu() {
     cu: std({ color: MAU.cu, roughness: 0.7 }),
     co: std({ color: MAU.co, roughness: 1 }),
     vo: std({ color: 0x6b4a36 }),
+    vungSang: new THREE.MeshBasicMaterial({
+      map: vanVungSang(),
+      color: 0xffa24a,
+      transparent: true,
+      opacity: 0.5,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }),
+    bongDat: new THREE.MeshBasicMaterial({ map: vanBongDat(), transparent: true, opacity: 0.55, depthWrite: false, color: 0x000000 }),
   };
 }
 
@@ -350,6 +413,51 @@ interface BoDung {
   den: THREE.Vector3[];
   /** Hộp chắn (đế nhà, tường) — phơi ra để sau này lái nhân vật không xuyên. */
   chan: Array<{ id: string; min: [number, number, number]; max: [number, number, number] }>;
+  /** Tâm các vũng sáng hắt xuống đất (đèn lồng + cửa sáng đèn), toạ độ thế giới. */
+  vung: Array<{ x: number; z: number; r: number }>;
+}
+
+/** Vệt bóng tiếp xúc trên mặt đất (một tấm phẳng, không nhận/đổ bóng). */
+function bongDat(nhom: THREE.Object3D, vl: BoVatLieu, x: number, z: number, rx: number, rz: number, quay = 0, dam = 1): void {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(rx * 2, rz * 2), dam === 1 ? vl.bongDat : Object.assign(vl.bongDat.clone(), { opacity: 0.55 * dam }));
+  m.rotation.set(-Math.PI / 2, 0, quay);
+  m.position.set(x, 0.008, z);
+  m.renderOrder = 1;
+  nhom.add(m);
+}
+
+/**
+ * HÀNG ĐẦU NGÓI chạy dọc bốn mép mái (ảnh mẫu: mép mái là một chuỗi đầu ngói
+ * tròn, đó là nét làm mái trông "thật"). Một `InstancedMesh` mỗi mái.
+ */
+function dauNgoi(g: THREE.Group, vl: BoVatLieu, W: number, D: number, vinh: number, y0: number): void {
+  const vt: THREE.Matrix4[] = [];
+  const buoc = 0.24;
+  const q = new THREE.Quaternion();
+  const co = new THREE.Vector3(1, 1, 1);
+  const dat = (x: number, y: number, z: number, huong: number) => {
+    q.setFromEuler(new THREE.Euler(Math.PI / 2, huong, 0, 'YXZ'));
+    vt.push(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), q.clone(), co));
+  };
+  const nX = Math.round((2 * W) / buoc);
+  for (let i = 0; i <= nX; i += 1) {
+    const s = (i / nX) * 2 - 1;
+    const y = y0 + vinh * Math.pow(Math.abs(s), 4) - 0.02;
+    dat(s * W, y, D + 0.03, 0);
+    dat(s * W, y, -D - 0.03, Math.PI);
+  }
+  const nZ = Math.round((2 * D) / buoc);
+  for (let i = 1; i < nZ; i += 1) {
+    const s = (i / nZ) * 2 - 1;
+    const y = y0 + vinh * Math.pow(Math.abs(s), 4) - 0.02;
+    dat(W + 0.03, y, s * D, Math.PI / 2);
+    dat(-W - 0.03, y, s * D, -Math.PI / 2);
+  }
+  const im = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.075, 0.075, 0.1, 8), vl.ngoiNoc, vt.length);
+  vt.forEach((m, i) => im.setMatrixAt(i, m));
+  im.castShadow = false;
+  im.receiveShadow = true;
+  g.add(im);
 }
 
 /** Một đèn lồng giấy: thân sáng + khung + quầng. */
@@ -367,6 +475,7 @@ function denLong(b: BoDung, x: number, y: number, z: number, co = 1): void {
 
 /** Cột đèn: trụ gỗ + tay vươn + đèn lồng treo. */
 function cotDen(b: BoDung, x: number, z: number, huong = 1): void {
+  bongDat(b.nhom, b.vl, x, z, 0.35, 0.35);
   them(b.nhom, new THREE.BoxGeometry(0.12, 2.3, 0.12), b.vl.go, x, 1.15, z);
   them(b.nhom, new THREE.BoxGeometry(0.55, 0.08, 0.08), b.vl.go, x + 0.24 * huong, 2.22, z);
   them(b.nhom, new THREE.CylinderGeometry(0.015, 0.015, 0.22, 4), b.vl.denKhung, x + 0.45 * huong, 2.08, z, false);
@@ -431,7 +540,10 @@ function nhaHanok(b: BoDung, o: NhaOpt): void {
   mai.receiveShadow = true;
   // mặt dưới mái = lớp rui gỗ, hạ 0,12 m: nhìn từ trên thấy MÉP mái có độ dày (ảnh mẫu), không phải tờ giấy
   them(g, maiNgoiCong(W - 0.05, D - 0.05, 1.25, o.w * 0.3, 0.46), b.vl.go, 0, nen + cot + 0.0, 0, false);
-  them(g, new THREE.BoxGeometry(o.w * 0.6 + 0.3, 0.2, 0.28), b.vl.ngoiNoc, 0, nen + cot + 1.42, 0);
+  dauNgoi(g, b.vl, W, D, 0.46, nen + cot + 0.12);
+  // sống nóc DÀY, hai tầng (ảnh mẫu: nóc mái là một gờ tối nổi rõ)
+  them(g, new THREE.BoxGeometry(o.w * 0.6 + 0.3, 0.3, 0.34), b.vl.ngoiNoc, 0, nen + cot + 1.4, 0);
+  them(g, new THREE.BoxGeometry(o.w * 0.6 + 0.4, 0.08, 0.2), b.vl.ngoiNoc, 0, nen + cot + 1.58, 0);
   for (const dau of [1, -1]) {
     const dauNoc = them(
       g,
@@ -457,6 +569,14 @@ function nhaHanok(b: BoDung, o: NhaOpt): void {
   for (let i = truoc; i < b.den.length; i += 1) b.den[i]!.applyMatrix4(g.matrixWorld);
   const box = new THREE.Box3().setFromObject(g);
   b.chan.push({ id: o.id, min: [box.min.x, 0, box.min.z], max: [box.max.x, box.max.y, box.max.z] });
+  // vũng sáng hắt ra từ từng ô cửa sáng đèn
+  for (let i = 0; i < soNhip; i += 1) {
+    if (!o.sang[i]) continue;
+    const p = new THREE.Vector3(-o.w / 2 + (o.w * (i + 0.5)) / soNhip, 0, o.d / 2 + 1.0).applyMatrix4(g.matrixWorld);
+    b.vung.push({ x: p.x, z: p.z, r: 1.5 });
+  }
+  // bóng tiếp xúc quanh nền nhà (mái chìa ra tạo vùng tối mềm)
+  bongDat(b.nhom, b.vl, o.x, o.z, o.w / 2 + 1.4, o.d / 2 + 1.4, -THREE.MathUtils.degToRad(o.quay), 0.9);
 }
 
 /** Nhà kho gỗ mái ván (ảnh tham chiếu: căn phía sau, tông nâu). */
@@ -493,6 +613,7 @@ function tuongDa(b: BoDung, x1: number, z1: number, x2: number, z2: number): voi
   g.position.set((x1 + x2) / 2, 0, (z1 + z2) / 2);
   g.rotation.y = -Math.atan2(dz, dx);
   b.nhom.add(g);
+  bongDat(b.nhom, b.vl, (x1 + x2) / 2, (z1 + z2) / 2, L / 2 + 0.3, 0.75, Math.atan2(dz, dx), 0.8);
   b.chan.push({
     id: `tuong-${b.chan.length}`,
     min: [Math.min(x1, x2) - 0.21, 0, Math.min(z1, z2) - 0.21],
@@ -614,19 +735,20 @@ export interface Lang extends Phong {
 }
 
 /**
- * Cảnh mặc định là LÀNG (Ryan 27/10: "thay toàn bộ, đâu cần giữ kiểu cũ").
- * `?canh=nha` còn mở được căn nhà cũ CHỈ để so trong lúc Ryan duyệt hình — duyệt
- * xong thì xoá hẳn nhánh đó.
+ * Cảnh mặc định là VĂN PHÒNG búp bê (Ryan 27/10: "công ty lớn, phòng ban rõ ràng,
+ * không cần ngăn vách"). `?canh=lang` (bản thử làng hanok) và `?canh=nha` (căn
+ * nhà cũ) còn mở được CHỈ để so trong lúc Ryan duyệt hình — duyệt xong thì xoá.
  */
-export function chonCanh(search = typeof location !== 'undefined' ? location.search : ''): 'lang' | 'nha' {
-  return new URLSearchParams(search).get('canh') === 'nha' ? 'nha' : 'lang';
+export function chonCanh(search = typeof location !== 'undefined' ? location.search : ''): 'van-phong' | 'lang' | 'nha' {
+  const c = new URLSearchParams(search).get('canh');
+  return c === 'nha' ? 'nha' : c === 'lang' ? 'lang' : 'van-phong';
 }
 
 export async function dungLang(scene: THREE.Scene): Promise<Lang> {
   const nhom = new THREE.Group();
   nhom.name = 'lang';
   const vl = taoVatLieu();
-  const b: BoDung = { nhom, vl, den: [], chan: [] };
+  const b: BoDung = { nhom, vl, den: [], chan: [], vung: [] };
   const kho = new Kho();
   const ng = taoNgauNhien(42);
 
@@ -641,6 +763,7 @@ export async function dungLang(scene: THREE.Scene): Promise<Lang> {
   nhaHanok(b, { id: 'nha-tay', x: -8.6, z: -8.8, w: 5.2, d: 3.2, quay: 0, sang: [true, true, false] });
   nhaHanok(b, { id: 'nha-dong', x: 10.2, z: -2.4, w: 5.0, d: 3.2, quay: -90, sang: [false, true, true] });
   nhaKho(b, 8.6, -10.6);
+  nhaHanok(b, { id: 'nha-nam', x: 10.6, z: 5.0, w: 4.4, d: 3.0, quay: -90, sang: [true, false, true] });
 
   // ---- tường đá bao vườn tây + cổng ----
   tuongDa(b, -12.5, -4.2, -3.0, -4.2);
@@ -674,8 +797,8 @@ export async function dungLang(scene: THREE.Scene): Promise<Lang> {
   luong(-7.6, -2.0, 6.4, 2.4, 'dau');
   luong(-7.6, 1.6, 6.4, 2.6, 'dau');
   luong(-7.2, 5.6, 5.6, 2.6, 'khoai');
-  luong(5.6, 4.2, 4.2, 2.6, 'cu');
-  luong(0.4, 7.2, 4.4, 2.2, 'khoai');
+  luong(4.8, 3.4, 3.8, 2.4, 'cu');
+  luong(-0.4, 5.2, 4.0, 2.2, 'khoai');
 
   // ---- cột đèn ----
   cotDen(b, -2.3, -3.6, 1);
@@ -684,19 +807,55 @@ export async function dungLang(scene: THREE.Scene): Promise<Lang> {
   cotDen(b, 7.8, 1.4, -1);
 
   // ---- lu sành ----
-  const lu = (x: number, z: number, cao: number) =>
-    kho.dat(`lu-${cao}`, () => ongGi(cao), vl.ongGi, new THREE.Vector3(x, 0, z), new THREE.Vector3(1, 1, 1), ng() * 6);
+  const lu = (x: number, z: number, cao: number) => (bongDat(nhom, vl, x, z, cao * 0.62, cao * 0.62), kho.dat(`lu-${cao}`, () => ongGi(cao), vl.ongGi, new THREE.Vector3(x, 0, z), new THREE.Vector3(1, 1, 1), ng() * 6));
   lu(5.6, -6.0, 0.7);
   lu(6.2, -5.6, 0.5);
   lu(5.9, -6.6, 0.5);
   lu(11.4, -9.0, 0.9);
   lu(-5.2, -6.6, 0.6);
+  lu(-4.7, -6.2, 0.45);
+  lu(-11.2, -6.6, 0.55);
+  lu(7.6, 1.0, 0.5);
+  lu(8.0, 0.6, 0.65);
+  lu(-0.6, -4.9, 0.4);
 
   // ---- cây anh đào + bụi hoa ----
+  /*
+   * Anh đào CÓ CÀNH (ảnh mẫu: cành mảnh vươn ra, hoa li ti bám dọc cành) —
+   * thân + 4–5 cành nghiêng, mỗi đầu cành một chùm bông nhỏ nhiều sắc hồng.
+   * Bông là InstancedMesh (một lượt vẽ cho mọi cây), tô màu theo bản sao.
+   */
+  const vlBong = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true });
+  const sacHoa = [...MAU.anhDao, 0xfbe3ee, 0xd97aa8];
   const anhDao = (x: number, z: number, h: number) => {
-    them(nhom, new THREE.CylinderGeometry(0.08, 0.16, h, 7), vl.vo, x, h / 2, z);
-    kho.dat('anh-dao', () => tanAnhDao(9), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true }), new THREE.Vector3(x, h + 0.35, z), new THREE.Vector3(1, 1, 1), ng() * 6, MAU.anhDao[Math.floor(ng() * 3)]);
+    them(nhom, new THREE.CylinderGeometry(0.07, 0.14, h, 7), vl.vo, x, h / 2, z);
+    bongDat(nhom, vl, x, z, 1.4, 1.4, 0, 0.7);
+    const soCanh = 4 + Math.floor(ng() * 2);
+    for (let c = 0; c < soCanh; c += 1) {
+      const goc = (c / soCanh) * Math.PI * 2 + ng() * 0.8;
+      const dai = 0.8 + ng() * 0.5;
+      const nghieng = 0.7 + ng() * 0.4;
+      const dx = Math.sin(nghieng) * Math.cos(goc) * dai;
+      const dz = Math.sin(nghieng) * Math.sin(goc) * dai;
+      const dy = Math.cos(nghieng) * dai;
+      const y0 = h * (0.75 + ng() * 0.2);
+      const canh = them(nhom, new THREE.CylinderGeometry(0.025, 0.05, dai, 5), vl.vo, x + dx / 2, y0 + dy / 2, z + dz / 2, false);
+      canh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dx, dy, dz).normalize());
+      // chùm bông quanh nửa ngoài của cành
+      for (let k = 0; k < 26; k += 1) {
+        const t = 0.45 + ng() * 0.65;
+        const r = 0.12 + ng() * 0.3;
+        const a = ng() * Math.PI * 2;
+        const vt = new THREE.Vector3(x + dx * t + Math.cos(a) * r, y0 + dy * t + (ng() - 0.3) * 0.3, z + dz * t + Math.sin(a) * r);
+        const co = 0.6 + ng() * 0.7;
+        kho.dat('bong-anh-dao', () => new THREE.IcosahedronGeometry(0.11, 0), vlBong, vt, new THREE.Vector3(co, co * 0.8, co), ng() * 6, sacHoa[Math.floor(ng() * sacHoa.length)], false);
+      }
+    }
   };
+  void tanAnhDao;
+  anhDao(-3.6, -6.2, 1.7);
+  anhDao(-12.2, 4.4, 1.8);
+  anhDao(5.8, -8.4, 1.9);
   anhDao(-14.0, -6.0, 2.2);
   anhDao(-14.5, -1.0, 1.9);
   anhDao(13.5, -7.5, 2.1);
@@ -711,6 +870,7 @@ export async function dungLang(scene: THREE.Scene): Promise<Lang> {
       const cx = x + (ng() - 0.5) * 0.8;
       const cz = z + (ng() - 0.5) * 0.8;
       const r = 0.42 + ng() * 0.2;
+      bongDat(nhom, vl, cx, cz, r * 1.4, r * 1.4, 0, 0.7);
       kho.dat('bui-la', () => khomLa(6, 0.32, 0.5, 13), vl.la, new THREE.Vector3(cx, 0, cz), new THREE.Vector3(r * 1.7, r * 1.3, r * 1.7), ng() * 6);
       for (let k = 0; k < 34; k += 1) {
         const goc = ng() * Math.PI * 2;
@@ -722,6 +882,7 @@ export async function dungLang(scene: THREE.Scene): Promise<Lang> {
   void vlHoa;
   for (const [x, z] of [[-11.5, -3.2], [-11.4, 7.5], [-6.4, 9.6], [-2.4, 9.7], [3.0, 9.5], [8.4, 6.4], [-3.2, -5.6], [12.2, 2.4], [4.4, -9.6], [-12.2, 3.0]] as const) bui(x, z);
 
+  for (const [x, z] of [[-6.6, -6.4], [-10.6, -6.6], [3.8, -4.9], [-2.8, -4.9], [7.9, -4.0], [7.8, 0.2]] as const) bui(x, z);
   for (const [x, z] of [[-1.2, -4.6], [5.0, -4.4], [-9.8, -6.0], [-4.6, -10.4], [12.8, -5.6], [-0.4, 4.6], [9.8, 3.8]] as const) bui(x, z);
 
   // ---- mảng cỏ sẫm lổn nhổn trên nền đất (đỡ trống sân, ảnh mẫu có rêu cỏ mép lối) ----
@@ -736,6 +897,7 @@ export async function dungLang(scene: THREE.Scene): Promise<Lang> {
 
   // ---- đồ lặt vặt quanh nhà: thùng gỗ, đống củi, sọt ----
   const thung = (x: number, z: number, c: number, quay: number) => {
+    bongDat(nhom, vl, x, z, c * 0.9, c * 0.9);
     const m = them(nhom, new THREE.BoxGeometry(c, c * 0.8, c), vl.goSang, x, (c * 0.8) / 2, z);
     m.rotation.y = quay;
   };
@@ -764,6 +926,17 @@ export async function dungLang(scene: THREE.Scene): Promise<Lang> {
     s.position.set(1.0 + Math.sin(i * 0.8) * 0.25, 0.03, -4.6 + i * 0.85);
     s.receiveShadow = true;
     nhom.add(s);
+  }
+
+  // ---- vũng sáng: mỗi đèn lồng hắt một vòng ấm xuống đất (cùng cửa sáng đèn ở trên) ----
+  for (const p of b.den) if (p.y < 3) b.vung.push({ x: p.x, z: p.z, r: 2.1 });
+  for (const v of b.vung) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(v.r * 2, v.r * 2), vl.vungSang);
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(v.x, 0.012, v.z);
+    m.renderOrder = 2;
+    m.userData.khongGop = true;
+    nhom.add(m);
   }
 
   kho.dung(nhom);
