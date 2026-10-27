@@ -346,6 +346,27 @@ describe('phản xạ: Owner lại gần / đi xa', () => {
     t.may.dung();
   });
 
+  it('Gen ĐANG NGỒI (bàn Giám đốc cạnh bàn CEO): Sếp ở gần > 4 s → chỉ nhìn, KHÔNG xoay thân / emote (bật dậy khỏi ghế)', async () => {
+    const t = await dung();
+    datSoNao(1);
+    await t.world.actorSit('gen', 'ghe-2').done;
+    const g = t.world.describe().actors.find((a) => a.id === 'gen')!;
+    await t.world.actorMoveTo('owner', [g.pos[0] + 1.5, 0, g.pos[2] + 0.5]).done;
+    t.world.lichSu.length = 0;
+    t.tien(100);
+    await nhipMicro();
+    t.tien(MAC_DINH.choChaoMs + 100);
+    await nhipMicro();
+    await choHanhDong();
+    await choHanhDong();
+    const sau = t.world.describe().actors.find((a) => a.id === 'gen')!;
+    expect(sau.lookingAt).toBe('owner');
+    expect(coTrongLichSu(t.world, 'emote.chao')).toBe(false);
+    expect(coTrongLichSu(t.world, 'turnTo:gen')).toBe(false);
+    expect(sau.state).toBe('sitting');
+    t.may.dung();
+  });
+
   it('Owner đi xa > 4 m và hết hạn giữ nhìn → Gen về việc đang làm', async () => {
     const t = await dung({ ganNhau: true });
     datSoNao(1);

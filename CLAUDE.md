@@ -2114,3 +2114,6 @@ không tự biên tự diễn"* → *"cấp trên đóng dấu kiểm nhận, h�
   0,2125 > `BAN_KINH_SO`, không xoay; test `bup-be-mat.test.ts` đo tâm + mép hình học thật (đỏ với cả hai lỗi cũ).
   Bài học (L-103): ảnh kiểm đã cho thấy mặt trơn mà đọc thành "đầu quay sang" — soi ảnh theo danh sách cố định
   (mắt/mũi/miệng? bong bóng? thân–ghế cùng hướng?) trước khi diễn giải.
+- **Phản xạ C0 "Sếp lại gần → chào nhẹ" không xoay thân / emote khi Nhi ĐANG NGỒI**: bàn Giám đốc cách bàn CEO 2 m
+  nên Sếp luôn "ở gần" — nhật ký thật thấy `emote chao` 2 lần/phiên, emote đổi `state` khỏi `sitting` ⇒ búp bê bật
+  dậy khỏi ghế. Ngồi thì chào bằng ánh mắt (`nhinVe` vẫn chạy). Test trong `c0-phan-xa.test.ts`.

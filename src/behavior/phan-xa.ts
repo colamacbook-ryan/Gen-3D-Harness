@@ -901,8 +901,13 @@ export function batPhanXa(ts: ThamSoPhanXa): MayPhanXa {
         giuNhinDen = Math.max(giuNhinDen, now + so.giuNhinMs);
         if (!daChao && now - tGan >= so.choChaoMs && !dispatcher.dangBan(gen)) {
           daChao = true;
-          void gui('actor.turnTo', { actor: gen, target: owner });
-          void gui('actor.emote', { actor: gen, emote: 'chao', intensity: 0.6 });
+          // INT-07: Nhi ĐANG NGỒI (bàn Giám đốc cách bàn CEO 2 m — Sếp luôn "ở gần")
+          // thì chào bằng ÁNH MẮT (đã `nhinVe` ở trên): xoay thân là người một đằng ghế
+          // một nẻo, emote là bật dậy khỏi ghế (Ryan 27/10, đo thật 2 lần / phiên).
+          if (g.state !== 'sitting') {
+            void gui('actor.turnTo', { actor: gen, target: owner });
+            void gui('actor.emote', { actor: gen, emote: 'chao', intensity: 0.6 });
+          }
         }
       } else if (d > so.banKinhXa) {
         tGan = 0;
