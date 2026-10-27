@@ -48,7 +48,8 @@ export const PLACES: readonly DinhNghiaPlace[] = [
   { id: 'ban-dieu-khien', pos: [2.6, 0, -4.2], kind: 'desk', standAt: [2.6, 0, -2.9], facing: 180 },
   { id: 'ban-1', pos: [-1.5, 0, -2], kind: 'desk', standAt: [-1.5, 0, -1], facing: 180 },
   { id: 'ban-2', pos: [-1.5, 0, 2.5], kind: 'desk', standAt: [-1.5, 0, 3.5], facing: 0 },
-  { id: 'ghe-1', pos: [6.45, 0, -0.72], kind: 'seat', facing: 0, seatY: 0.335 },
+  // ghế kẹp giữa bàn họp và ghế bên cạnh — chỗ ĐỨNG là sau lưng ghế (đo `duongDi`: ô (6,45; −1,4) thoáng)
+  { id: 'ghe-1', pos: [6.45, 0, -0.72], kind: 'seat', standAt: [6.45, 0, -1.4], facing: 0, seatY: 0.335 },
   { id: 'ghe-2', pos: [2.6, 0, -3.56], kind: 'seat', facing: 180, seatY: 0.335 },
   { id: 'buc-trung-tam', pos: [0, 0, 1.5], kind: 'stage', facing: 0 },
   { id: 'cua', pos: [3.6, 0, 7.8], kind: 'door', standAt: [3.6, 0, 7.0], facing: 180 },
