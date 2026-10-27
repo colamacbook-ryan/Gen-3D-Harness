@@ -10,7 +10,7 @@
 > **Đồng bộ định kỳ (Ryan 28/10: "lâu lâu bạn có thể kiểm tra lấy về ứng dụng thêm")**: đầu mỗi phiên làm Gen-3D-Harness
 > chạy `git fetch genstage main && git log --oneline HEAD..genstage/main`; có commit mới thì gộp vào nhánh đang làm
 > (merge, giữ cả hai phía — Gen-Stage gốc vẫn là nơi Ryan phát triển lõi sân khấu), chạy đủ test + build rồi mới đẩy.
-> Lần gộp gần nhất: `genstage/main @be59a01` (G1: bỏ trần, chân chạm sàn thật, tóc đúng cỡ) — 27/10 03h UTC; trước đó @1de53f4 (H1), @e2a8366.
+> Lần gộp gần nhất (27/10, Ryan: "gộp j2 với j1 vào luôn" — hai nhánh CHƯA vào main gốc): `genstage/j2/hoat-dong @149ab92` (J2 + I1) và `genstage/j1/sat-tuong-toc-gon @403f79c` (J1; áp riêng diff `bcfffb5..403f79c` vì j1 tách từ G1d trước squash). Khi j1/j2 vào main gốc thì `HEAD..genstage/main` sẽ hiện commit squash của chúng — gộp bình thường, xung đột chỉ là nội dung đã có. Trước đó: `genstage/main @be59a01` (G1: bỏ trần, chân chạm sàn thật, tóc đúng cỡ) — 27/10 03h UTC; trước đó @1de53f4 (H1), @e2a8366.
 > **License:** © 2026 Gen Labs — All rights reserved (xem `LICENSE`).
 > **Thư mục `vscode/`** (đang làm): extension VS Code — sân khấu trong tab editor + chatroom cột phải + não LLM local.
 
