@@ -238,6 +238,8 @@ export const NEN_EMOTE: Record<string, string> = {
   'cham-chu': 'ban',
   // C0 (#28) — đứng yên, phần ngẩng đầu/nghiêng do lớp cử chỉ lo
   'chu-y': 'idle',
+  // INT-07 — đứng yên, phần cúi người do lớp cử chỉ lo
+  'cui-chao': 'idle',
 };
 
 /** Thời gian crossfade giữa hai dáng nền (giây) — spec vòng 2: 0,25 s thật. */

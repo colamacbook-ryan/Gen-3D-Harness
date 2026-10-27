@@ -988,6 +988,13 @@ export class NhanVat {
   // clip
   private clip: ClipDangChay | null = null;
 
+  /** Clip/emote đang chạy + tiến độ 0–1 (lớp búp bê đọc để diễn đúng động tác, vd cúi chào). */
+  clipDangChay(bayGio = performance.now()): { ten: string; u: number } | null {
+    if (!this.clip) return null;
+    const u = this.clip.dai > 0 ? (bayGio - this.clip.batDau) / this.clip.dai : 1;
+    return { ten: this.clip.ten, u: this.clip.loop ? u % 1 : Math.min(1, Math.max(0, u)) };
+  }
+
   // ngồi
   private dangNgoi = false;
   /** Đang trong lúc chuyển sang ngồi / đứng lên (chọn dáng nền tương ứng). */
@@ -1961,6 +1968,14 @@ export class NhanVat {
 
   /** Xoay người về một hướng (độ) hoặc một điểm. */
   xoayVe(muc: THREE.Vector3 | number, chiemThan = true): Action {
+    /*
+     * INT-07 (Ryan 27/10): "không thể người quay mà ghế không quay". Ghế là đồ
+     * tĩnh đã gộp mesh — nó không xoay được, nên NGƯỜI ĐANG NGỒI cũng không được
+     * xoay thân: chỉ ĐẦU quay theo `lookAt` (lớp búp bê). Một chỗ chặn cho mọi
+     * lệnh (`turnTo`, `faceTo`, phản xạ, não); `actorSit` xoay về hướng ghế
+     * TRƯỚC khi `ngoi()` nên không bị chặn ở đây.
+     */
+    if (this.state === 'sitting') return hanhDongXongNgay(0);
     const goc =
       typeof muc === 'number'
         ? (muc * Math.PI) / 180

@@ -10,7 +10,8 @@
  *   · **CEO = Nam** (`owner`, avatar của Ryan) — bàn riêng `ban-ceo`, ngồi `ghe-ceo`.
  *     Ryan gõ yêu cầu cho agent chính = CEO giao việc cho Giám đốc.
  *   · **Giám đốc kỹ thuật = Nhi** (`gen`, agent chính) — bàn riêng
- *     `ban-dieu-khien`, ngồi `ghe-2`. Nhận việc từ CEO, lập kế hoạch, giao việc,
+ *     `ban-dieu-khien`, ngồi `ghe-2`. Cả hai bàn lãnh đạo ở BAN GIÁM ĐỐC dọc tường
+ *     bắc, ghế lưng tựa tường, mặt nhìn ra văn phòng. Nhận việc từ CEO, lập kế hoạch, giao việc,
  *     duyệt bài nhân viên, báo cáo CEO.
  *   · **Nhân viên = subagent** — búp bê sinh ra khi được giao việc, làm ở khu
  *     theo vai, nộp bài cho Giám đốc rồi về.
@@ -33,6 +34,11 @@
  *      (ngầm, không diễn) — không bao giờ nhảy cóc pha.
  *   6. Cần CEO duyệt (`ask`) ⇒ Giám đốc lên bàn CEO đứng chờ; sự kiện kế tiếp
  *      (CEO đã trả lời) mới cho về.
+ *   8. LỄ NGHI (Ryan: "nhân viên đối với sếp phải cung kính, nói chuyện phải có
+ *      bong bóng và emoji"): cấp dưới tới gặp cấp trên thì CÚI CHÀO (`cui-chao`;
+ *      đang ngồi thì gật đầu), xưng hô đúng vai (nhân viên → "chị", Giám đốc →
+ *      "anh"), mọi câu là bong bóng có emoji (`LOI`) — `actor.bubble`, KHÔNG phát
+ *      tiếng, để không tranh giọng với não.
  *   7. GIẤY TỜ (Ryan: "cấp trên đóng dấu kiểm nhận, họp hành có biên bản"):
  *      mọi bước ghi vào SỔ QUY TRÌNH có số thứ tự — biên bản họp (chủ trì,
  *      thành phần, phân công), phiếu giao việc riêng, DẤU KIỂM NHẬN / TRẢ LẠI
@@ -201,8 +207,8 @@ export const CHO_LAM: Readonly<Record<KhuLam, readonly ChoLam[]>> = {
   pantry: [{ x: 7.4, z: 4.6, facing: 0 }],
 };
 
-/** Chỗ Giám đốc đứng báo cáo / nhận việc: cạnh ghế CEO, nhìn sang CEO. */
-export const CHO_BAO_CAO_CEO: ChoDung = { x: 0.45, z: -3.2, facing: 270 };
+/** Chỗ Giám đốc đứng báo cáo / nhận việc: KẾ BÊN bàn CEO (phía không có bàn Nhi), nhìn sang CEO. */
+export const CHO_BAO_CAO_CEO: ChoDung = { x: 1.75, z: -8.0, facing: 270 };
 
 /** Phòng họp: Giám đốc đứng đầu bàn, nhân viên quanh bàn (nhìn về đầu bàn). */
 export const CHO_CHU_TRI_HOP: ChoDung = { x: 4.6, z: 0.3, facing: 90 };
@@ -215,15 +221,61 @@ export const CHO_HOP: readonly ChoDung[] = [
   { x: 7.4, z: 2.2, facing: 270 },
 ];
 
-/** Chỗ đứng trước bàn Giám đốc (nhận việc riêng / nộp bài), lệch theo thứ tự. */
+/** Chỗ đứng TRƯỚC bàn Giám đốc (nhận việc riêng / nộp bài), lệch theo thứ tự. */
 export function choNop(k: number): { x: number; z: number } {
-  return { x: 3.5 + (k % 3) * 0.55, z: -2.35 };
+  return { x: -2.05 + (k % 3) * 0.55, z: -6.85 };
 }
 
 /** id actor của nhân viên từ id sự kiện (tool_use_id dài, có thể có ký tự lạ). */
 export function idNhanVien(id: string): string {
   const sach = id.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toLowerCase();
   return `nv-${sach || 'x'}`;
+}
+
+/**
+ * Lời thoại theo quy trình — bong bóng chữ + emoji, xưng hô đúng vai. Thêm câu =
+ * sửa bảng này (test đòi mỗi câu có emoji).
+ */
+export const LOI = {
+  chaoCeo: 'Chào anh CEO ạ ☀️',
+  ceoChaoLai: 'Chào em, bắt đầu thôi 👋',
+  ceoGiaoViec: 'Nhi, anh giao việc mới nhé 📌',
+  nhanViec: 'Dạ, em nhận việc ạ 🙇‍♀️',
+  lapKeHoach: 'Lập kế hoạch nào 🗂️',
+  moHop: 'Bắt đầu họp giao việc nhé 📋',
+  dongYHop: 'Dạ rõ ạ 👍',
+  chotHop: 'Chốt biên bản, ai về việc nấy 🖊️',
+  chaoGiamDoc: 'Chào chị Giám đốc ạ 🙇',
+  giaoRieng: (viec: string) => `${viec ? `Em làm: ${viec.length > 26 ? `${viec.slice(0, 25)}…` : viec}` : 'Em nhận phần này'} nhé 📝`,
+  lamNgay: 'Dạ em làm ngay ạ 💪',
+  nopBai: 'Em nộp bài ạ 📄',
+  nopBaiLoi: 'Em nộp bài… còn vướng ạ 😥',
+  kiemNhan: 'Đạt! Đóng dấu kiểm nhận ✅',
+  traLaiLamLai: 'Chưa đạt — sửa lại rồi nộp nhé 🔁',
+  traLai: 'Chưa đạt — trả lại ❌',
+  camOn: 'Em cảm ơn chị ạ 🙏',
+  suaNgay: 'Dạ em sửa ngay ạ 🙇',
+  xinLoi: 'Dạ em xin lỗi chị ạ 🙇',
+  baoCao: (dat: number, traLai: number) => `Báo cáo anh: ${dat} việc đạt, ${traLai} trả lại 📊`,
+  ceoDuyet: 'Tốt lắm, duyệt! ✅',
+  ceoDuyetCoLoi: 'Được, xử lý tiếp nhé 👍',
+  xinDuyet: 'Anh duyệt giúp em bước này ạ 🙏',
+  ceoTraLoi: 'Ok, làm tiếp đi 👌',
+  daA: 'Dạ ạ 🙇‍♀️',
+  gonHoSo: 'Sắp xếp lại hồ sơ… 🗃️',
+  hetPhien: 'Hết phiên rồi, nghỉ chút ☕',
+  veTruoc: 'Em xin phép về ạ 👋',
+  loiRoi: 'Ơ, lỗi rồi 😣',
+  xanhRoi: 'Xanh rồi! 🎉',
+} as const;
+
+/**
+ * Bong bóng hiện bao lâu (ms) theo độ dài câu: ~16 ký tự/giây + 0,9 s nhìn
+ * sang, tối thiểu 2,4 s. Bản đầu cố định 1,8 s — người thật đọc không kịp câu
+ * tiếng Việt có emoji (và máy kiểm ~1 fps không kịp vẽ khung nào).
+ */
+export function msBongBong(cau: string): number {
+  return Math.max(2400, 900 + [...cau].length * 62);
 }
 
 const huongDo = (c: ChoDung): [number, number, number] => {
@@ -491,6 +543,33 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     await chay('actor.listen', { actor: sep, on: false });
   }
 
+  /** Nói = bong bóng + emoji, KHÔNG tiếng (chiếm thân trong lúc hiện — bước kế tiếp tự xếp sau). */
+  async function noiCau(actor: string, text: string, ms = msBongBong(text)): Promise<void> {
+    await chay('actor.bubble', { actor, text, durationMs: ms });
+  }
+
+  /** Nói rồi CHỜ câu đó hiện xong — để người kia đáp sau, hai câu không chồng nhau. */
+  async function noiCauXong(actor: string, text: string, ms = msBongBong(text)): Promise<void> {
+    await noiCau(actor, text, ms);
+    await choThan(actor);
+  }
+
+  /**
+   * Cấp dưới chào cấp trên: đứng thì CÚI CHÀO (gập người), đang ngồi thì GẬT
+   * ĐẦU (gập người trên ghế là phá dáng ngồi). Quay mặt về cấp trên trước.
+   */
+  async function cuiChao(actor: string, capTren: string): Promise<void> {
+    if (tuThe(actor)?.state === 'sitting') {
+      await chay('actor.lookAt', { actor, target: capTren });
+      await chay('actor.listen', { actor, on: true });
+      await nghi(700);
+      await chay('actor.listen', { actor, on: false });
+      return;
+    }
+    await chay('actor.faceTo', { actor, target: capTren });
+    await chay('actor.emote', { actor, emote: 'cui-chao' });
+  }
+
   /* ---------------- thẻ tên + màn hình ---------------- */
 
   function theTruong(): string {
@@ -574,6 +653,7 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     nv.pha = 've';
     phatNv(nv, { ok });
     await choThan(nv.actor);
+    if (nv.huy) await noiCauXong(nv.actor, LOI.veTruoc);
     if (tuThe(nv.actor)?.state === 'sitting') await chay('actor.stand', { actor: nv.actor });
     await diToi(nv.actor, 'cua');
     await chay('actor.remove', { actor: nv.actor });
@@ -607,8 +687,9 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     }
     await chay('actor.lookAt', { actor: truong, target: sep });
     if (!(await choThan(truong))) return;
-    if (tuThe(truong)?.state !== 'sitting') await chay('actor.emote', { actor: truong, emote: 'chao' });
-    await choThan(truong);
+    await cuiChao(truong, sep);
+    await noiCauXong(truong, LOI.chaoCeo);
+    await noiCauXong(sep, LOI.ceoChaoLai);
     await veBan();
   }
 
@@ -617,17 +698,21 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     ghiSo('nhan-viec', tenSep, `CEO ${tenSep} giao việc cho Giám đốc ${tenTruong}`);
     await capNhatThe();
     if (await diToi(truong, CHO_BAO_CAO_CEO, sep)) {
-      // CEO nói, Giám đốc nghe + gật, rồi nhận lời
-      await Promise.all([ceoNghe(1400), chay('actor.listen', { actor: truong, on: true })]);
-      await chay('actor.listen', { actor: truong, on: false });
-      await chay('actor.emote', { actor: truong, emote: 'dong-y' });
+      // tới KẾ BÊN CEO: cúi chào → CEO giao (Giám đốc nghe + gật) → nhận lời
+      await cuiChao(truong, sep);
       await choThan(truong);
+      await chay('actor.lookAt', { actor: sep, target: truong });
+      await chay('actor.listen', { actor: truong, on: true });
+      await noiCauXong(sep, LOI.ceoGiaoViec);
+      await chay('actor.listen', { actor: truong, on: false });
+      await noiCauXong(truong, LOI.nhanViec);
       await veBan();
     } else {
       await chay('actor.lookAt', { actor: truong, target: sep });
     }
     sangPha('lap-ke-hoach');
     await capNhatThe();
+    await noiCau(truong, LOI.lapKeHoach);
     await hienManHinh('KẾ HOẠCH\n• Phân tích yêu cầu của CEO\n• Chia việc cho đội\n• Thực hiện → duyệt → báo cáo');
   }
 
@@ -653,12 +738,18 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     const nhiToi = diToi(truong, CHO_CHU_TRI_HOP);
     await Promise.all(dot.map((nv, i) => diToi(nv.actor, CHO_HOP[i % CHO_HOP.length]!, truong)));
     await nhiToi;
+    // nhân viên chào chủ trì (cùng lúc), chủ trì mở họp, giao việc, cả đội "Dạ rõ"
+    await Promise.all(dot.map((nv) => cuiChao(nv.actor, truong)));
+    await Promise.all(dot.map((nv) => choThan(nv.actor)));
     await chay('actor.lookAt', { actor: truong, target: dot[0]!.actor });
+    await noiCauXong(truong, LOI.moHop);
     await chay('actor.emote', { actor: truong, emote: 'ra-lenh' });
     await Promise.all(dot.map((nv) => chay('actor.listen', { actor: nv.actor, on: true })));
     await nghi(1500);
     await Promise.all(dot.map((nv) => chay('actor.listen', { actor: nv.actor, on: false })));
+    await Promise.all(dot.map((nv) => noiCau(nv.actor, LOI.dongYHop)));
     await choThan(truong);
+    await noiCauXong(truong, LOI.chotHop);
     // biên bản họp: chủ trì, thành phần, phân công — ký bởi người chủ trì
     const phanCong = dot.map((n) => ({ actor: n.actor, vai: tenCuaVai(n.role), viec: n.task }));
     const bb = ghiSo('bien-ban-hop', tenTruong, `Biên bản họp giao việc — ${dot.length} người`, {
@@ -688,10 +779,13 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
   async function giaoRieng(nv: NhanVienNoi): Promise<void> {
     await veBan();
     await diToi(nv.actor, choNop(soNop++), truong);
+    await cuiChao(nv.actor, truong);
+    await noiCauXong(nv.actor, LOI.chaoGiamDoc);
     await chay('actor.lookAt', { actor: truong, target: nv.actor });
     await chay('actor.listen', { actor: nv.actor, on: true });
-    await nghi(1200);
+    await noiCauXong(truong, LOI.giaoRieng(nv.task));
     await chay('actor.listen', { actor: nv.actor, on: false });
+    await noiCauXong(nv.actor, LOI.lamNgay);
     ghiSo('phieu-giao', tenTruong, `Phiếu giao việc: ${tenCuaVai(nv.role)} — ${nv.task || '(việc chưa ghi)'}`, {
       actor: nv.actor,
       vai: tenCuaVai(nv.role),
@@ -716,7 +810,7 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
       await chay('actor.listen', { actor: truong, on: true, question: true });
       await chay('actor.express', { actor: truong, expression: 'sad', weight: 0.6, durationMs: 1800 });
     }
-    await nghi(1200);
+    await noiCauXong(truong, ok ? LOI.kiemNhan : lamLai ? LOI.traLaiLamLai : LOI.traLai);
     await chay('actor.listen', { actor: truong, on: false });
     const dau = ok ? 'ĐÃ KIỂM NHẬN' : lamLai ? 'TRẢ LẠI — LÀM LẠI' : 'TRẢ LẠI';
     if (ok) demKiemNhan.dat += 1;
@@ -739,9 +833,15 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     viecDangLam = null;
     await capNhatThe();
     if (await diToi(truong, CHO_BAO_CAO_CEO, sep)) {
-      await chay('actor.emote', { actor: truong, emote: loiLienTiep ? 'boi-roi' : 'thanh-cong' });
-      await ceoNghe(1500);
+      await cuiChao(truong, sep);
       await choThan(truong);
+      await chay('actor.lookAt', { actor: sep, target: truong });
+      await noiCauXong(truong, LOI.baoCao(demKiemNhan.dat, demKiemNhan.traLai));
+      await chay('actor.listen', { actor: sep, on: true });
+      await nghi(600);
+      await chay('actor.listen', { actor: sep, on: false });
+      await noiCauXong(sep, loiLienTiep || demKiemNhan.traLai ? LOI.ceoDuyetCoLoi : LOI.ceoDuyet);
+      await noiCauXong(truong, LOI.daA);
       await veBan();
     }
     const tot = loiLienTiep === 0;
@@ -763,7 +863,9 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     bus.emit('team.phase', { pha, ten: TEN_PHA[pha], truoc: pha, choCeoDuyet: true });
     await capNhatThe();
     if (await diToi(truong, CHO_BAO_CAO_CEO, sep)) {
-      await chay('actor.emote', { actor: truong, emote: 'chu-y' });
+      await cuiChao(truong, sep);
+      await choThan(truong);
+      await noiCauXong(truong, LOI.xinDuyet);
     }
     await chay('actor.lookAt', { actor: sep, target: truong });
   }
@@ -772,7 +874,9 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     if (!choCeoDuyet) return;
     choCeoDuyet = false;
     bus.emit('team.phase', { pha, ten: TEN_PHA[pha], truoc: pha, choCeoDuyet: false });
-    await ceoNghe(700);
+    await ceoNghe(500);
+    await noiCauXong(sep, LOI.ceoTraLoi);
+    await noiCauXong(truong, LOI.daA);
     await capNhatThe();
     await choThan(truong);
     await veBan();
@@ -781,6 +885,7 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
   async function gonNgu(): Promise<void> {
     // PreCompact: Giám đốc ra kệ hồ sơ sắp xếp lại ghi chép rồi về bàn
     if (await diToi(truong, 'ke-module')) {
+      await noiCau(truong, LOI.gonHoSo);
       await chay('actor.play', { actor: truong, clip: 'think' });
       await choThan(truong);
     }
@@ -798,6 +903,7 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     viecDangLam = null;
     sangPha('nghi');
     await capNhatThe();
+    await noiCauXong(truong, LOI.hetPhien);
     if (await diToi(truong, 'sofa')) await chay('actor.sit', { actor: truong, seat: 'sofa' });
   }
 
@@ -890,11 +996,14 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
         await chay('actor.stop', { actor: nv.actor });
       }
       await diToi(nv.actor, choNop(soNop++), truong);
-      await chay('actor.emote', { actor: nv.actor, emote: tot ? 'thanh-cong' : 'boi-roi' });
+      await cuiChao(nv.actor, truong);
+      await noiCauXong(nv.actor, tot || lamLai ? LOI.nopBai : LOI.nopBaiLoi);
       nv.pha = 'cho-duyet';
       phatNv(nv, { ok: tot });
       // luật 3: chờ Giám đốc duyệt + đóng dấu xong mới được đi
       await lamTruong('duyet', () => duyet(nv, tot, lamLai));
+      await cuiChao(nv.actor, truong);
+      await noiCauXong(nv.actor, tot ? LOI.camOn : lamLai ? LOI.suaNgay : LOI.xinLoi);
       if (lamLai) {
         // bị trả lại: quay về chỗ làm, làm lại — chưa được về
         nv.pha = 'lam-lai';
@@ -921,13 +1030,17 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
   }
 
   function ketQuaViec(sk: SuKienDoiNgu): void {
+    // bong bóng chỉ khi Giám đốc đang rảnh thân — không chen vào việc khác (nó chiếm thân)
+    const ranh = !dispatcher.dangBan(truong) && viecTruong === null;
     if (!sk.ok) {
       loiLienTiep += 1;
       void chay('actor.express', { actor: truong, expression: 'sad', weight: 0.6, durationMs: 2500 });
+      if (ranh && loiLienTiep === 1) void noiCau(truong, LOI.loiRoi);
       void capNhatThe();
     } else if (loiLienTiep > 0) {
       loiLienTiep = 0;
       void chay('actor.express', { actor: truong, expression: 'happy', weight: 0.9, durationMs: 2000 });
+      if (ranh) void noiCau(truong, LOI.xanhRoi);
       void capNhatThe();
     }
   }

@@ -39,11 +39,13 @@ export interface MacDinhManHinh {
 /**
  * Màn hình mặc định của văn phòng (cảnh duy nhất từ 27/10). Id giữ từ căn nhà
  * cũ (`may-tinh`, `tivi`) nên não/`MAN_HINH_THAT`/`module.demo` không đổi:
- * `may-tinh` đứng trên bàn riêng của Nhi (`ban-nhi`, mặt bàn 0,505 m; nhìn +Z
- * về phía Nhi đứng), `tivi` là màn trình chiếu Phòng họp (nhìn −X vào bàn họp).
+ * `may-tinh` đứng trên bàn riêng của Nhi (`ban-nhi`, mặt bàn 0,505 m) ở Ban giám
+ * đốc — Nhi ngồi lưng tựa tường nhìn +Z nên màn hình nhìn −Z VỀ PHÍA NHI (từ góc
+ * máy toàn cảnh thấy lưng màn hình; `screen.focus` đặt máy giữa màn và tường),
+ * `tivi` là màn trình chiếu Phòng họp (nhìn −X vào bàn họp).
  */
 export const MAC_DINH_MAN_HINH: Record<string, MacDinhManHinh> = {
-  'may-tinh': { pos: new THREE.Vector3(2.6, 0.77, -4.42), rotY: 0, size: 0.5, doTren: 'ban-nhi' },
+  'may-tinh': { pos: new THREE.Vector3(-1.5, 0.77, -7.5), rotY: Math.PI, size: 0.5, doTren: 'ban-nhi' },
   tivi: { pos: new THREE.Vector3(9.94, 1.35, 0.3), rotY: -Math.PI / 2, size: 1.5 },
 };
 

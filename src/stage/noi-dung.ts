@@ -37,23 +37,26 @@ export function layMatGhe(id: string): number {
  * một dòng. Toạ độ khớp `src/stage/van-phong.ts` (sàn x −12…12 · z −9…8; +Z là
  * phía trước, nơi máy quay đứng; `facing` 0 = nhìn +Z, 180 = nhìn vào trong).
  *
- *   · `ban-dieu-khien` → bàn riêng của Nhi cạnh lối đi chính (màn hình `may-tinh`)
- *   · `ghe-2` → ghế ở bàn đó · `ghe-1` → ghế trống trong Phòng họp
+ *   · `ban-dieu-khien` → bàn riêng của Nhi (Giám đốc kỹ thuật) ở Ban giám đốc, lưng tựa
+ *     tường bắc (màn hình `may-tinh`) · `ban-ceo`/`ghe-ceo` → bàn CEO Nam cạnh đó, dưới logo
+ *   · `ghe-2` → ghế ở bàn Nhi · `ghe-1` → ghế trống trong Phòng họp
  *   · `ke-module` → kệ thấp giữa Kinh doanh và Phòng họp
  *   · `sofa` → sofa Khu nghỉ · `ban-an` → bàn tròn Pantry · `bep` → quầy Pantry
  *   · `cua` → lối vào phía trước (cạnh Lễ tân) · `cua-so` → cửa sổ tường tây
  *   · `buc-trung-tam`, `ban-1`, `ban-2` → điểm trên lối đi chính (mốc test)
  */
 export const PLACES: readonly DinhNghiaPlace[] = [
-  { id: 'ban-dieu-khien', pos: [2.6, 0, -4.2], kind: 'desk', standAt: [2.6, 0, -2.9], facing: 180 },
+  // INT-07 — bàn lãnh đạo ở BAN GIÁM ĐỐC, ghế LƯNG TỰA TƯỜNG bắc, người nhìn +Z (Ryan 27/10);
+  // số khớp `X_BAN_NHI`/`X_BAN_CEO`/`Z_BAN_LANH_DAO` trong `van-phong.ts`. Mặt ngồi lệch 0,64 m về
+  // phía lưng ghế ⇒ z −8,44 (0,72 m sau tâm bàn), vừa trong lề tường 0,5 m (sâu hơn là không đi tới được).
+  { id: 'ban-dieu-khien', pos: [-1.5, 0, -7.72], kind: 'desk', standAt: [-1.5, 0, -6.8], facing: 180 },
   { id: 'ban-1', pos: [-1.5, 0, -2], kind: 'desk', standAt: [-1.5, 0, -1], facing: 180 },
   { id: 'ban-2', pos: [-1.5, 0, 2.5], kind: 'desk', standAt: [-1.5, 0, 3.5], facing: 0 },
   // ghế kẹp giữa bàn họp và ghế bên cạnh — chỗ ĐỨNG là sau lưng ghế (đo `duongDi`: ô (6,45; −1,4) thoáng)
   { id: 'ghe-1', pos: [6.45, 0, -0.72], kind: 'seat', standAt: [6.45, 0, -1.4], facing: 0, seatY: 0.335 },
-  { id: 'ghe-2', pos: [2.6, 0, -3.56], kind: 'seat', facing: 180, seatY: 0.335 },
-  // INT-07 — BÀN CEO (Nam / Sếp) đối xứng bàn Nhi qua lối đi chính (`banCeo` trong `van-phong.ts`)
-  { id: 'ban-ceo', pos: [-0.6, 0, -4.2], kind: 'desk', standAt: [-0.6, 0, -2.9], facing: 180 },
-  { id: 'ghe-ceo', pos: [-0.6, 0, -3.56], kind: 'seat', facing: 180, seatY: 0.335 },
+  { id: 'ghe-2', pos: [-1.5, 0, -8.44], kind: 'seat', facing: 0, seatY: 0.335 },
+  { id: 'ban-ceo', pos: [0.5, 0, -7.72], kind: 'desk', standAt: [0.5, 0, -6.8], facing: 180 },
+  { id: 'ghe-ceo', pos: [0.5, 0, -8.44], kind: 'seat', facing: 0, seatY: 0.335 },
   // INT-07 — ghế TRỐNG cho nhân viên subagent (`src/behavior/doi-ngu.ts`): cùng
   // khoảng lệch bàn↔mặt ngồi với `ghe-2` (0,64 m về phía lưng ghế)
   { id: 'cho-kt-1', pos: [-7.5, 0, -7.79], kind: 'seat', facing: 0, seatY: 0.335 },
@@ -62,7 +65,7 @@ export const PLACES: readonly DinhNghiaPlace[] = [
   { id: 'buc-trung-tam', pos: [0, 0, 1.5], kind: 'stage', facing: 0 },
   { id: 'cua', pos: [3.6, 0, 7.8], kind: 'door', standAt: [3.6, 0, 7.0], facing: 180 },
   { id: 'ke-module', pos: [7.6, 0, -2.7], kind: 'shelf', standAt: [7.0, 0, -2.0], facing: 180 },
-  { id: 'sofa', pos: [0.8, 0, -7.06], kind: 'seat', standAt: [1.6, 0, -6.2], facing: 0, seatY: 0.33 },
+  { id: 'sofa', pos: [0.8, 0, -3.66], kind: 'seat', standAt: [1.6, 0, -2.8], facing: 0, seatY: 0.33 },
   { id: 'ban-an', pos: [6.2, 0, 5.4], kind: 'desk', standAt: [6.2, 0, 4.1], facing: 0 },
   { id: 'bep', pos: [11.0, 0, 5.0], kind: 'desk', standAt: [10.1, 0, 4.9], facing: 90 },
   { id: 'cua-so', pos: [-12, 0, 0.4], kind: 'door', standAt: [-10.9, 0, 0.6], facing: 270 },
@@ -134,6 +137,8 @@ export const EMOTES = [
   'cham-chu',
   // C0 (#28) — phản xạ khi Sếp gọi: ngẩng đầu, hơi nghiêng
   'chu-y',
+  // INT-07 — cúi chào cấp trên (nhân viên → Giám đốc, Giám đốc → CEO): "phải cung kính"
+  'cui-chao',
 ] as const;
 
 export const PRESET_DEN = ['sang', 'toi', 'am'] as const;

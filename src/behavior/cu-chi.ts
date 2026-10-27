@@ -405,6 +405,15 @@ export const CU_CHI_EMOTE: Record<string, HamCuChi> = {
     tay(x, 'trai', w * 0.5, 0.1, 0.16, 0.12);
     tay(x, 'phai', w * 0.5, 0.1, 0.16, 0.12);
   },
+  // INT-07 — cúi chào cấp trên: gập thân về trước (lên–giữ–về theo tiến độ u), hai tay chắp trước bụng
+  'cui-chao': (x, { u, w }) => {
+    const cui = Math.sin(Math.min(1, u) * Math.PI);
+    them(x.spine, 0.32 * w * cui);
+    them(x.chest, 0.14 * w * cui);
+    them(x.neck, 0.12 * w * cui);
+    tay(x, 'trai', w, 0.08, 0.2, 0.18);
+    tay(x, 'phai', w, 0.08, 0.2, 0.18);
+  },
 };
 
 /* ------------------------------------------- cử chỉ nhịp khi nói (actor.say) */

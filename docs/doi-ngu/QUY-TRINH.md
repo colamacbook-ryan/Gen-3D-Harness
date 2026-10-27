@@ -13,9 +13,37 @@ Máy thi công: `src/behavior/doi-ngu.ts`. Test giữ giao kèo: `src/api/__test
 
 | Chức danh | Nhân vật | Chỗ ngồi riêng | Ai trong đời thật |
 | --- | --- | --- | --- |
-| **CEO** | Nam (`owner`), thẻ xanh đậm `Nam · CEO` | bàn `ban-ceo`, ghế `ghe-ceo` | Ryan |
+| **CEO** | Nam (`owner`), thẻ xanh đậm `Nam · CEO` | bàn `ban-ceo` dưới logo, ghế `ghe-ceo` | Ryan |
 | **Giám đốc kỹ thuật** (kỹ sư trưởng) | Nhi (`gen`), thẻ cam `Nhi · Giám đốc kỹ thuật` | bàn `ban-dieu-khien`, ghế `ghe-2` | agent chính (Claude Code / não local) |
 | **Nhân viên** | búp bê sinh theo việc, thẻ xanh `<vai> · <việc>` | ghế / chỗ đứng trong khu theo vai | mỗi subagent |
+
+**Ban giám đốc** (Ryan: *"các lãnh đạo phải cho tựa lưng vào tường"*): hai bàn lãnh đạo nằm dọc tường bắc, dưới logo
+GEN LABS. Ghế ở phía tường, người ngồi nhìn ra cả văn phòng (`facing 0`). Điểm ngồi z = −8,44: khung sàn chừa lề 0,5 m
+tới tường, sâu hơn thì không đi tới được. Một **dãy tủ hồ sơ thấp áp tường** lấp khe phía sau, nên lưng ghế tựa vào tủ.
+Test: *lãnh đạo ngồi LƯNG TỰA TƯỜNG*.
+
+## Lễ nghi
+
+Ryan: *"nhân viên đối với sếp phải cung kính, nói chuyện phải có bong bóng và emoji"*;
+*"không thể người quay mà ghế không quay, nhân vật phải phân biệt được trước mặt và sau lưng"*.
+
+- **Cúi chào cấp trên** (emote `cui-chao`, gập người khoảng 30° quanh hông): nhân viên chào Giám đốc khi nhận việc,
+  khi họp và khi nộp bài; Giám đốc chào CEO khi nhận việc, báo cáo và xin duyệt. Người đang **ngồi** thì gật đầu.
+  CEO không cúi chào cấp dưới, chỉ gật và đáp lời.
+- **Nói = bong bóng + emoji** (bảng `LOI`, `actor.bubble`, không phát tiếng để không tranh giọng với não). Xưng hô
+  đúng vai: nhân viên gọi Giám đốc là "chị", Giám đốc gọi CEO là "anh". Ví dụ một vòng nộp bài:
+
+  | Ai | Câu |
+  | --- | --- |
+  | Nhân viên (cúi chào) | Em nộp bài ạ 📄 |
+  | Nhi | Đạt! Đóng dấu kiểm nhận ✅ |
+  | Nhân viên (cúi chào) | Em cảm ơn chị ạ 🙏 |
+
+- **Người ngồi không xoay thân**: ghế là đồ tĩnh, nên `NhanVat.xoayVe` từ chối xoay khi đang ngồi. Đây là một chỗ chặn
+  chung cho `turnTo`, `faceTo`, phản xạ và não. Muốn nhìn ai thì **quay đầu**: lớp búp bê quay đầu theo `lookAt`,
+  tối đa ±60°.
+- **Mặt trước khác sau lưng**: mặt có mắt, miệng, mái tóc, cổ áo, cà vạt / thẻ tên. Sau lưng là tóc phủ kín gáy, cổ
+  áo sau và đường may sống lưng màu đậm hơn áo.
 
 ## Các pha
 

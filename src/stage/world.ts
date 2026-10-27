@@ -161,8 +161,9 @@ const MAY_DOC: GocMay = {
  * trên xuống vào khu nghỉ (sofa) · bàn Nhi · Pantry · cửa sổ tường tây.
  */
 const GOC_KHU: Record<string, { vt: THREE.Vector3; tam: THREE.Vector3 }> = {
-  'phong-khach': { vt: new THREE.Vector3(3.6, 4.2, -2.6), tam: new THREE.Vector3(0.8, 0.4, -6.8) },
-  'ban-lam-viec': { vt: new THREE.Vector3(4.6, 3.4, -0.6), tam: new THREE.Vector3(2.6, 0.6, -4.2) },
+  'phong-khach': { vt: new THREE.Vector3(3.6, 4.0, 0.4), tam: new THREE.Vector3(0.6, 0.4, -3.6) },
+  // INT-07: Ban giám đốc dọc tường bắc — nhìn thẳng vào mặt Nhi + Nam (họ nhìn +Z)
+  'ban-lam-viec': { vt: new THREE.Vector3(-0.3, 3.0, -3.6), tam: new THREE.Vector3(-0.5, 0.6, -8.0) },
   bep: { vt: new THREE.Vector3(6.4, 4.4, 1.2), tam: new THREE.Vector3(9.6, 0.6, 5.4) },
   'cua-so': { vt: new THREE.Vector3(-7.4, 4.0, 3.6), tam: new THREE.Vector3(-11.2, 0.8, 0.4) },
 };
@@ -699,7 +700,16 @@ export class World implements StageWorld {
         const ngoi = nv.state === 'sitting';
         bb.goc.position.set(nv.goc.position.x, ngoi ? nv.matGheHienTai + 0.04 : 0, nv.goc.position.z);
         bb.goc.rotation.y = nv.goc.rotation.y;
-        bb.dien(dt, nv.state, nv.bongBong !== null, nv.objCam ? nv.tayCam : null);
+        // hướng nhìn → góc quay ĐẦU búp bê (tương đối thân); không nhìn gì thì đầu về giữa
+        let nhinYaw = 0;
+        if (nv.nhinTen) {
+          const p = nv.diemNhin.position;
+          let l = Math.atan2(p.x - bb.goc.position.x, p.z - bb.goc.position.z) - bb.goc.rotation.y;
+          while (l > Math.PI) l -= Math.PI * 2;
+          while (l < -Math.PI) l += Math.PI * 2;
+          nhinYaw = l;
+        }
+        bb.dien(dt, nv.state, nv.bongBong !== null, nv.objCam ? nv.tayCam : null, { clip: nv.clipDangChay(), nhinYaw });
         // đồ đang cầm bám TAY BÚP BÊ (tay VRM ẩn nằm chỗ khác)
         if (nv.objCam) {
           bb.viTriTay(nv.tayCam, nv.objCam.position);

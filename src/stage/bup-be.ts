@@ -126,6 +126,11 @@ function luoi(geo: THREE.BufferGeometry, vl: THREE.Material, x = 0, y = 0, z = 0
 }
 
 /** Một búp bê. `goc` đặt vào cảnh; `dien()` gọi mỗi khung. */
+/** Độ cao khớp hông (m, trong toạ độ búp bê) — trục gập người khi cúi chào. */
+const HONG = 0.43;
+/** Đầu quay tối đa sang mỗi bên (rad) — quá thì người thật phải xoay cả thân. */
+export const QUAY_DAU_TOI_DA = 1.05;
+
 export class BupBe {
   readonly goc = new THREE.Group();
   private than = new THREE.Group();
@@ -133,6 +138,15 @@ export class BupBe {
   private tayTrai = new THREE.Group();
   private tayPhai = new THREE.Group();
   private chan = new THREE.Group();
+  /**
+   * INT-07 — nửa thân TRÊN (áo, tay, đầu) xoay quanh khớp HÔNG (`HONG`): cúi
+   * chào gập người mà chân vẫn đứng. `trenTrong` bù lại độ cao để toạ độ dựng
+   * bên dưới giữ nguyên như trước.
+   */
+  private tren = new THREE.Group();
+  private trenTrong = new THREE.Group();
+  /** Góc quay đầu hiện tại (rad, quanh trục đứng) — bám hướng nhìn có giới hạn. */
+  private dauYaw = 0;
   private mat: THREE.MeshBasicMaterial;
   private t = Math.random() * 10;
   private nhipMieng = 0;
@@ -172,25 +186,34 @@ export class BupBe {
       this.than.add(luoi(new RoundedBoxGeometry(0.27, 0.14, 0.18, 3, 0.06), vlDuoi, 0, 0.36, 0));
     }
 
+    this.tren.position.y = HONG;
+    this.trenTrong.position.y = -HONG;
+    this.tren.add(this.trenTrong);
+    this.than.add(this.tren);
+
     // ---- thân áo bo tròn + cổ áo + phụ kiện ----
-    this.than.add(luoi(new RoundedBoxGeometry(0.29, 0.25, 0.19, 3, 0.085), vlAo, 0, 0.52, 0));
+    this.trenTrong.add(luoi(new RoundedBoxGeometry(0.29, 0.25, 0.19, 3, 0.085), vlAo, 0, 0.52, 0));
+    // SAU LƯNG phải khác TRƯỚC NGỰC (Ryan 27/10): cổ áo sau + đường may sống lưng màu đậm hơn áo
+    const vlLung = std(new THREE.Color(k.ao).multiplyScalar(0.72).getHex(), 0.7);
+    this.trenTrong.add(luoi(new THREE.BoxGeometry(0.17, 0.04, 0.02), vlLung, 0, 0.628, -0.088));
+    this.trenTrong.add(luoi(new THREE.BoxGeometry(0.014, 0.19, 0.012), vlLung, 0, 0.5, -0.097));
     for (const dau of [1, -1]) {
       const coAo = luoi(new THREE.BoxGeometry(0.075, 0.05, 0.02), vlTrang, dau * 0.04, 0.625, 0.093);
       coAo.rotation.z = dau * -0.5;
-      this.than.add(coAo);
+      this.trenTrong.add(coAo);
     }
     if (k.phuKien === 'ca-vat') {
       const vlCv = std(k.mauPhuKien ?? 0x2f4a7a, 0.5);
-      this.than.add(luoi(new THREE.BoxGeometry(0.03, 0.025, 0.02), vlCv, 0, 0.6, 0.1));
+      this.trenTrong.add(luoi(new THREE.BoxGeometry(0.03, 0.025, 0.02), vlCv, 0, 0.6, 0.1));
       const cv = luoi(new THREE.ConeGeometry(0.03, 0.15, 4), vlCv, 0, 0.52, 0.1);
       cv.rotation.x = Math.PI;
       cv.scale.z = 0.35;
-      this.than.add(cv);
+      this.trenTrong.add(cv);
     } else if (k.phuKien === 'the-ten') {
       const day = luoi(new THREE.TorusGeometry(0.09, 0.006, 4, 16, Math.PI), std(k.mauPhuKien ?? 0xd9534f, 0.5), 0, 0.6, 0.09);
       day.rotation.z = Math.PI;
-      this.than.add(day);
-      this.than.add(luoi(new RoundedBoxGeometry(0.06, 0.075, 0.012, 2, 0.006), vlTrang, 0, 0.5, 0.1));
+      this.trenTrong.add(day);
+      this.trenTrong.add(luoi(new RoundedBoxGeometry(0.06, 0.075, 0.012, 2, 0.006), vlTrang, 0, 0.5, 0.1));
     }
 
     // ---- tay (khớp ở vai để vung) ----
@@ -202,7 +225,7 @@ export class BupBe {
       nhom.add(luoi(new THREE.CapsuleGeometry(0.048, 0.15, 4, 8), vlAo, 0, -0.1, 0));
       nhom.add(luoi(new THREE.SphereGeometry(0.04, 8, 6), vlDa, 0, -0.205, 0.005));
       nhom.rotation.z = dau * 0.16;
-      this.than.add(nhom);
+      this.trenTrong.add(nhom);
     }
 
     // ---- đầu: cầu hơi dẹt + mặt dán lên MẢNH CẦU (cong theo đầu) ----
@@ -229,6 +252,10 @@ export class BupBe {
     const gay = luoi(new THREE.SphereGeometry(0.216, 14, 10, Math.PI * 0.3, Math.PI * 0.4, 0.25, Math.PI * 0.55), vlToc);
     gay.rotation.y = Math.PI / 2;
     this.dau.add(gay);
+    // tóc phủ KÍN nửa sau đầu tới ngang tai: từ sau lưng chỉ thấy tóc, không thấy "mặt trơn"
+    const sauDau = luoi(new THREE.SphereGeometry(0.219, 18, 12, Math.PI, Math.PI, 0, Math.PI * 0.66), vlToc);
+    sauDau.scale.set(1, 0.96, 0.97);
+    this.dau.add(sauDau);
     const mai = luoi(new THREE.CapsuleGeometry(0.045, 0.2, 6, 12), vlToc, 0, 0.115, 0.15);
     mai.rotation.z = Math.PI / 2;
     mai.rotation.x = 0.45;
@@ -249,7 +276,7 @@ export class BupBe {
         this.dau.add(v);
       }
     }
-    this.than.add(this.dau);
+    this.trenTrong.add(this.dau);
 
     // bóng tiếp xúc dưới chân
     bongChan ??= new THREE.MeshBasicMaterial({ map: vanBongDat(), transparent: true, opacity: 0.6, depthWrite: false, color: 0x000000 });
@@ -267,8 +294,15 @@ export class BupBe {
    * miệng; ngồi = gập chân (hông đặt lên mặt ghế — `World` nâng `goc` lên đúng
    * mặt ghế); cầm đồ = tay đó đưa ra trước.
    */
-  dien(dt: number, trangThai: string, dangNoi: boolean, tayCam: 'left' | 'right' | null = null): void {
+  dien(
+    dt: number,
+    trangThai: string,
+    dangNoi: boolean,
+    tayCam: 'left' | 'right' | null = null,
+    them: { clip?: { ten: string; u: number } | null; nhinYaw?: number } = {},
+  ): void {
     this.t += dt;
+    const cuiChao = them.clip?.ten === 'emote:cui-chao' ? Math.sin(Math.min(1, them.clip.u) * Math.PI) : 0;
     const t = this.t;
     const ngoi = trangThai === 'sitting';
     let nhun = 0;
@@ -278,6 +312,8 @@ export class BupBe {
       nhun = Math.abs(Math.sin(t * 9)) * 0.04;
       lac = Math.sin(t * 9) * 0.06;
       vung = Math.sin(t * 9) * 0.6;
+    } else if (cuiChao > 0) {
+      // cúi chào: đứng yên, không nhún, không vung tay
     } else if (trangThai === 'emoting' || trangThai === 'playing') {
       nhun = Math.abs(Math.sin(t * 6)) * 0.05;
       vung = 0.9 + Math.sin(t * 6) * 0.4;
@@ -294,12 +330,24 @@ export class BupBe {
       this.chan.position.set(0, 0.3, 0);
     }
     this.than.rotation.z = lac;
-    const vui = trangThai === 'emoting' || trangThai === 'playing';
+    // INT-07 — cúi chào: đứng thì gập thân trên ~30° quanh hông; ngồi thì chỉ cúi đầu (ghế không cho gập)
+    this.tren.rotation.x = ngoi ? 0 : 0.52 * cuiChao;
+    const vui = (trangThai === 'emoting' || trangThai === 'playing') && cuiChao === 0;
     this.tayTrai.rotation.x = ngoi ? -0.55 : vung;
     this.tayPhai.rotation.x = ngoi ? -0.55 : vui ? vung : -vung;
+    if (cuiChao > 0 && !ngoi) {
+      // hai tay chắp trước bụng
+      this.tayTrai.rotation.x = -0.45 * cuiChao;
+      this.tayPhai.rotation.x = -0.45 * cuiChao;
+    }
     if (tayCam === 'left') this.tayTrai.rotation.x = -1.0;
     if (tayCam === 'right') this.tayPhai.rotation.x = -1.0;
-    this.dau.rotation.x = dangNoi ? Math.sin(t * 7) * 0.06 : Math.sin(t * 1.3) * 0.03;
+    this.dau.rotation.x = (dangNoi ? Math.sin(t * 7) * 0.06 : Math.sin(t * 1.3) * 0.03) + (ngoi ? 0.4 : 0.15) * cuiChao;
+    // ĐẦU quay theo hướng nhìn (giới hạn ±60°, mượt theo thời gian thật) — người
+    // đang ngồi nhìn ai thì QUAY ĐẦU, không xoay thân khỏi ghế
+    const dich = Math.max(-QUAY_DAU_TOI_DA, Math.min(QUAY_DAU_TOI_DA, them.nhinYaw ?? 0));
+    this.dauYaw += (dich - this.dauYaw) * (1 - Math.exp(-dt / 0.18));
+    this.dau.rotation.y = this.dauYaw;
     this.dau.rotation.z = Math.sin(t * 0.9) * 0.04;
     if (dangNoi) {
       this.nhipMieng += dt;

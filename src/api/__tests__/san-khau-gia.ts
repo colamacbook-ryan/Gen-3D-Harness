@@ -319,6 +319,11 @@ export class SanKhauGia implements StageWorld {
   actorTurnTo(id: string, target: string | Vec3): Action {
     const v = this.viTri(target);
     const x = this.a(id);
+    // như sân khấu thật (`NhanVat.xoayVe`): người đang ngồi không xoay thân — ghế không xoay
+    if (x.ngoi) {
+      this.lichSu.push(`turnTo:${id}:bo-qua-ngoi`);
+      return { durationMs: 0, done: Promise.resolve(), cancel: () => undefined };
+    }
     x.huongVe = typeof target === 'string' ? target : null;
     return this.hd(id, 'turnTo', 'playing', () => {
       x.facing = Math.round(
@@ -332,6 +337,10 @@ export class SanKhauGia implements StageWorld {
     const v = this.viTri(target);
     const x = this.a(id);
     x.huongVe = typeof target === 'string' ? target : null;
+    if (x.ngoi) {
+      this.lichSu.push(`faceTo:${id}:bo-qua-ngoi`);
+      return;
+    }
     x.facing = Math.round(
       ((Math.atan2(v[0] - x.pos[0], v[2] - x.pos[2]) * 180) / Math.PI + 360) % 360,
     );
@@ -407,8 +416,11 @@ export class SanKhauGia implements StageWorld {
     this.lichSu.push(`express:${expression}`);
   }
 
-  actorBubble(id: string): Action {
-    return this.hd(id, 'bubble', 'speaking');
+  /** Bong bóng chữ: như sân khấu thật (`NhanVat.hienBongBong`) KHÔNG đổi `state` — người đang ngồi vẫn ngồi. */
+  actorBubble(id: string, text = ''): Action {
+    this.a(id);
+    this.lichSu.push(`bubble:${id}:${text}`);
+    return hdTamThoi(NHIP_MS);
   }
 
   actorSay(id: string, text: string): Action {

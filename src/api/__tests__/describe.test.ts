@@ -230,8 +230,8 @@ describe('stage.bootstrap là sách hướng dẫn tự sinh', () => {
     expect(boot.places.length).toBe(17);
     expect(boot.clips).toContain('wave');
     expect(boot.expressions).toContain('happy');
-    // 15 emote A2 + `chu-y` của C0 (#28)
-    expect(boot.emotes.length).toBe(16);
+    // 15 emote A2 + `chu-y` của C0 (#28) + `cui-chao` của INT-07
+    expect(boot.emotes.length).toBe(17);
     expect(boot.emotes).toContain('chu-y');
     expect(boot.quyUocDo).toMatchObject({ donVi: 'mét' });
 

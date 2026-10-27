@@ -192,6 +192,16 @@ export const DINH_NGHIA_EMOTE: Record<string, DinhNghiaEmote> = {
     nhan: 'Chăm chú',
     am: [],
   },
+  /** INT-07 (Ryan 27/10): "nhân viên đối với sếp phải cung kính" — cúi người ~30°, hai tay chắp trước bụng. */
+  'cui-chao': {
+    id: 'cui-chao',
+    expression: 'relaxed',
+    weightMat: 0.6,
+    body: 'cui-chao',
+    durationMs: 1500,
+    nhan: 'Cúi chào',
+    am: [],
+  },
 };
 
 import { EMOTES } from '../stage/noi-dung';

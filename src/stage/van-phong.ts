@@ -36,8 +36,27 @@ export const KHU_VP = [
   { id: 'phong-hop', ten: 'Phòng họp', mau: 0xbfb2a2, x0: 4.6, x1: 11.4, z0: -2.0, z1: 2.6 },
   { id: 'pantry', ten: 'Pantry', mau: 0xe9dcc2, x0: 4.6, x1: 11.4, z0: 4.0, z1: 7.2 },
   { id: 'le-tan', ten: 'Lễ tân', mau: 0x46557c, x0: -2.4, x1: 2.6, z0: 4.8, z1: 7.4 },
-  { id: 'khu-nghi', ten: 'Khu nghỉ', mau: 0xc9b6d6, x0: -2.4, x1: 3.4, z0: -8.4, z1: -5.4 },
+  { id: 'khu-nghi', ten: 'Khu nghỉ', mau: 0xc9b6d6, x0: -2.4, x1: 3.4, z0: -5.2, z1: -1.9 },
+  /** INT-07 — lãnh đạo ngồi LƯNG TỰA TƯỜNG bắc (Ryan 27/10), dưới logo công ty, mặt nhìn ra văn phòng. */
+  { id: 'ban-giam-doc', ten: 'Ban giám đốc', mau: 0x7d8aa8, x0: -2.4, x1: 3.4, z0: -8.9, z1: -6.4 },
 ] as const;
+
+/**
+ * INT-07 — toạ độ bàn lãnh đạo (một nguồn: `noi-dung.ts` PLACES + `man-hinh.ts`
+ * khớp các số này; test soi). Bàn ở `Z_BAN_LANH_DAO`, ghế phía tường, người
+ * nhìn +Z. Ghế không lùi sát tường hơn được: khung sàn chừa `LE_TUONG` 0,5 m
+ * (điểm ngồi z ≥ −8,5), nên một DÃY TỦ HỒ SƠ áp tường lấp khe — lưng ghế tựa
+ * vào tủ, tủ áp tường.
+ */
+export const X_BAN_CEO = 0.5;
+export const X_BAN_NHI = -1.5;
+export const Z_BAN_LANH_DAO = -7.72;
+/**
+ * Ghế lãnh đạo lùi 0,56 m sau tâm bàn (ghế nhân viên 0,48): điểm ngồi −8,44 phải
+ * cách mép sau bàn ≥ thân + lề (không thì A* không vào được ghế CEO — đo thật) và
+ * đầu gối không lòi lên mặt bàn (ảnh thật: chân Nhi "gác lên bàn" ở 0,48).
+ */
+const GHE_LANH_DAO = -0.56;
 
 /* ---------------------------------------------------------------- vật liệu */
 
@@ -325,7 +344,16 @@ let soBan = 0;
  * Một chỗ làm việc: bàn + màn hình + bàn phím + ghế (+ đồ lặt vặt). Bàn ở z=0,
  * ghế ở z=−0,5 nhìn về +Z. `nguoi` = một búp bê ngồi làm việc ở ghế.
  */
-function choLamViec(b: Bo, x: number, z: number, quay: number, mauGhe: number, nguoi: number | null, coManHinh = true): void {
+function choLamViec(
+  b: Bo,
+  x: number,
+  z: number,
+  quay: number,
+  mauGhe: number,
+  nguoi: number | null,
+  coManHinh = true,
+  gheZ = -0.48,
+): void {
   const g = new THREE.Group();
   soBan += 1;
   // mặt bàn + 2 chân tấm
@@ -355,7 +383,7 @@ function choLamViec(b: Bo, x: number, z: number, quay: number, mauGhe: number, n
   } else hop(g, 0.2, 0.04, 0.14, vl(0xfbfaf6, 0.7), -0.33, CAO_BAN + 0.045, 0.02, 0.005, false);
   // ghế
   const gh = ghe(mauGhe);
-  gh.position.z = -0.48;
+  gh.position.z = gheZ;
   g.add(gh);
   if (nguoi !== null) {
     const bb = new BupBe(NHAN_VIEN[nguoi % NHAN_VIEN.length]!);
@@ -631,32 +659,66 @@ function khuNghi(b: Bo): void {
   // chỗ ngồi sofa phải đi tới được (place `sofa`) → không đo tự động; khai tay
   // lưng tựa + tay vịn + bàn tròn + người đang ngồi
   g.userData.khongChan = true;
-  datNhom(b, g, 0.4, -7.3, 0);
+  // INT-07: dời xuống giữa sàn (chỗ tường bắc nhường cho Ban giám đốc) — lệch +3,4 m theo z
+  datNhom(b, g, 0.4, -3.9, 0);
   b.vatCan.push(
     // tay vịn thấp, không khai: hộp của nó (nở 0,34 m) nuốt mất chỗ ngồi sofa
-    { id: 'sofa-lung', x0: -0.65, x1: 1.45, z0: -7.75, z1: -7.45 },
-    { id: 'sofa-ban', x0: -0.35, x1: 0.55, z0: -6.55, z1: -5.65 },
-    { id: 'sofa-nguoi', x0: -0.25, x1: 0.25, z0: -7.45, z1: -7.0 },
+    { id: 'sofa-lung', x0: -0.65, x1: 1.45, z0: -4.35, z1: -4.05 },
+    { id: 'sofa-ban', x0: -0.35, x1: 0.55, z0: -3.15, z1: -2.25 },
+    { id: 'sofa-nguoi', x0: -0.25, x1: 0.25, z0: -4.05, z1: -3.6 },
   );
-  denSan(b, -1.6, -7.8);
-  cayChau(b, 2.8, -7.9, 1.3);
-  bienTen(b, 'Khu nghỉ', KHU_VP[6].mau, -2.0, -5.1, 0);
+  denSan(b, -1.8, -4.6);
+  cayChau(b, 2.9, -4.7, 1.2);
+  bienTen(b, 'Khu nghỉ', KHU_VP[6].mau, -2.1, -2.2, 0);
+}
+
+/**
+ * INT-07 — dãy tủ hồ sơ thấp ÁP TƯỜNG BẮC sau lưng hai ghế lãnh đạo: thứ cho
+ * lưng "có chỗ tựa". Không chặn đường (`khongChan`): nó nằm trọn trong lề tường
+ * 0,5 m mà không ai đi vào được.
+ */
+function tuLungLanhDao(b: Bo): void {
+  const g = new THREE.Group();
+  g.userData.khongChan = true;
+  const DAI = 3.9;
+  const SAU = 0.42;
+  const CAO = 0.55;
+  hop(g, DAI, CAO, SAU, vl(MAU_GO_DAM, 0.5), 0, CAO / 2, 0, 0.03);
+  hop(g, DAI + 0.04, 0.04, SAU + 0.03, vl(MAU_GO, 0.45), 0, CAO + 0.02, 0, 0.01);
+  // cánh tủ + tay nắm
+  for (let i = 0; i < 6; i += 1) {
+    const x = -DAI / 2 + DAI / 12 + (i * DAI) / 6;
+    hop(g, DAI / 6 - 0.04, CAO - 0.1, 0.012, vl(0x5c4433, 0.55), x, CAO / 2, SAU / 2 + 0.006, 0.005, false);
+    hop(g, 0.08, 0.015, 0.02, vl(MAU_KIM, 0.3), x, CAO - 0.12, SAU / 2 + 0.016, 0.005, false);
+  }
+  // đồ trên nóc tủ: sách, cúp, chậu nhỏ
+  const mauSach = [0xc0563f, 0x3f6fa8, 0xd9a441, 0x5f7a54, 0x8e7bb0];
+  for (let i = 0; i < 5; i += 1) hop(g, 0.05, 0.22, 0.16, vl(mauSach[i]!, 0.7), -1.55 + i * 0.06, CAO + 0.15, 0, 0.005, false);
+  tru(g, 0.05, 0.035, 0.1, vl(0xd8b04a, 0.25), 1.2, CAO + 0.09, 0, false);
+  tru(g, 0.07, 0.05, 0.12, vl(0xd8b04a, 0.25), 1.2, CAO + 0.2, 0, false);
+  tru(g, 0.06, 0.05, 0.1, vl(0xe8e1d4, 0.6), 0.2, CAO + 0.09, 0, false);
+  const la = new THREE.Mesh(new THREE.IcosahedronGeometry(0.11, 1), vl(0x5c9a52, 0.8, { flatShading: true }));
+  la.position.set(0.2, CAO + 0.22, 0);
+  g.add(la);
+  bongDat(b, g, 0, 0, DAI / 2 + 0.1, 0.35);
+  datNhom(b, g, (X_BAN_CEO + X_BAN_NHI) / 2 + 0.1, SAN_VP.z0 + SAU / 2 + 0.01, 0);
 }
 
 /**
  * INT-07 — chỗ làm của CEO: bàn gỗ đậm 1,5 m + màn hình + bảng tên "CEO", ghế
  * bành tối (`khongChan` — place `ghe-ceo` phải ngồi được), thảm xanh đậm làm
- * "phòng riêng không vách". Toạ độ khớp place `ban-ceo`/`ghe-ceo` trong `noi-dung.ts`.
+ * "phòng riêng không vách". Lưng tựa tường bắc (dãy tủ `tuLungLanhDao`). Toạ độ
+ * khớp place `ban-ceo`/`ghe-ceo` trong `noi-dung.ts`.
  */
 function banCeo(b: Bo): void {
-  const X = -0.6;
-  const Z = -4.2;
+  const X = X_BAN_CEO;
+  const Z = Z_BAN_LANH_DAO;
   // thảm riêng (dưới cùng, không chặn đường)
   const tham = new THREE.Mesh(
-    new RoundedBoxGeometry(2.4, 0.02, 1.9, 2, 0.008),
+    new RoundedBoxGeometry(2.2, 0.02, 1.6, 2, 0.008),
     new THREE.MeshStandardMaterial({ color: 0x34405e, roughness: 1 }),
   );
-  tham.position.set(X, 0.012, Z + 0.15);
+  tham.position.set(X, 0.04, Z - 0.2); // nằm TRÊN thảm khu (mặt 0,03)
   tham.receiveShadow = true;
   b.nhom.add(tham);
   const g = new THREE.Group();
@@ -687,11 +749,12 @@ function banCeo(b: Bo): void {
   for (const dau of [1, -1]) hop(gh, 0.07, 0.16, 0.4, vl(0x2b2f3a, 0.7), dau * 0.26, CAO_GHE + 0.12, 0, 0.03);
   tru(gh, 0.03, 0.03, CAO_GHE - 0.06, vl(MAU_KIM, 0.4), 0, (CAO_GHE - 0.06) / 2 + 0.03, 0, false);
   tru(gh, 0.2, 0.2, 0.03, vl(MAU_KIM, 0.4), 0, 0.03, 0, false);
-  gh.position.z = -0.48;
+  gh.position.z = GHE_LANH_DAO;
   g.add(gh);
   bongDat(b, g, 0, -0.15, 0.95, 0.7);
-  datNhom(b, g, X, Z, 180);
-  cayChau(b, X - 1.15, Z - 0.45, 1.0, 0x34405e);
+  // quay 0: ghế phía tường (−Z), CEO nhìn +Z ra cả văn phòng
+  datNhom(b, g, X, Z, 0);
+  cayChau(b, X + 2.5, -8.45, 1.1, 0x34405e);
 }
 
 /* ---------------------------------------------------------------- vỏ toà nhà */
@@ -761,10 +824,13 @@ export async function dungVanPhong(scene: THREE.Scene): Promise<Canh> {
   khuPantry(b);
   khuLeTan(b);
   khuNghi(b);
-  // BÀN RIÊNG CỦA NHI cạnh lối đi chính (place `ban-dieu-khien`/`ghe-2`, màn hình `may-tinh`)
-  choLamViec(b, 2.6, -4.2, 180, 0xe0607e, null, false);
-  // INT-07 — BÀN CEO (Nam / Sếp): đối xứng bàn Nhi qua lối đi chính, to hơn, ghế bành, thảm riêng
+  // INT-07 — BAN GIÁM ĐỐC dọc tường bắc, LƯNG TỰA TƯỜNG (Ryan 27/10), mặt nhìn ra văn phòng:
+  // bàn Giám đốc kỹ thuật Nhi (place `ban-dieu-khien`/`ghe-2`, màn hình `may-tinh`) + bàn CEO
+  // Nam dưới logo (to hơn, ghế bành, thảm riêng) + dãy tủ hồ sơ áp tường sau lưng cả hai.
+  choLamViec(b, X_BAN_NHI, Z_BAN_LANH_DAO, 0, 0xe0607e, null, false, GHE_LANH_DAO);
   banCeo(b);
+  tuLungLanhDao(b);
+  bienTen(b, 'Ban giám đốc', KHU_VP[7].mau, 3.1, -6.6, 0);
 
   // ngăn mềm giữa các khu: kệ thấp + cây (KHÔNG vách)
   keThap(b, -7.5, -0.4, 4.6, 0);

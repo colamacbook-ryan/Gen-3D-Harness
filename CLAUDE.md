@@ -2094,3 +2094,17 @@ không tự biên tự diễn"* → *"cấp trên đóng dấu kiểm nhận, h�
   dấu ⇒ biên chữ bằng `\p{L}`). Thêm `MS_CHIA_VIEC` 90 s vào hạn lượt. Chưa đo với Ollama thật.
 - Cạm bẫy đo: sửa file `src/` trong lúc script trình duyệt chạy ⇒ Vite HMR tải lại trang, `window.stage` mất giữa
   chừng — chạy kiểm thì không sửa `src/`.
+- **Ban giám đốc LƯNG TỰA TƯỜNG bắc** (Ryan: "lãnh đạo phải tựa lưng vào tường"): bàn Nhi `X_BAN_NHI` −1,5, bàn CEO
+  `X_BAN_CEO` 0,5 dưới logo, `Z_BAN_LANH_DAO` −7,72, người nhìn +Z. Điểm ngồi −8,44 là SÂU NHẤT đi được (lề tường
+  `LE_TUONG` 0,5 m — `actorSit` không dịch người vào ghế, chỉ đi tới), nên dãy tủ hồ sơ áp tường (`khongChan`) lấp khe.
+  Ghế lãnh đạo lùi 0,56 m sau tâm bàn: ở 0,48 thì A* không vào được ghế CEO (bàn sâu 0,72) và đầu gối Nhi lòi lên mặt
+  bàn (ảnh thật: "gác chân lên bàn"). Khu nghỉ dời xuống chỗ hai bàn cũ. Màn `may-tinh` giờ nhìn −Z về phía Nhi
+  (góc toàn cảnh thấy lưng màn — đổi lấy đúng tư thế; `screen.focus` vẫn xem được). 549 hộp vật cản.
+- **Người ngồi không xoay thân** (Ryan: "không thể người quay mà ghế không quay"): chặn ở MỘT chỗ — `NhanVat.xoayVe`
+  trả hành động rỗng khi `state === 'sitting'` (sân khấu giả làm y vậy). Nhìn ai thì búp bê QUAY ĐẦU theo `lookAt`
+  (±60°, `QUAY_DAU_TOI_DA`) — trước đó lớp búp bê bỏ qua `lookAt` hoàn toàn.
+- **Lễ nghi**: emote mới `cui-chao` (17 emote) — búp bê gập nửa thân trên quanh khớp hông (`tren`), ngồi thì chỉ cúi
+  đầu; máy đội ngũ dùng `cuiChao()` (ngồi ⇒ gật bằng `actor.listen`). Lời thoại = bảng `LOI` có emoji, phát bằng
+  `actor.bubble` (không tiếng ⇒ không đụng cổng "một giọng" của I1). `actor.bubble` KHÔNG đổi `state` (người ngồi vẫn
+  ngồi) — sân khấu giả từng đặt `speaking`, đã sửa cho khớp bản thật.
+- **Trước / sau phân biệt được**: tóc phủ kín nửa sau đầu tới ngang tai + cổ áo sau + đường may sống lưng màu đậm.

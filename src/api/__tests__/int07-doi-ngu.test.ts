@@ -23,6 +23,8 @@ import {
   idNhanVien,
   khuCuaVai,
   CHO_BAO_CAO_CEO,
+  choNop,
+  LOI,
   CHO_CHU_TRI_HOP,
   CUA_SO_GIAO_MS,
   THU_TU_PHA,
@@ -306,11 +308,14 @@ describe('quy trình — luật thứ tự bắt buộc', () => {
     }
   });
 
-  it('nhận việc: Giám đốc lên bàn CEO đứng nghe, CEO gật, rồi về bàn riêng', async () => {
+  it('nhận việc: Giám đốc tới kế bên CEO, CÚI CHÀO, CEO giao (bong bóng), Giám đốc nhận lời, rồi về bàn', async () => {
     await su('brief');
     await may.xong();
     const ls = world.lichSu;
-    expect(ls.some((x) => x.startsWith('ngheNgong:owner:true'))).toBe(true);
+    const i = (x: string) => ls.indexOf(x);
+    expect(i('emote.cui-chao:gen')).toBeGreaterThanOrEqual(0);
+    expect(i(`bubble:owner:${LOI.ceoGiaoViec}`)).toBeGreaterThan(i('emote.cui-chao:gen'));
+    expect(i(`bubble:gen:${LOI.nhanViec}`)).toBeGreaterThan(i(`bubble:owner:${LOI.ceoGiaoViec}`));
     expect(ls.some((x) => x.startsWith('ngheNgong:gen:true'))).toBe(true);
     // đã ĐI tới chỗ báo cáo CEO trước khi ngồi lại
     const iDi = ls.findIndex((x) => x.startsWith('moveTo:gen'));
@@ -417,12 +422,14 @@ describe('quy trình — luật thứ tự bắt buộc', () => {
     expect(may.trangThai().pha).toBe('nghi');
   });
 
-  it('báo cáo: Giám đốc ĐI tới cạnh CEO, CEO gật nghe, rồi về bàn', async () => {
+  it('báo cáo: Giám đốc ĐI tới cạnh CEO, cúi chào, báo số liệu (bong bóng), CEO gật + duyệt, rồi về bàn', async () => {
     await su('report');
     await may.xong();
     const ls = world.lichSu;
     expect(ls.some((x) => x.startsWith('ngheNgong:owner:true'))).toBe(true);
-    expect(ls.some((x) => x === 'emote.thanh-cong:gen')).toBe(true);
+    expect(ls).toContain('emote.cui-chao:gen');
+    expect(ls).toContain(`bubble:gen:${LOI.baoCao(0, 0)}`);
+    expect(ls).toContain(`bubble:owner:${LOI.ceoDuyet}`);
     expect(viTri('gen')!.at).toBe('ghe-2');
   });
 
@@ -480,6 +487,28 @@ describe('quy trình — luật thứ tự bắt buộc', () => {
     expect(world.describe().actors.map((a) => a.id).sort()).toEqual(['gen', 'owner']);
     expect(viTri('gen')!.at).toBe('sofa');
     expect(may.trangThai().pha).toBe('nghi');
+  });
+
+  it('lãnh đạo ngồi LƯNG TỰA TƯỜNG (Ryan 27/10): ghế sát tường bắc, nhìn ra văn phòng, A* vào tận chỗ ngồi', () => {
+    datCanhChan({ hop: vatCanVanPhong(), ...SAN_MAC_DINH });
+    try {
+      const cua = timPlace('cua')!.standAt!;
+      for (const id of ['ghe-2', 'ghe-ceo']) {
+        const p = timPlace(id)!;
+        // tường bắc ở z = −9; điểm ngồi trong lề 0,5 m + ≤ 0,1 m (sâu hơn thì không đi tới được)
+        expect(p.pos[2] - SAN_MAC_DINH.z0, `${id} cách tường`).toBeLessThanOrEqual(0.6);
+        expect(p.facing, `${id} phải nhìn +Z ra văn phòng`).toBe(0);
+        const dd = timDuong(cua[0], cua[2], p.pos[0], p.pos[2], 0.34);
+        const [ex, ez] = dd[dd.length - 1]!;
+        expect(Math.hypot(ex - p.pos[0], ez - p.pos[2]), `A* tới ${id}`).toBeLessThan(0.3);
+      }
+      for (let k = 0; k < 3; k += 1) {
+        const n = choNop(k);
+        expect(biChan(n.x, n.z, 0.3), `chỗ nộp bài ${k}`).toBeNull();
+      }
+    } finally {
+      datCanhChan(null);
+    }
   });
 
   it('chỗ chủ trì họp + chỗ báo cáo CEO ngoài vật cản THẬT và A* tới được', () => {
@@ -598,5 +627,67 @@ describe('sổ quy trình — biên bản, phiếu giao, dấu kiểm nhận, d�
     await may.xong();
     expect(rec).toHaveLength(1);
     expect(rec[0]).toMatchObject({ so: 1, loai: 'nhan-viec', ky: 'Nam' });
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* LỄ NGHI (Ryan: "nhân viên đối với sếp phải cung kính, nói chuyện phải có bong bóng và emoji") */
+/* ------------------------------------------------------------------ */
+
+describe('lễ nghi — cúi chào cấp trên, bong bóng + emoji, ghế không xoay', () => {
+  it('mọi câu thoại có emoji', () => {
+    const emoji = /\p{Extended_Pictographic}/u;
+    for (const [k, v] of Object.entries(LOI)) {
+      const cau = typeof v === 'function' ? (v as (...a: unknown[]) => string)('việc', 1) : v;
+      expect(emoji.test(cau), `LOI.${k}: «${cau}»`).toBe(true);
+    }
+  });
+
+  it('nhân viên tới bàn Giám đốc nộp bài: CÚI CHÀO trước khi nói, cảm ơn sau khi được đóng dấu', async () => {
+    await giao('l1', 'builder', 'Viết test');
+    await may.xong();
+    const actor = may.trangThai().nhanVien[0]!.actor;
+    world.lichSu.length = 0;
+    await xong('l1');
+    await may.xong();
+    const ls = world.lichSu;
+    const iChao = ls.indexOf(`emote.cui-chao:${actor}`);
+    const iNop = ls.indexOf(`bubble:${actor}:${LOI.nopBai}`);
+    const iDau = ls.indexOf(`bubble:gen:${LOI.kiemNhan}`);
+    const iCamOn = ls.indexOf(`bubble:${actor}:${LOI.camOn}`);
+    expect(iChao).toBeGreaterThanOrEqual(0);
+    expect(iNop).toBeGreaterThan(iChao);
+    expect(iDau).toBeGreaterThan(iNop);
+    expect(iCamOn).toBeGreaterThan(iDau);
+    expect(ls.indexOf(`remove:${actor}`)).toBeGreaterThan(iCamOn);
+  });
+
+  it('CEO KHÔNG cúi chào cấp dưới (chỉ gật + đáp)', async () => {
+    await su('brief');
+    await su('report');
+    await may.xong();
+    expect(world.lichSu.some((x) => x === 'emote.cui-chao:owner')).toBe(false);
+  });
+
+  it('người đang NGỒI chào cấp trên bằng GẬT ĐẦU, không gập người (ghế không cho gập)', async () => {
+    await d.run('actor.sit', { actor: 'gen', seat: 'ghe-2' });
+    for (let i = 0; i < 100 && d.dangBan('gen'); i += 1) await new Promise((r) => setTimeout(r, 5));
+    world.lichSu.length = 0;
+    await su('session-start');
+    await may.xong();
+    expect(world.lichSu).not.toContain('emote.cui-chao:gen');
+    expect(world.lichSu.some((x) => x.startsWith('ngheNgong:gen:true'))).toBe(true);
+    expect(world.lichSu).toContain(`bubble:gen:${LOI.chaoCeo}`);
+  });
+
+  it('người đang ngồi: faceTo / turnTo KHÔNG xoay thân (ghế tĩnh) — Ryan: "không thể người quay mà ghế không quay"', async () => {
+    await d.run('actor.sit', { actor: 'gen', seat: 'ghe-2' });
+    for (let i = 0; i < 100 && d.dangBan('gen'); i += 1) await new Promise((r) => setTimeout(r, 5));
+    const truoc = viTri('gen')!.facing;
+    await d.run('actor.faceTo', { actor: 'gen', target: 'cua' });
+    await d.run('actor.turnTo', { actor: 'gen', target: 'bep' });
+    for (let i = 0; i < 100 && d.dangBan('gen'); i += 1) await new Promise((r) => setTimeout(r, 5));
+    expect(viTri('gen')!.facing).toBe(truoc);
+    expect(viTri('gen')!.state).toBe('sitting');
   });
 });
