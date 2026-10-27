@@ -93,6 +93,31 @@ html, body {
   will-change: transform;
 }
 .bong-bong.hien { opacity: 1; }
+/* INT-07 — thẻ tên vai trong đội: trưởng (cam đậm) · nhân viên subagent (xanh) · Sếp (xám) */
+.the-ten {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: min(220px, 46vw);
+  padding: 2px 8px 3px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  color: #fff;
+  background: rgba(70, 64, 58, 0.82);
+  box-shadow: 0 3px 10px rgba(40, 32, 24, 0.22);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  will-change: transform;
+}
+.the-ten.hien { opacity: 1; }
+.the-ten--truong { background: #c4632b; font-weight: 600; }
+.the-ten--nhan-vien { background: #3f6fa8; }
+.the-ten--sep { background: rgba(60, 64, 74, 0.85); }
 .bong-bong b {
   display: block;
   font-size: 10.5px;

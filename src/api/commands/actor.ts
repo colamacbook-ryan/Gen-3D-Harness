@@ -23,6 +23,9 @@ import { layPhieuGiong } from '../../audio/so-giong';
  */
 import { huyHoatDong } from '../../behavior/hoat-dong';
 
+/** INT-07 — thẻ tên ngắn để không che cảnh. */
+const TOI_DA_THE = 60;
+
 const s = (v: unknown) => String(v);
 
 /**
@@ -487,6 +490,28 @@ export const LENH_ACTOR: CommandSpec[] = [
         a.durationMs as number | undefined,
       );
       return ngay({ actor: id, expression: s(a.expression) });
+    },
+  },
+
+  {
+    cmd: 'actor.label',
+    group: 'actor',
+    desc:
+      'INT-07 — thẻ tên nổi trên đầu: vai trong đội (vd "Nhi · Kỹ sư trưởng", "Thợ xây · Viết test"). ' +
+      'Không chiếm thân. Bỏ trống text = gỡ thẻ',
+    params: [
+      P_ACTOR,
+      { name: 'text', type: 'text', desc: `Chữ trên thẻ (≤ ${TOI_DA_THE} ký tự); trống = gỡ` },
+      pEnum('tone', 'Kiểu thẻ', { values: ['thuong', 'truong', 'nhan-vien', 'sep'], default: 'thuong' }),
+    ],
+    example: { cmd: 'actor.label', args: { actor: 'gen', text: 'Nhi · Kỹ sư trưởng', tone: 'truong' } },
+    handler(a, ctx) {
+      const id = s(a.actor);
+      if (!ctx.world.coActor(id)) throw new Error(`Không có actor "${id}"`);
+      const text = a.text === undefined ? '' : s(a.text).replace(/\s+/g, ' ').trim();
+      if (text.length > TOI_DA_THE) throw new Error(`text dài ${text.length} ký tự (tối đa ${TOI_DA_THE})`);
+      ctx.world.actorLabel(id, text || null, s(a.tone ?? 'thuong'));
+      return ngay({ actor: id, label: text || null });
     },
   },
 

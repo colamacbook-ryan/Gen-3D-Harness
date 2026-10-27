@@ -2037,3 +2037,27 @@ bố cục căn nhà (B1/D1b/F1/J1) đã xoá; `?canh=` không còn. Các mục 
 - Đo (Chromium swiftshader 1280×860): **93 lượt vẽ, 284k tam giác** (căn nhà cũ ~210 lượt vẽ có VRM). Kiểm trên trình
   duyệt thật: 12/12 place tới đúng `at`, ngồi 3/3 ghế, Nam lái không xuyên bàn, `module.demo` → module vào tay Nhi →
   `module.store` lên `ke-module`, 6/6 hoạt động J2 chạy trọn về đúng chỗ.
+
+## Quyết định INT-07 — đội ngũ agent hiện hình (27/10, Ryan)
+
+Ryan: *"phải phân được ai là quản lý kỹ sư trưởng, ai là nhân viên subagent và nó được sinh ra thể hiện thế nào trong
+quá trình làm việc"*; nguồn **cả hai** (Claude Code + não local). Chi tiết + cấu hình hook: **`docs/doi-ngu/README.md`**.
+
+- **Một giao thức cho mọi nguồn**: lệnh `team.event {kind: spawn|done|fail, id, role, task, source}` chỉ bắn sự kiện
+  `team.event` (nhóm `stage`, không chiếm actor, `task` qua `boKyTuLa` + cắt 120). Nằm trong `LENH_CHI_CHO_BOSS` — não
+  (MCP) không được giả việc thật. Claude Code nối bằng hook `PreToolUse`/`PostToolUse` matcher `Task|Agent` →
+  `scripts/bao-doi-ngu.mjs` (thoát 0, stdout rỗng, hạn 1,5 s, chỉ gửi vai + `description`, KHÔNG prompt/kết quả).
+- **Máy `src/behavior/doi-ngu.ts`** (trong trình duyệt, nguồn `doi-ngu`, mẫu phản xạ/tự sinh hoạt): spawn → `actor.spawn`
+  ở `cua` + thẻ tên + Nhi nhìn sang (rảnh & đứng thì về ngồi `ghe-2`, ngồi rồi thì giữ nguyên, bận thì chỉ nhìn) →
+  ghế trống / chỗ đứng theo `VAI_KHU` + `CHO_LAM`; done/fail → đứng dậy → nộp cạnh bàn Nhi (`choNop`) → ra cửa →
+  `actor.remove`. **Chuỗi theo id sự kiện** nên `done` tới trước khi vào chỗ xong vẫn đúng thứ tự. Trần
+  `TOI_DA_NHAN_VIEN` = 6 (mỗi người một VRM ẩn, L-42).
+- **Phân vai phải NHÌN THẤY được** — vòng đầu nhân viên subagent trông y hệt búp bê trang trí. Thêm lệnh
+  **`actor.label {actor, text?, tone}`** (thẻ tên DOM nổi trên đầu, cùng lớp bong bóng, nhường chỗ khi bong bóng hiện;
+  `stage.describe().actors[].label`): `truong` cam · `nhan-vien` xanh · `sep` xám. Gắn lại sau `stage.reset`.
+- **3 ghế trống mới là place `cho-kt-1`/`cho-kt-2`/`cho-kd-1`** (kind `seat`) — `actor.sit` chỉ nhận place. Test b1
+  giữ "đủ 12 id cũ + id mới phải `cho-*`".
+- **`actorSit` không ngồi tại chỗ kẹt nữa**: đo thật — 4 nhân viên cùng chạy làm swiftshader tụt khung, cú đi tụt sau
+  đồng hồ → cắt góc → kẹt → `diToi` bỏ cuộc → nhân vật NGỒI giữa lối đi cách ghế 1 m. Nay sau cú đi, còn xa ghế
+  > `CON_XA_GHE` 0,3 m thì tìm đường lại từ chỗ đang đứng (tối đa 2 lần). Máy yếu thật cũng gặp đúng ca này.
+- Não local: chưa tự chia việc cho subagent; khi có thì gửi đúng `team.event` với `source: "nao-local"`.

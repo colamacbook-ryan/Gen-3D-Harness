@@ -18,6 +18,8 @@ import { LENH_DEMO } from './demo';
 // J2 (#79) — BẢNG HOẠT ĐỘNG: `actor.activity` + `actor.activities`.
 import { LENH_HOAT_DONG } from './hoat-dong';
 import { LENH_FX } from './fx';
+// INT-07 — đội ngũ agent: `team.event` (subagent giao/xong/hỏng).
+import { LENH_DOI_NGU } from './doi-ngu';
 
 export function taoRegistry(): Registry {
   return new Registry().dangKy(
@@ -32,6 +34,7 @@ export function taoRegistry(): Registry {
     ...LENH_MODULE,
     ...LENH_DEMO,
     ...LENH_FX,
+    ...LENH_DOI_NGU,
     ...LENH_STUB,
   );
 }

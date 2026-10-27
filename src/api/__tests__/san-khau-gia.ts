@@ -390,6 +390,15 @@ export class SanKhauGia implements StageWorld {
     this.lichSu.push(`stop:${id}`);
   }
 
+  /** INT-07 — thẻ tên (sổ để test đọc). */
+  theTen = new Map<string, { text: string; tone: string }>();
+  actorLabel(id: string, text: string | null, tone = 'thuong'): void {
+    this.a(id);
+    if (!text) this.theTen.delete(id);
+    else this.theTen.set(id, { text, tone });
+    this.lichSu.push(`label:${id}:${text ?? ''}`);
+  }
+
   actorExpress(id: string, expression: string): void {
     if (!(BIEU_CAM as readonly string[]).includes(expression)) {
       throw new Error(`Không có biểu cảm "${expression}"`);
@@ -695,6 +704,7 @@ export class SanKhauGia implements StageWorld {
       queued: 0,
       controlledBy: x.dieuKhienBoi,
       facingTarget: x.huongVe,
+      label: this.theTen.get(x.id)?.text ?? null,
     };
   }
 }

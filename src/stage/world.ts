@@ -54,7 +54,7 @@ import {
   timPlace,
   type DinhNghiaPlace,
 } from './noi-dung';
-import { noiTiep, hanhDongHenGio } from './hanh-dong';
+import { noiTiep, hanhDongHenGio, hanhDongXongNgay } from './hanh-dong';
 import { ManHinh, MAC_DINH_MAN_HINH } from './man-hinh';
 import { KetTinh, maySurfacePoints } from '../fx/hat-ket-tinh';
 import { taoHieuUng, type HieuUng } from '../fx/hieu-ung';
@@ -100,6 +100,8 @@ export const PRESET_DEN_SO: Record<string, SoDen> = {
   toi: { troi: 0.34, nang: 0.22, nangMau: 0x6f9ec8, vien: 0.45, exposure: 0.8, nen: 0x060a0f },
   am: { troi: 0.8, nang: 0.8, nangMau: MAU_CAM, vien: 0.25, exposure: 0.86, nen: 0x1c1208 },
 };
+/** Còn xa ghế hơn số này (m) sau cú đi thì `actorSit` tìm đường đi lại thay vì ngồi tại chỗ kẹt. */
+const CON_XA_GHE = 0.3;
 /** Bán kính coi là "đang ở" một place. */
 const BAN_KINH_AT = 0.9;
 /**
@@ -305,6 +307,8 @@ export class World implements StageWorld {
   private props = new Map<string, DoVat>();
   private bongBongLop: HTMLElement;
   private bongBongEl = new Map<string, HTMLElement>();
+  /** INT-07 — thẻ tên nổi trên đầu từng actor (`actor.label`). */
+  private theTen = new Map<string, { text: string; tone: string; el: HTMLElement }>();
 
   /* A3 — màn hình hologram, hiệu ứng kết tinh, fx ngắn */
   private screens = new Map<string, ManHinh>();
@@ -1134,6 +1138,18 @@ export class World implements StageWorld {
       el.style.transform = `translate(-50%, -100%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
       el.classList.toggle('hien', v.z < 1);
     }
+    // INT-07 — thẻ tên: ngay trên đầu, nhường chỗ khi bong bóng chữ đang hiện
+    for (const [id, t] of this.theTen) {
+      const nv = this.actors.get(id);
+      if (!nv) continue;
+      nv.viTriDau(v);
+      v.y += 0.16;
+      v.project(this.camera);
+      const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+      t.el.style.transform = `translate(-50%, -100%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+      t.el.classList.toggle('hien', v.z < 1 && !nv.bongBong);
+    }
   }
 
   /* ------------------------------------------------------------- tra cứu */
@@ -1278,6 +1294,8 @@ export class World implements StageWorld {
       el.remove();
       this.bongBongEl.delete(id);
     }
+    this.theTen.get(id)?.el.remove();
+    this.theTen.delete(id);
   }
 
   actorMoveTo(id: string, to: string | Vec3, speed?: number): Action {
@@ -1375,9 +1393,20 @@ export class World implements StageWorld {
     );
     const uoc = (kc / TOC_DO_DI) * 1000 + DAI_CLIP.sit! + 400;
     const matGhe = layMatGhe(seat);
+    /*
+     * INT-07 (27/10): đi CHƯA tới ghế (kẹt góc rồi `diToi` bỏ cuộc — đo thật khi
+     * 4 nhân viên cùng chạy làm khung hình tụt) thì KHÔNG ngồi tại chỗ kẹt: tìm
+     * đường lại từ chỗ đang đứng, tối đa 2 lần. Đã sát ghế thì bước này rỗng.
+     */
+    const diLai = () =>
+      Math.hypot(nv.goc.position.x - dich.x, nv.goc.position.z - dich.z) > CON_XA_GHE
+        ? nv.diToi(dich, undefined, this.duongToi(nv, dich))
+        : hanhDongXongNgay(0);
     return noiTiep(
       [
         () => nv.diToi(dich, undefined, this.duongToi(nv, dich)),
+        diLai,
+        diLai,
         () => nv.xoayVe(p.facing ?? 180),
         () => nv.ngoi(matGhe),
       ],
@@ -1406,6 +1435,21 @@ export class World implements StageWorld {
       throw new Error(`Không có biểu cảm "${expression}". Đang có: ${BIEU_CAM.join(', ')}`);
     }
     nv.datBieuCam(expression, weight, durationMs);
+  }
+
+  actorLabel(id: string, text: string | null, tone = 'thuong'): void {
+    this.nv(id);
+    const cu = this.theTen.get(id);
+    if (!text) {
+      cu?.el.remove();
+      this.theTen.delete(id);
+      return;
+    }
+    const el = cu?.el ?? document.createElement('div');
+    el.className = `the-ten the-ten--${tone}`;
+    el.textContent = text;
+    if (!cu) this.bongBongLop.appendChild(el);
+    this.theTen.set(id, { text, tone, el });
   }
 
   actorBubble(id: string, text: string, durationMs?: number): Action {
@@ -2182,6 +2226,7 @@ export class World implements StageWorld {
       queued: 0,
       controlledBy: nv.dieuKhienBoi,
       facingTarget: nv.huongVe,
+      label: this.theTen.get(nv.id)?.text ?? null,
     };
   }
 

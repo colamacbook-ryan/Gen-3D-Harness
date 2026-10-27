@@ -22,6 +22,7 @@ import { batHieuLenh } from './behavior/hieu-lenh';
 import { batPhanXa } from './behavior/phan-xa';
 // J2 (#79) — rảnh > 20 s thì Nhi tự sinh hoạt; Boss gõ/nói là cắt ngay.
 import { batTuSinhHoat } from './behavior/tu-sinh-hoat';
+import { batDoiNgu, type MayDoiNgu, type TrangThaiDoiNgu } from './behavior/doi-ngu';
 import { BridgeClient, coBatBridge, urlTts } from './bridge-client';
 // B2 (#20) — giọng tiếng Việt thật + nút mở khoá autoplay.
 import { lopTieng } from './audio/tts-client';
@@ -71,6 +72,8 @@ export interface CuaStage {
    * cảm giác. Mốc tự đặt: `calls ≤ 150`, `triangles ≤ 300k`.
    */
   hieuNang(): Record<string, unknown>;
+  /** INT-07 — đội ngũ agent: ai đang làm gì, ở khu nào (bằng chứng/kiểm). */
+  doiNgu(): TrangThaiDoiNgu | null;
   /** Văn phòng 27/10 — bộ hộp vật cản ĐANG có hiệu lực (căn nhà hoặc cảnh đã nạp), cho script bằng chứng. */
   vatCan(): ReadonlyArray<{ id: string; x0: number; x1: number; z0: number; z1: number }>;
   /** Đường A* mà `actor.moveTo` sẽ đi từ (x0,z0) tới (x1,z1) — cùng hàm sân khấu dùng. */
@@ -174,6 +177,9 @@ let sanSang = false;
 let oChat: OChat | null = null;
 /** C1 — lớp mic (null khi chưa dựng giao diện xong). */
 let mic: Mic | null = null;
+/** INT-07 — máy đội ngũ (bật trong `khoiDong` sau khi dựng cảnh). */
+let mayDoiNgu: MayDoiNgu | null = null;
+
 window.stage = {
   run: (cmd, args) => dispatcher.run(cmd, args, 'window.stage'),
   runCommand: (c) => dispatcher.runCommand(c, 'window.stage'),
@@ -191,6 +197,7 @@ window.stage = {
     return ra;
   },
   hieuNang: () => world.doHieuNang(),
+  doiNgu: () => mayDoiNgu?.trangThai() ?? null,
   vatCan: () => hopChanHienTai(),
   duongDi: (x0, z0, x1, z1) => timDuong(x0, z0, x1, z1, 0.34),
   chieuDiem: (p) => world.chieuDiem(p),
@@ -258,6 +265,12 @@ async function khoiDong(): Promise<void> {
    * cùng sự kiện thì tới lúc phản xạ cần chêm câu, Nhi đã rảnh.
    */
   batTuSinhHoat({ dispatcher, bus });
+
+  /*
+   * INT-07 — ĐỘI NGŨ AGENT: `team.event` (hook Claude Code / não local) → nhân
+   * viên búp bê vào văn phòng, làm việc ở khu theo vai, nộp kết quả cho Nhi.
+   */
+  mayDoiNgu = batDoiNgu({ dispatcher, bus });
 
   /*
    * D1b vòng 2 — `?fps=1`: thước FPS trong app để Boss TỰ ĐO trên Firefox +

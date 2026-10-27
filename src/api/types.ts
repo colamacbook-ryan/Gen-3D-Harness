@@ -218,6 +218,12 @@ export interface ActorSnapshot {
    * này là **tuỳ chọn**: `World`/`san-khau-gia` không phải biết tới nó.
    */
   activity?: string | null;
+  /**
+   * INT-07 — **thẻ tên** nổi trên đầu (`actor.label`): vai trong đội, vd
+   * "Nhi · Kỹ sư trưởng", "Thợ xây · Viết test A*". `null` = không thẻ.
+   * Tuỳ chọn như `activity`: sân khấu nào chưa thi công thì bỏ trống.
+   */
+  label?: string | null;
 }
 
 export interface PlaceSnapshot {
@@ -398,6 +404,8 @@ export interface StageWorld {
     durationMs?: number,
   ): void;
   actorBubble(id: string, text: string, durationMs?: number): Action;
+  /** INT-07 — thẻ tên nổi trên đầu, không chiếm thân. `text` null/rỗng = gỡ thẻ. */
+  actorLabel(id: string, text: string | null, tone?: string): void;
   actorSay(
     id: string,
     text: string,

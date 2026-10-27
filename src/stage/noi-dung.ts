@@ -51,6 +51,11 @@ export const PLACES: readonly DinhNghiaPlace[] = [
   // ghế kẹp giữa bàn họp và ghế bên cạnh — chỗ ĐỨNG là sau lưng ghế (đo `duongDi`: ô (6,45; −1,4) thoáng)
   { id: 'ghe-1', pos: [6.45, 0, -0.72], kind: 'seat', standAt: [6.45, 0, -1.4], facing: 0, seatY: 0.335 },
   { id: 'ghe-2', pos: [2.6, 0, -3.56], kind: 'seat', facing: 180, seatY: 0.335 },
+  // INT-07 — ghế TRỐNG cho nhân viên subagent (`src/behavior/doi-ngu.ts`): cùng
+  // khoảng lệch bàn↔mặt ngồi với `ghe-2` (0,64 m về phía lưng ghế)
+  { id: 'cho-kt-1', pos: [-7.5, 0, -7.79], kind: 'seat', facing: 0, seatY: 0.335 },
+  { id: 'cho-kt-2', pos: [-7.5, 0, -2.21], kind: 'seat', facing: 180, seatY: 0.335 },
+  { id: 'cho-kd-1', pos: [6.0, 0, -3.96], kind: 'seat', facing: 180, seatY: 0.335 },
   { id: 'buc-trung-tam', pos: [0, 0, 1.5], kind: 'stage', facing: 0 },
   { id: 'cua', pos: [3.6, 0, 7.8], kind: 'door', standAt: [3.6, 0, 7.0], facing: 180 },
   { id: 'ke-module', pos: [7.6, 0, -2.7], kind: 'shelf', standAt: [7.0, 0, -2.0], facing: 180 },
