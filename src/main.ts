@@ -58,11 +58,12 @@ export interface CuaStage {
    */
   doToc(actor: string): Record<string, unknown>;
   /**
-   * Đáy / nóc / mặt ngồi ĐO ĐƯỢC của từng khối nội thất (review PR #70): để
-   * script chấm "không món nào lơ lửng" bằng SỐ, vì `gopTinh()` dọn nhóm
-   * `khoi:<id>` nên đo lại trên cảnh ra rỗng.
+   * Sổ đo lúc dựng của từng khối nội thất, gộp hai bằng chứng: đáy / nóc / mặt ngồi
+   * (G1 vòng 3, review PR #70 — "không món nào lơ lửng") và hộp bao thật `min`/`max`
+   * (J1 #78 — sát tường, vùng giữa trống). `gopTinh()` dọn nhóm `khoi:<id>` nên đo
+   * lại trên cảnh ra rỗng — phải đọc sổ này.
    */
-  doKhoi(): Record<string, { day: number; noc: number; matNgoi?: number }>;
+  doKhoi(): Record<string, { day: number; noc: number; matNgoi?: number; min?: number[]; max?: number[] }>;
   /**
    * D1b (#48) — số lượt vẽ / tam giác / số mesh của khung vừa render. Boss
    * 26/10: "đừng đòi GPU lớn" → bằng chứng hiệu năng phải là SỐ, không phải
@@ -178,7 +179,12 @@ window.stage = {
   bridge: (bat) => (bat ? bridge.bat() : bridge.tat()),
   doXuong: (actor) => world.doXuongActor(actor),
   doToc: (actor) => world.doTocActor(actor),
-  doKhoi: () => world.doKhoiNha(),
+  doKhoi: () => {
+    const hop = world.doKhoi();
+    const ra: ReturnType<CuaStage['doKhoi']> = world.doKhoiNha();
+    for (const [id, h] of Object.entries(hop)) ra[id] = { ...(ra[id] ?? { day: h.min[1]!, noc: h.max[1]! }), ...h };
+    return ra;
+  },
   hieuNang: () => world.doHieuNang(),
   chieuDiem: (p) => world.chieuDiem(p),
   datMay: (vt, tam) => world.datMayThu(vt, tam),

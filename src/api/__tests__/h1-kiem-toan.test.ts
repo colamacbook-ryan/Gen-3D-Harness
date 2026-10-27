@@ -219,18 +219,24 @@ describe('H1 mục 34 — bảng đèn một nguồn, bấm R không đổi đ�
 /* ================================= 3. actor.moveTo không xuyên nội thất */
 
 describe('H1 mục 38 + 39 — actor.moveTo đi qua va chạm', () => {
-  /** Hộp chắn của sofa trong `bo-cuc.ts` (quay 270° nên 0,45 × 1,15 m). */
+  /** Hộp chắn của sofa trong `bo-cuc.ts`. */
   const sofa = hopChan().find((h) => h.id === 'sofa')!;
   /**
-   * Làn tiếp cận: từ ĐÔNG dọc z = 1,0 (hành lang giữa nhà) đi về tây. Vật cản
+   * Làn tiếp cận: từ ĐÔNG dọc một làn z cố định đi về tây. Vật cản
    * đầu tiên trên đường đúng là mép đông của sofa.
    *
    * Mọi điểm xuất phát được **kiểm là trống** ngay trong test: vòng đầu chọn
    * x = −6 (nằm sẵn trong hộp kệ TV) và x = −5 (trong hộp bàn trà) nên test đo
    * sai thứ — kẹt từ khung 1 vì lý do khác hẳn cái đang kiểm.
    */
-  const X0 = 0;
-  const Z = 1;
+  /** 3 m đông mép sofa: 3 s ở 1,6 m/s (4,8 m) là chắc chắn chạm sofa, dù sofa nằm đâu. */
+  const X0 = sofa.x1 + 3;
+  /*
+   * J1 (#78) dời sofa ra sát tường tây (dọc z, quanh z 3,5) và kéo bàn trà tới trước nó, nên
+   * làn z = 1 cũ giờ đâm vào ghế đơn. Làn mới SUY RA từ hộp sofa: nửa bắc của sofa, phía bắc
+   * bàn trà — test "làn tiếp cận trống" bên dưới vẫn gác nếu bố cục lại đổi.
+   */
+  const Z = sofa.z1 - 0.45;
 
   it('sofa có thật trong bảng chắn, và làn tiếp cận trống (test vô nghĩa nếu bố cục đổi)', () => {
     expect(sofa).toBeTruthy();

@@ -714,6 +714,15 @@ export type Phong = {
   day: Map<string, number>;
   /** Mặt ngồi thật của ghế/sofa, đo lúc dựng (m) — nguồn cho `trenGhe`. */
   matNgoi: Map<string, number>;
+  /**
+   * J1 (#78) — **HỘP BAO THẬT của từng khối, đo NGAY LÚC DỰNG** (m, hệ thế
+   * giới). Phải đo ở đây vì `gopTinh()` gộp mesh tĩnh xong thì nhóm
+   * `khoi:<id>` rỗng — `Box3.setFromObject` trên cảnh đã dựng trả hộp vô
+   * nghĩa (đúng bài học `matTrenKhoi()` của G1). Bảng bằng chứng J1 (`min.y`
+   * mọi khối, mép sau cách tường, vùng giữa trống) đọc thẳng sổ này qua
+   * `window.stage.doKhoi()`.
+   */
+  hopKhoi: Map<string, { min: [number, number, number]; max: [number, number, number] }>;
   /** Số mesh trước/sau khi gộp tĩnh — bằng chứng hiệu năng cho PR. */
   gop: { truoc: number; sau: number };
 };
@@ -971,6 +980,10 @@ export async function dungPhong(scene: THREE.Scene): Promise<Phong> {
   const dayKhoi = new Map<string, number>();
   /** Mặt ngồi thật của ghế/sofa — cho `trenGhe` (và `actor.sit`). */
   const matNgoiKhoi = new Map<string, number>();
+  const hopKhoi = new Map<
+    string,
+    { min: [number, number, number]; max: [number, number, number] }
+  >();
 
   /** Thảm dùng CHUNG một texture hoa văn (Boss: không mỗi vật một canvas). */
   let matThamChung: THREE.MeshStandardMaterial | null = null;
@@ -1047,6 +1060,12 @@ export async function dungPhong(scene: THREE.Scene): Promise<Phong> {
     g.updateMatrixWorld(true);
     const bb = new THREE.Box3().setFromObject(g);
     if (Number.isFinite(bb.max.y)) nocKhoi.set(k.id, bb.max.y);
+    if (Number.isFinite(bb.min.y)) {
+      hopKhoi.set(k.id, {
+        min: [bb.min.x, bb.min.y, bb.min.z],
+        max: [bb.max.x, bb.max.y, bb.max.z],
+      });
+    }
     if (Number.isFinite(bb.min.y)) dayKhoi.set(k.id, bb.min.y);
     /*
      * Mặt ngồi đo NGAY ĐÂY (không để vòng ngoài) để khối bày lên nó
@@ -1080,6 +1099,7 @@ export async function dungPhong(scene: THREE.Scene): Promise<Phong> {
     noc: nocKhoi,
     day: dayKhoi,
     matNgoi: matNgoiKhoi,
+    hopKhoi,
   };
 }
 

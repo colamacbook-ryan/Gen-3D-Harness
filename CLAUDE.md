@@ -1898,3 +1898,102 @@ kế đầy đủ: `docs/spec/actor-api.md` mục **3.2f**. Bằng chứng Firef
   chạy**. Hai đỉnh bằng nhau ⇒ khoanh được vùng sang lớp tiếng/I1 bằng số,
   không phải bằng suy luận. **Một bộ bằng chứng chỉ ra "có lỗi" mà không
   khoanh được vùng thì người sửa vẫn phải đo lại từ đầu.**
+
+## Quyết định J1 — nội thất sát tường, vùng giữa trống, tóc gọn (27/10, Issue #78)
+
+Boss 27/10: *"nội thất nên thiết kế sát tường để chừa không gian giữa để hoạt
+động… chỉnh lại tóc của các nhân vật cho gọn gàng vì đang rối quá"*.
+
+- **Vùng giữa là một HẰNG SỐ có test, không phải "chừa cho đẹp".**
+  `VUNG_HOAT_DONG` = x −3…3 · z −2,5…2,5 (**6 × 5 m**, đề bài đòi ≥ 6 × 4) +
+  `kiemVungTrong()`. Mọi lần dời đồ về sau mà lấn vào đây là `pnpm test` đỏ
+  ngay, không phải chờ Boss mở Firefox thấy mới biết. `kiemTuaTuong()` giữ mép
+  sau món lớn (`DO_TUA_TUONG`) cách tường ≤ `TUA_TUONG` = 0,15 m.
+- **"Sofa tựa tường ĐỐI DIỆN kệ TV tựa tường" là bất khả về hình học.** Nhà
+  14 × 10 m không có hai bức tường nào cách nhau 2,5–4 m (khoảng nhìn TV
+  thật). Nên J1 bỏ yêu cầu F1 "hai món quay ngược nhau 180°" và chuyển sang
+  **bố cục GÓC**: sofa + 2 ghế đơn chạy dọc tường TÂY (mặt +X), kệ TV + bàn
+  cạnh sofa tựa tường NAM phía tây cửa sổ, lệch nhau ~28°. Bàn trà + thảm nằm
+  trong lòng cụm — đề bài #78 cho phép đúng hai món đó không áp tường.
+- **Lưới 0,5 m không bao giờ cộng vừa mép tường → dùng `lech`.** Nửa bề sâu
+  model (0,28 · 0,34 · 0,5 m…) cộng với lưới 0,5 m luôn còn hở 0,2–0,3 m. Hai
+  lối sai: phá lưới (mất `kiemLuoi`), hoặc khai `chan` sâu hơn đồ thật (làm
+  sai đường đi). J1 nhích khối vài cm bằng `lech` và **cho `hopChan()` cộng
+  `lech`** — trước đây `hopChan()` bỏ qua `lech` còn `vetChan()` thì cộng, hai
+  thước lệch nhau mà chưa lộ vì chỉ đồ nhỏ (không có `chan`) mới dùng `lech`.
+- **`chan` của dãy tủ bếp NÔNG hơn tủ thật 8 cm** → thước tường báo "hở 0,2 m"
+  trong khi `phong.ts` đã dựng mặt bếp (`DAY_BEP.sau` = 0,76 m) áp sát tường.
+  Sửa SỐ ĐO (`chan` nửa-sâu 0,30/0,35 → **0,38** = nửa `DAY_BEP.sau`), không
+  nhích đồ. Bài học: `chan` là hộp ĐI ĐƯỜNG, nhưng nếu dùng nó làm thước thì
+  nó phải khớp hình học thật.
+- **Lối đi 2 m phải bỏ qua cặp cùng tựa MỘT mặt tường.** Tường bắc dài 14 m
+  gánh 3 khu (hành lang · bàn làm việc · bếp) nên khe giữa hai khu chỉ 1,44 m;
+  đo khe đó như "lối đi" thì bố cục sát tường không bao giờ đạt 2 m — mà nó
+  cũng không nói gì về việc đi lại, vì muốn sang khu kia thì đi vòng ra vùng
+  giữa trống 6 × 5 m. `kiemLoiDi()` nay `continue` khi `tuongTua(a) ===
+  tuongTua(b) !== null`; `LOI_DI` 1,2 → **2 m**.
+- **TÓC: `dragForce` là thông số G1 BỎ QUÊN.** G1 cân
+  `stiffness`/`gravityPower`/`hitRadius` theo tỉ lệ thế giới, nhưng
+  `stiffness` đã bị `TRAN_LUC_BUOC` (30 % độ dài đoạn) kẹp ở mép ổn định của
+  tích phân Euler — tăng nữa là vô nghĩa. `dragForce` là TỈ SỐ (phần quán tính
+  bỏ mỗi bước), **không cân theo tỉ lệ** — chỉ kéo lên sàn
+  `HAM_TOC_TOI_THIEU` = 0,45 (đúng đề bài #78), giữ nguyên nếu model đã hãm
+  mạnh hơn. Tóc gai của Nam nhờ đó cũng hãm thêm mà không đổi dáng.
+- **"Tóc rối" ở emote `ngac-nhien` KHÔNG phải tóc bay — là collider BÀN TAY
+  đẩy, và mọi cách chữa "mềm" đều ĐO THẤY TỆ HƠN.** Năm vòng đo trên Firefox
+  thật, cùng một máy, cùng một emote:
+
+  | vòng | đổi gì | `lechToc` max | `lechTB` |
+  | --- | --- | --- | --- |
+  | 1 | chuỗi 0,45 m · hãm 0,45 | 0,0739 | 0,031 |
+  | 2 | hãm 0,55 · trần tốc độ 0,022 | **0,1264** | 0,040 |
+  | 3 | chuỗi 0,40 m · bớt bán kính đuôi tóc | **0,2891** | 0,053 |
+  | 4 | + chặn góc lệch 0,42 rad | 0,1551 | 0,036 |
+  | 5 | chuỗi 0,45 m · thu collider theo `tyThuToc` | 0,1438 | 0,035 |
+  | **6** | **chặn góc lệch 0,20 rad** | **0,0606 ĐẠT** | 0,033 |
+
+  `lechTB` gần như đứng yên suốt 6 vòng ⇒ đây là **một GAI MỘT MẪU**, không
+  phải tóc bay. Hãm mạnh hơn và trần tốc độ chặt hơn đều làm tệ: chúng chỉ làm
+  tóc **về chỗ chậm hơn**, nên cú đẩy sau cộng dồn lên cú trước. Rút tóc ngắn
+  hơn cũng làm tệ: chuỗi càng ngắn thì hình cầu collider bàn tay càng to so
+  với nó. Cái chữa được là một chặn **TUYỆT ĐỐI**: `GOC_LECH_TOC_TOI_DA` =
+  0,2 rad ≈ 11,5° mỗi khớp so với **dáng nghỉ** (`chotMocToc`), chỉ áp cho TÓC
+  (váy cần biên độ lớn hơn nhiều: đo thật `lechVay` 0,19 m khi đi 1,6 m/s).
+  Chuỗi tóc 5–6 khớp nên đuôi vẫn quét được ~60–70° — tóc mềm, chỉ không rối.
+  Đây là trần DÁNG VẼ: `_currentTail` bên trong không bị sửa nên cú đẩy qua
+  rồi tóc tự về, không khoá cứng.
+- **Trần tóc phải có số TUYỆT ĐỐI bên cạnh trần tỉ lệ.** G1 chặn theo tỉ lệ
+  thân người (`TOC_CHUA_THAN_DUOI` = 0,3) ra chuỗi ~0,77 m — tóc tới quá hông,
+  cánh tay đòn đó quét đuôi tóc qua mặt/vai mỗi cú quay đầu. J1 thêm
+  `TOC_DAI_TOI_DA` = **0,45 m** (ngang lưng trên) và lấy trần NGẶT hơn trong
+  hai cái. Kéo theo: sàn thu gọn `THU_TOC_TOI_THIEU` 0,55 → **0,30**, vì chuỗi
+  tóc 1,09 m muốn về 0,45 m thì hệ số phải 0,41 — sàn 0,55 cũ kẹp lại ở 0,60 m
+  nên trần 0,45 m không bao giờ với tới. Mái ôm sọ bọc theo xương `head` nên
+  KHÔNG hở da đầu (kiểm bằng ảnh 3 góc × 2 nhân vật, 1440 px, Firefox thật).
+  Đo sau: chuỗi tóc Nhi **0,45 m** (`tyThuToc` 0,359), Nam **0,146 m**
+  (`tyThuToc` 1 — tóc ngắn, không đụng).
+- **Đèn điểm ấm trong `world.ts` phải dời cùng `bo-cuc.ts`** (lặp lại bài học
+  F1/G1): `den-san` về (−6,5 · 0) và `den-ban` theo bàn về z −4,35. Lệch là
+  thấy ngay vệt sáng không có nguồn.
+- Bằng chứng: `node scripts/kiem-j1.mjs` — Firefox thật, `vite preview`, cổng
+  5478, **mở trình duyệt đúng một lần**, mọi lệnh kiểm `r.ok`. Ra
+  `docs/j1/bang-j1.txt` (tựa tường · vùng trống · `min.y` mọi khối · lệch tóc
+  100 ms cho đứng/đi/3 emote) + 5 ảnh preset + 6 ảnh tóc. Số chốt: hở tường
+  **−0,03…0,15 m** cả 17 món, vùng giữa **6 × 5 m KHÔNG khối nào lấn**,
+  `min.y` 60/60 khối ≥ 0 (không món nào lún sàn), lệch tóc đứng
+  **0,0019/0,0184**, đi **0,0049/0,0152**, emote xấu nhất **0,0213/0,0606**
+  (mốc 0,02 / 0,05 / 0,07), console **0 lỗi**.
+- **`World.doKhoi()` / `Phong.hopKhoi` — sổ đo hộp bao từng khối ghi LÚC
+  DỰNG.** Lặp lại bài học `matTrenKhoi()` của G1 ở một chỗ mới: vòng đo đầu
+  của J1 tự quét đỉnh trong cảnh và chỉ thấy **7/60 khối**, vì `gopTinh()` gộp
+  mesh tĩnh xong thì nhóm `khoi:<id>` rỗng. Đo lúc dựng rồi phơi qua
+  `window.stage.doKhoi()`.
+- **Cạm bẫy đo (lặp lại F2/G1)**: (1) nouveau giết tiến trình GPU ngay sau khi
+  biên dịch shader — `kiem-j1.mjs` thử lại việc NẠP TRANG tối đa 3 lần **trong
+  cùng một browser** (vẫn đúng "mở Firefox một lần"), thay vì bắt chạy lại cả
+  lượt; (2) mẫu `pgrep -f firefox-1543` **không neo** tự khớp luôn vòng chờ
+  `bash -c` của agent khác ⇒ hai agent chờ nhau mãi — phải neo argv[0]
+  (`^[^ ]*firefox-1543/firefox/firefox`); (3) `kiemTuaTuong()` xanh mà ảnh vẫn
+  hở tường, vì nó đo trên hộp `chan` còn mắt nhìn **mép MODEL** — model Kenney
+  bị `rongToiDa`/`cao` chuẩn hoá nên thường NÔNG hơn `chan` tới 5 cm. Số `lech`
+  phải chốt theo bảng đo hình học thật của `kiem-j1.mjs`, không theo `chan`.

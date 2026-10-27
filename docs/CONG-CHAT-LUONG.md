@@ -9,6 +9,11 @@ Như hiện nay: chạy thật trên Playwright **Firefox** (`firefox-1543`, hea
 Một agent mở `http://localhost:<cổng riêng>` bằng Firefox thật, KHÔNG biết PR vừa sửa gì, làm đúng những gì Boss làm, ghi ĐẠT/KHÔNG + ảnh:
 1. Mở trang → bảng lệnh không che 3D (390 và 1440); không "chưa có não" 10 s đầu.
 2. Nhìn 5 preset: trần không vướng; không món lẻ; không cháy trắng; nhân vật đứng **chân chạm sàn** (đo xương bàn chân); tóc không bung (đo đầu tóc); hai nhân vật tỉ lệ bằng nhau.
+2b. **J1 (#78) — vùng giữa trống, tóc gọn**: ở `toan-canh`, hình chữ nhật giữa
+   nhà (x −3…3 · z −2,5…2,5 = 6 × 5 m) KHÔNG có món nội thất nào; mọi món lớn
+   mép sau cách tường ≤ 0,15 m; tóc cả hai nhân vật không dài quá lưng trên
+   (chuỗi tóc ≤ 0,45 m) và không quét qua mặt/vai khi quay đầu nhanh — xem ảnh
+   3 góc × 2 nhân vật và bảng lệch tóc của `scripts/kiem-j1.mjs`.
 3. Lái WASD 5 s mỗi hướng: tốc độ đều, dừng êm, đụng đồ dừng thật, camera không lắc.
 4. Bấm Bật tiếng → quyền mic → giữ V nói 5 câu **giọng thật** (dùng bộ mẫu `.cache/stt/mau` nếu có, không thì TTS làm bẩn): chữ nghe ≥4/5 đúng ý; hành động đúng ≥4/5.
 5. Gõ 3 câu: lệnh cố định (Nam đi tới bàn), câu tự do (Nhi hôm nay làm gì) → não trả lời ≤10 s bằng giọng, nhìn máy quay; "Nam nói với Nhi …" → nhìn nhau.
