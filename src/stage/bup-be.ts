@@ -126,6 +126,9 @@ function luoi(geo: THREE.BufferGeometry, vl: THREE.Material, x = 0, y = 0, z = 0
 }
 
 /** Một búp bê. `goc` đặt vào cảnh; `dien()` gọi mỗi khung. */
+/** Bán kính sọ và mảng mặt (m): mặt nổi 2,5 mm ngoài sọ (cầu 22 cạnh lõm ≈ 2 mm giữa mặt lưới). */
+const BAN_KINH_SO = 0.21;
+const BAN_KINH_MAT = 0.2125;
 /** Độ cao khớp hông (m, trong toạ độ búp bê) — trục gập người khi cúi chào. */
 const HONG = 0.43;
 /** Đầu quay tối đa sang mỗi bên (rad) — quá thì người thật phải xoay cả thân. */
@@ -230,18 +233,22 @@ export class BupBe {
 
     // ---- đầu: cầu hơi dẹt + mặt dán lên MẢNH CẦU (cong theo đầu) ----
     this.dau.position.set(0, 0.855, 0);
-    const soDau = luoi(new THREE.SphereGeometry(0.21, 22, 16), vlDa);
+    const soDau = luoi(new THREE.SphereGeometry(BAN_KINH_SO, 22, 16), vlDa);
     soDau.scale.set(1, 0.95, 0.96);
     this.dau.add(soDau);
     this.dau.add(luoi(new THREE.SphereGeometry(0.035, 10, 8), vlDa, 0.205, -0.01, 0));
     this.dau.add(luoi(new THREE.SphereGeometry(0.035, 10, 8), vlDa, -0.205, -0.01, 0));
     this.mat = new THREE.MeshBasicMaterial({ map: matKhep, transparent: true, depthWrite: false });
     const manhMat = new THREE.Mesh(
-      new THREE.SphereGeometry(0.2035, 16, 12, Math.PI * 0.15, Math.PI * 0.7, Math.PI * 0.28, Math.PI * 0.45),
+      // bán kính PHẢI lớn hơn sọ (0,21): bản đầu 0,2035 nằm LỌT TRONG sọ 6 mm ⇒ sọ che mất mặt
+      new THREE.SphereGeometry(BAN_KINH_MAT, 16, 12, Math.PI * 0.15, Math.PI * 0.7, Math.PI * 0.28, Math.PI * 0.45),
       this.mat,
     );
     manhMat.scale.set(1, 0.95, 0.96);
-    manhMat.rotation.y = -Math.PI / 2;
+    // Mảng cầu phi 0,15π…0,85π của three đã CĂN GIỮA ở +Z (phi = π/2 ⇒ z = +r)
+    // — đúng chính diện, cùng phía mái tóc / kính / cà vạt. Bản đầu xoay thêm −π/2
+    // nên mặt nằm ở MÁ TRÁI (đo: tâm x −0,131); nhìn thẳng chỉ thấy mép mặt, rồi
+    // tóc gáy đè lên là mất hẳn mắt mũi miệng (Ryan 27/10). Test `bup-be-mat.test.ts` giữ.
     this.dau.add(manhMat);
 
     // tóc: chỏm + gáy + mái
@@ -250,7 +257,7 @@ export class BupBe {
     chom.rotation.x = -0.28;
     this.dau.add(chom);
     const gay = luoi(new THREE.SphereGeometry(0.216, 14, 10, Math.PI * 0.3, Math.PI * 0.4, 0.25, Math.PI * 0.55), vlToc);
-    gay.rotation.y = Math.PI / 2;
+    gay.rotation.y = Math.PI; // gáy: sau đầu (−Z), đối diện mặt — bản đầu π/2 đặt nó bên tai phải
     this.dau.add(gay);
     // tóc phủ KÍN nửa sau đầu tới ngang tai: từ sau lưng chỉ thấy tóc, không thấy "mặt trơn"
     const sauDau = luoi(new THREE.SphereGeometry(0.219, 18, 12, Math.PI, Math.PI, 0, Math.PI * 0.66), vlToc);

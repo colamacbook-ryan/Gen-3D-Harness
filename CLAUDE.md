@@ -2108,3 +2108,9 @@ không tự biên tự diễn"* → *"cấp trên đóng dấu kiểm nhận, h�
   `actor.bubble` (không tiếng ⇒ không đụng cổng "một giọng" của I1). `actor.bubble` KHÔNG đổi `state` (người ngồi vẫn
   ngồi) — sân khấu giả từng đặt `speaking`, đã sửa cho khớp bản thật.
 - **Trước / sau phân biệt được**: tóc phủ kín nửa sau đầu tới ngang tai + cổ áo sau + đường may sống lưng màu đậm.
+- **MẶT BÚP BÊ TỪNG KHÔNG BAO GIỜ HIỆN** (Ryan: "mắt mũi miệng đâu hết rồi") — hai lỗi chồng nhau từ lúc dựng búp
+  bê: (1) mảng mặt xoay thừa −π/2 ⇒ nằm ở MÁ TRÁI (mảng cầu three phi 0,15π…0,85π đã căn giữa ở +Z); (2) bán kính
+  mảng mặt 0,2035 < sọ 0,21 ⇒ LỌT TRONG sọ 6 mm, sọ che mất. Tóc gáy cũ cũng lệch 90° (bên tai). Nay `BAN_KINH_MAT`
+  0,2125 > `BAN_KINH_SO`, không xoay; test `bup-be-mat.test.ts` đo tâm + mép hình học thật (đỏ với cả hai lỗi cũ).
+  Bài học (L-103): ảnh kiểm đã cho thấy mặt trơn mà đọc thành "đầu quay sang" — soi ảnh theo danh sách cố định
+  (mắt/mũi/miệng? bong bóng? thân–ghế cùng hướng?) trước khi diễn giải.
