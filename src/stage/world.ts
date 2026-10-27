@@ -37,6 +37,8 @@ import {
   MAU_CYAN,
   MAU_DEN_AM,
 } from './phong';
+import { chonCanh, dungLang, type Lang } from './lang';
+import { BupBe, DAN_LANG, KIEU_NHAN_VAT } from './bup-be';
 import { DoFps } from './do-fps';
 import { DT_TOI_DA_NEN, nenVeKhung, TY_LE_PIXEL_NEN, type RenderMode } from './che-do-nen';
 import { heSoBam, NhanVat, TOC_DO_DI, uocThoiLuongNoi } from './nhanvat';
@@ -78,6 +80,16 @@ import { coNao } from '../behavior/so-nao';
  * không còn cắt màu. Luma 223 (cũ 228) nên không làm cảnh sáng thêm.
  */
 const MAU_NEN_LAB = 0xf0ddc0;
+
+/**
+ * BẢN THỬ LÀNG HANOK (`?canh=lang`, Ryan 27/10) — máy quay DIORAMA: cao, chéo
+ * từ đông-nam, fov hẹp cho gần kiểu nhìn isometric của ảnh tham chiếu. Khung
+ * dọc (panel VS Code hẹp) lùi xa hơn để vẫn ôm sân giữa.
+ */
+const MAY_LANG = { vt: new THREE.Vector3(8.2, 13.2, 16.2), tam: new THREE.Vector3(-0.6, 0.4, -2.2), fov: 34 };
+const MAY_LANG_DOC = { vt: new THREE.Vector3(12.5, 21, 26), tam: new THREE.Vector3(-0.5, 0.4, -1.8), fov: 44 };
+/** Nền + sương hoàng hôn tím ấm của làng. */
+const MAU_NEN_LANG = 0x4d5170;
 
 /** Một bộ số đèn của một preset — xem `PRESET_DEN_SO`. */
 export interface SoDen {
@@ -359,6 +371,13 @@ export class World implements StageWorld {
   private denPreset = 'sang';
   /** C0 (#28) — góc máy hiện tại, để `stage.describe().camera.preset` nói thật. */
   private mayPreset = 'toan-canh';
+  /** Cảnh đang dựng: căn nhà mặc định hay bản thử làng (`?canh=lang`). */
+  private canh: 'nha' | 'lang' = chonCanh();
+  /**
+   * LỚP HÌNH búp bê hanbok của từng actor (làng). VRM vẫn chạy bên dưới (ẩn) để
+   * giữ nguyên bộ não hành động; búp bê chép vị trí + hướng mỗi khung.
+   */
+  private bupBe = new Map<string, BupBe>();
 
   /*
    * D1b (Issue #48) — **KHÔNG CÒN HẬU KỲ**. Boss 26/10: "tối ưu đồ hoạ, đừng
@@ -594,10 +613,65 @@ export class World implements StageWorld {
     this.denPreset = 'sang';
   }
 
+  /**
+   * BẢN THỬ LÀNG — ánh sáng HOÀNG HÔN (ảnh tham chiếu): trời tím-lam, nắng thấp
+   * cam từ tây, đèn lồng là nguồn sáng ấm chính. Chỉ 4 đèn điểm thật (đèn lồng
+   * gần sân giữa nhất), không đổ bóng; còn lại là vật liệu tự sáng + quầng.
+   */
+  private apAnhSangLang(denLong: THREE.Vector3[]): void {
+    this.scene.background = new THREE.Color(MAU_NEN_LANG);
+    this.scene.fog = new THREE.FogExp2(MAU_NEN_LANG, 0.018);
+    this.troi.color.set(0x9fb0e0);
+    this.troi.groundColor.set(0x5a4a48);
+    this.troi.intensity = 0.95;
+    this.nang.color.set(0xffc49a);
+    this.nang.intensity = 0.75;
+    this.nang.position.set(-14, 9, 7);
+    const c = this.nang.shadow.camera;
+    c.left = -18;
+    c.right = 18;
+    c.top = 16;
+    c.bottom = -16;
+    c.near = 2;
+    c.far = 45;
+    c.updateProjectionMatrix();
+    this.vien.color.set(0x8a9ad8);
+    this.vien.intensity = 0.35;
+    this.vien.position.set(6, 8, -12);
+    this.scene.environmentIntensity = 0.18;
+    for (const d of this.denAm) this.scene.remove(d);
+    const gan = [...denLong].sort((a, b) => a.length() - b.length()).slice(0, 4);
+    this.denAm = gan.map((p) => denDiem(0xffa84a, 6, 6, p.x, p.y, p.z));
+    for (const d of this.denAm) this.scene.add(d);
+    this.renderer.toneMappingExposure = 0.92;
+    this.controls.maxDistance = 45;
+    this.controls.maxPolarAngle = Math.PI * 0.42;
+    this.controls.enablePan = true;
+    this.kepMay = false;
+    this.datGocMay();
+  }
+
   /** Nạp phòng + nhân vật mặc định + 2 màn hình (máy tính + TV). Gọi một lần lúc khởi động. */
   async napCanh(tienTrinh?: (chu: string) => void): Promise<{ dungKenney: boolean }> {
-    tienTrinh?.('Đang dựng căn nhà…');
-    const phong = await dungPhong(this.scene);
+    tienTrinh?.(this.canh === 'lang' ? 'Đang dựng làng…' : 'Đang dựng căn nhà…');
+    const phong = this.canh === 'lang' ? await dungLang(this.scene) : await dungPhong(this.scene);
+    if (this.canh === 'lang') {
+      this.apAnhSangLang((phong as Lang).denLong);
+      // dân làng trang trí (tĩnh, không phải actor): làm vườn, bưng rổ — như ảnh mẫu
+      const danLang: Array<[number, number, number, number, 'xom' | 'bung-ro' | null]> = [
+        [-5.6, -0.4, 0.4, 0, null],
+        [-8.2, 0.3, -2.6, 0, 'xom'],
+        [-4.6, 3.6, 2.6, 1, 'bung-ro'],
+        [3.6, 2.9, -0.6, 2, 'xom'],
+      ];
+      for (const [x, z, quay, i, tuThe] of danLang) {
+        const bb = new BupBe(DAN_LANG[i]!);
+        bb.goc.position.set(x, 0, z);
+        bb.goc.rotation.y = quay;
+        if (tuThe) bb.tuThe(tuThe);
+        this.scene.add(bb.goc);
+      }
+    }
     this.nocKhoi = phong.noc;
     this.dayKhoi = phong.day;
     this.matNgoiKhoi = phong.matNgoi;
@@ -624,7 +698,8 @@ export class World implements StageWorld {
     this.actorLookAt(GEN.id, 'ban-dieu-khien');
 
     tienTrinh?.('Đang dựng màn hình…');
-    for (const id of Object.keys(MAC_DINH_MAN_HINH)) await this.screenSpawn({ id });
+    // Bản thử làng: màn hình máy tính/TV neo vào bàn/kệ của CĂN NHÀ — ngoài sân làng không có chỗ đặt.
+    if (this.canh !== 'lang') for (const id of Object.keys(MAC_DINH_MAN_HINH)) await this.screenSpawn({ id });
 
     return { dungKenney: phong.dungKenney };
   }
@@ -756,6 +831,13 @@ export class World implements StageWorld {
         if (v) nv.diemNhin.position.set(v[0], v[1] + 1.25, v[2]);
       }
       nv.capNhat(dt);
+      const bb = this.bupBe.get(nv.id);
+      if (bb) {
+        // đế búp bê luôn ở mặt sàn (gốc VRM bị hạ/nâng để chân VRM chạm sàn — không áp cho búp bê)
+        bb.goc.position.set(nv.goc.position.x, 0, nv.goc.position.z);
+        bb.goc.rotation.y = nv.goc.rotation.y;
+        bb.dien(dt, nv.state, nv.bongBong !== null);
+      }
     }
 
     /*
@@ -917,7 +999,7 @@ export class World implements StageWorld {
    * do tính bằng phép slab thay vì `Raycaster`.
    */
   private kepMayTrongNha(): void {
-    if (!this.kepMay) return;
+    if (!this.kepMay || this.canh === 'lang') return;
     const tam = this.controls.target;
     const [tx, ty, tz] = kepTrongHop(tam.x, tam.y, tam.z, HOP_MAY);
     /*
@@ -1148,12 +1230,13 @@ export class World implements StageWorld {
   private datGocMay(): void {
     const tyLe = window.innerWidth / window.innerHeight;
     const t = THREE.MathUtils.clamp((1.3 - tyLe) / (1.3 - 0.6), 0, 1);
-    this.camera.fov = THREE.MathUtils.lerp(MAY_NGANG.fov, MAY_DOC.fov, t);
+    const [ngang, doc] = this.canh === 'lang' ? [MAY_LANG, MAY_LANG_DOC] : [MAY_NGANG, MAY_DOC];
+    this.camera.fov = THREE.MathUtils.lerp(ngang.fov, doc.fov, t);
     this.camera.aspect = tyLe;
     this.camera.updateProjectionMatrix();
     if (!this.bossDaXoay && !this.tamTuBay) {
-      this.camera.position.lerpVectors(MAY_NGANG.vt, MAY_DOC.vt, t);
-      this.controls.target.lerpVectors(MAY_NGANG.tam, MAY_DOC.tam, t);
+      this.camera.position.lerpVectors(ngang.vt, doc.vt, t);
+      this.controls.target.lerpVectors(ngang.tam, doc.tam, t);
     }
     this.controls.update();
   }
@@ -1298,6 +1381,12 @@ export class World implements StageWorld {
     nv.goc.position.copy(v);
     nv.goc.rotation.y = ((place?.facing ?? 20) * Math.PI) / 180;
     this.actors.set(p.id, nv);
+    if (this.canh === 'lang') {
+      nv.vrm.scene.visible = false;
+      const bb = new BupBe(KIEU_NHAN_VAT[p.id] ?? DAN_LANG[this.bupBe.size % DAN_LANG.length]!);
+      this.scene.add(bb.goc);
+      this.bupBe.set(p.id, bb);
+    }
 
     const snap = this.snapActor(nv);
     return snap;
@@ -1308,6 +1397,11 @@ export class World implements StageWorld {
     nv.dung();
     this.scene.remove(nv.goc);
     this.scene.remove(nv.diemNhin);
+    const bb = this.bupBe.get(id);
+    if (bb) {
+      this.scene.remove(bb.goc);
+      this.bupBe.delete(id);
+    }
     // rò rỉ nặng nhất nếu thiếu: mỗi actorRemove (và mỗi stage.reset gọi lại
     // actorSpawn ngay sau) nạp một avatar VRM mới mà không dọn avatar cũ —
     // skinned mesh + skeleton + toàn bộ texture rò vĩnh viễn theo phiên.
@@ -1732,7 +1826,8 @@ export class World implements StageWorld {
     }
     if (name === 'toan-canh') {
       this.bossDaXoay = false;
-      this.tamTuBay = { vt: MAY_NGANG.vt.clone(), tam: MAY_NGANG.tam.clone() };
+      const goc = this.canh === 'lang' ? MAY_LANG : MAY_NGANG;
+      this.tamTuBay = { vt: goc.vt.clone(), tam: goc.tam.clone() };
       return;
     }
     if (name === 'truoc-mat') {
