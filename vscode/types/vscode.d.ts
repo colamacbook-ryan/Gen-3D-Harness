@@ -129,6 +129,23 @@ declare module 'vscode' {
 
   export interface WorkspaceConfiguration {
     get<T>(section: string): T | undefined;
+    update(section: string, value: any, configurationTarget?: ConfigurationTarget | boolean | null, overrideInLanguage?: boolean): Thenable<void>;
+  }
+
+  export enum ConfigurationTarget {
+    Global = 1,
+    Workspace = 2,
+    WorkspaceFolder = 3,
+  }
+
+  export interface OpenDialogOptions {
+    defaultUri?: Uri;
+    openLabel?: string;
+    canSelectFiles?: boolean;
+    canSelectFolders?: boolean;
+    canSelectMany?: boolean;
+    filters?: { [name: string]: string[] };
+    title?: string;
   }
 
   export interface WorkspaceFolder {
@@ -214,6 +231,8 @@ declare module 'vscode' {
       options?: { readonly webviewOptions?: { readonly retainContextWhenHidden?: boolean } },
     ): Disposable;
     export function showInformationMessage<T extends string>(message: string, ...items: T[]): Thenable<T | undefined>;
+    export function showErrorMessage<T extends string>(message: string, ...items: T[]): Thenable<T | undefined>;
+    export function showOpenDialog(options?: OpenDialogOptions): Thenable<Uri[] | undefined>;
     export function showWarningMessage<T extends string>(message: string, ...items: T[]): Thenable<T | undefined>;
     export function showWarningMessage<T extends string>(message: string, options: MessageOptions, ...items: T[]): Thenable<T | undefined>;
   }

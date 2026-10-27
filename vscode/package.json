@@ -1,8 +1,8 @@
 {
   "name": "gen-stage-vscode",
   "displayName": "Gen-Stage",
-  "description": "Sân khấu Gen-Stage trong tab editor + chatroom cột phải (spike V0).",
-  "version": "0.0.1",
+  "description": "Sân khấu Gen-Stage trong tab editor + chatroom cột phải: não LLM local, giọng nói, giác quan IDE, đội ngũ agent theo quy trình.",
+  "version": "0.1.0",
   "publisher": "gen-labs",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
@@ -31,6 +31,11 @@
       {
         "command": "genStage.moSanKhau",
         "title": "Mở sân khấu",
+        "category": "Gen-Stage"
+      },
+      {
+        "command": "genStage.chonRoot",
+        "title": "Chọn thư mục repo",
         "category": "Gen-Stage"
       },
       {
@@ -85,7 +90,7 @@
         "genStage.root": {
           "type": "string",
           "default": "",
-          "description": "Thư mục repo Gen-Stage (có bridge/server.ts) — chỉ đặt được ở User settings (scope machine). Bỏ trống = tự tìm trong workspace, rồi thư mục cha của extension; root tự dò phải được Sếp xác nhận một lần (nhớ theo workspace) trước khi tự bật tiến trình.",
+          "description": "Thư mục repo Gen-3D-Harness (có bridge/server.ts) — chỉ đặt được ở User settings (scope machine). Bỏ trống = đọc chỗ `scripts/cai-vscode.sh` đã ghi (~/.config/gen-stage/root), rồi tự tìm trong workspace, rồi thư mục cha của extension; root tự dò phải được Sếp xác nhận một lần (nhớ theo workspace) trước khi tự bật tiến trình. Lệnh \"Gen-Stage: Chọn thư mục repo\" đặt giúp.",
           "scope": "machine"
         },
         "genStage.bridgePort": {
@@ -116,7 +121,11 @@
         },
         "genStage.nao": {
           "type": "string",
-          "enum": ["tat", "local", "agy"],
+          "enum": [
+            "tat",
+            "local",
+            "agy"
+          ],
           "enumDescriptions": [
             "Không bật driver não nào (mặc định).",
             "`pnpm nao-local` — não LLM local (Ollama), chạy offline.",

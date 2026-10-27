@@ -33,6 +33,7 @@ A2 bộ hành vi → A3 lab viễn tưởng.
 
 ```bash
 bash scripts/cai-dat.sh   # CÀI MỘT LẦN cho máy sạch: deps + asset + model giọng + biểu tượng
+bash scripts/cai-vscode.sh [--hook]  # MVP: cài vào VS Code MỘT LỆNH (lõi + .vsix + chỗ đặt repo ~/.config/gen-stage/root [+ hook Claude Code]) — docs/CAI-DAT-VSCODE.md
 pnpm install              # cài phụ thuộc
 pnpm assets                # tải asset (VRM + Kenney Furniture Kit CC0) — 1 lần sau khi clone
 pnpm assets:lab             # tải Kenney Space Kit CC0 cho lab A3 (public/kenney-sci-fi/)
@@ -75,6 +76,7 @@ node scripts/kiem-g1-vong3.mjs # bằng chứng G1 vòng 3 (review PR #70): đ�
 node scripts/kiem-e1.mjs      # bằng chứng E1: UI 390 px, não diễn thật, /tts retry, hiểu "Javis", cài 1 lệnh, vào docs/e1/ (CHẠY MỘT LẦN)
 node scripts/kiem-i1.mjs      # bằng chứng I1: phản ứng tức thì 3 tầng (mốc bus/nhật ký) trên FIREFOX thật, vào docs/i1/ (CHẠY MỘT LẦN)
 node scripts/kiem-j2.mjs      # bằng chứng J2: 12 hoạt động + tự sinh hoạt khi rảnh, trên FIREFOX thật, vào docs/j2/ (CHẠY MỘT LẦN)
+node scripts/kiem-cai-vsix.mjs  # bằng chứng gói cài MVP: VS Code THẬT cài .vsix, mở thư mục KHÔNG phải repo, không genStage.root → sân khấu + chatroom (E2E_VSIX_VSC/E2E_VSIX_DIR), vào docs/e2e/cai-vsix.*
 ```
 
 ## Quy ước

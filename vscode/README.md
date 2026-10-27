@@ -71,13 +71,18 @@ code vscode                 # mở THƯ MỤC vscode/ trong VS Code, bấm F5
 ```
 `.vscode/launch.json` mở cửa sổ dev với workspace là gốc repo → extension tự tìm thấy `bridge/server.ts`.
 
+**Cách 0 — MỘT LỆNH (khuyên dùng):** `bash scripts/cai-vscode.sh [--hook]` ở gốc repo. Script cài lõi, đóng gói `.vsix`,
+cài vào VS Code và ghi chỗ đặt repo (`~/.config/gen-stage/root`), nên không phải đặt `genStage.root`.
+Hướng dẫn + kiểm 5 phút: `docs/CAI-DAT-VSCODE.md`. Kiểm tự động: `scripts/kiem-cai-vsix.mjs`.
+
 **Cách 2 — gói `.vsix` (cài tay, không lên Marketplace):**
 ```bash
 pnpm -C vscode build
 cd vscode && npx @vscode/vsce package --no-dependencies --allow-missing-repository
 code --install-extension gen-stage-vscode-0.0.1.vsix
 ```
-(`@vscode/vsce` chỉ chạy qua `npx`, không thêm vào repo.) Cài bằng `.vsix` thì đặt `genStage.root` = đường dẫn repo.
+(`@vscode/vsce` chỉ chạy qua `npx`, không thêm vào repo.) Cài bằng `.vsix` tay thì đặt `genStage.root` = đường dẫn repo,
+hoặc dùng lệnh **"Gen-Stage: Chọn thư mục repo"** (extension cũng tự nhắc khi chưa tìm thấy repo).
 
 Rồi: `Ctrl+Shift+P` → **Gen-Stage: Mở sân khấu**. Chatroom: biểu tượng Gen-Stage ở Secondary Side Bar (`Ctrl+Alt+B` để mở cột phải).
 

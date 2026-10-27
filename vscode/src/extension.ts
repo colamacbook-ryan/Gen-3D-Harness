@@ -5,6 +5,7 @@
  * không gọi thẳng vào sân khấu; mọi lệnh đi qua ws → bridge → dispatcher.
  */
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ChatroomProvider } from './chatroom';
@@ -13,6 +14,7 @@ import { chuanCong, chuanNao, chuanNguonTaiNghe, MAC_DINH, urlBridge, type CauHi
 import { CauNoi, chonNhaMayWs } from './thuan/cau-noi';
 import { chuanGiacQuan, GiacQuan, noiGit } from './thuan/giac-quan';
 import { DieuKhienGiong } from './thuan/giong';
+import { docGocDaCai, fileGocDaCai } from './thuan/goc-repo';
 import { SoChatroom } from './thuan/so-chatroom';
 import { QuanLyTienTrinh } from './thuan/tien-trinh';
 
@@ -20,6 +22,7 @@ const KHOA_CHON = 'genStage.dangChon';
 /** Root TỰ DÒ mà Sếp đã cho phép chạy tiến trình trong đó (theo workspace). */
 const KHOA_ROOT_DUYET = 'genStage.rootDaDuyet';
 const NUT_CHO_PHEP = 'Cho phép';
+const NUT_CHON_ROOT = 'Chọn thư mục repo';
 
 let tienTrinh: QuanLyTienTrinh | undefined;
 let cauNoi: CauNoi | undefined;
@@ -30,13 +33,24 @@ function laRepoGenStage(thuMuc: string): boolean {
   return fs.existsSync(path.join(thuMuc, 'bridge', 'server.ts'));
 }
 
+const docFile = (f: string): string | null => {
+  try {
+    return fs.readFileSync(f, 'utf8');
+  } catch {
+    return null;
+  }
+};
+
 /**
- * genStage.root (scope machine — chỉ Sếp đặt được) → workspace folder có
- * bridge/server.ts → thư mục cha của extension (chạy F5 từ repo).
+ * genStage.root (scope machine — chỉ Sếp đặt được) → repo ĐÃ CÀI bằng
+ * `scripts/cai-vscode.sh` (`~/.config/gen-stage/root`, cùng mức tin) →
+ * workspace folder có bridge/server.ts → thư mục cha của extension (chạy F5 từ repo).
  * `tuDo = true` khi root KHÔNG do Sếp đặt: phải hỏi xác nhận trước khi chạy gì trong đó.
  */
 function timRoot(cauHinhRoot: string, extensionPath: string): { root: string; tuDo: boolean } {
   if (cauHinhRoot) return { root: path.resolve(cauHinhRoot), tuDo: false };
+  const daCai = docGocDaCai(fileGocDaCai(process.env, os.homedir()), docFile, laRepoGenStage);
+  if (daCai) return { root: daCai, tuDo: false };
   for (const f of vscode.workspace.workspaceFolders ?? []) {
     if (laRepoGenStage(f.uri.fsPath)) return { root: f.uri.fsPath, tuDo: true };
   }
@@ -257,10 +271,45 @@ export function activate(ctx: vscode.ExtensionContext): void {
     chatroom?.ve();
   }, () => void dongBoNao());
 
+  /**
+   * Chưa tìm thấy repo (cài `.vsix` tay, chưa chạy `scripts/cai-vscode.sh`): chọn
+   * thư mục → ghi `genStage.root` ở User settings. Không phải repo thật thì từ chối.
+   */
+  const chonRoot = async (): Promise<void> => {
+    const ds = await vscode.window.showOpenDialog({
+      canSelectFolders: true,
+      canSelectFiles: false,
+      canSelectMany: false,
+      openLabel: 'Dùng thư mục này',
+      title: 'Thư mục repo Gen-3D-Harness (có bridge/server.ts)',
+    });
+    const p = ds?.[0]?.fsPath;
+    if (!p) return;
+    if (!laRepoGenStage(p)) {
+      void vscode.window.showErrorMessage(`Gen-Stage — "${p}" không phải repo Gen-3D-Harness (thiếu bridge/server.ts).`);
+      return;
+    }
+    await vscode.workspace.getConfiguration('genStage').update('root', p, vscode.ConfigurationTarget.Global);
+    ghi(`[cấu hình] genStage.root = ${p} (Sếp chọn)`);
+    void vscode.window.showInformationMessage(`Gen-Stage — đã đặt repo: ${p}`);
+  };
+  const nhacChonRoot = async (): Promise<void> => {
+    const chon = await vscode.window.showWarningMessage(
+      'Gen-Stage — chưa tìm thấy repo Gen-3D-Harness nên không bật được bridge + sân khấu. Chạy `bash scripts/cai-vscode.sh` trong repo, hoặc chọn thư mục repo ngay.',
+      NUT_CHON_ROOT,
+    );
+    if (chon === NUT_CHON_ROOT) await chonRoot();
+  };
+
   ctx.subscriptions.push(
-    vscode.commands.registerCommand('genStage.moSanKhau', () => sanKhau.mo()),
+    vscode.commands.registerCommand('genStage.moSanKhau', () => {
+      if (!cfg.root) void nhacChonRoot();
+      sanKhau.mo();
+    }),
+    vscode.commands.registerCommand('genStage.chonRoot', () => chonRoot()),
     vscode.commands.registerCommand('genStage.batDichVu', async () => {
       tuChoiPhien = null;
+      if (!cfg.root) void nhacChonRoot();
       const kq = await tienTrinh!.batNeuCan();
       const chu = `Bridge ${cfg.bridgePort}: ${kq.tt.bridge ? 'đang chạy' : 'CHƯA chạy'} · Sân khấu ${cfg.devPort}: ${kq.tt.sanKhau}`;
       ghi(`[lệnh] ${chu}`);
