@@ -2015,8 +2015,10 @@ bố cục căn nhà (B1/D1b/F1/J1) đã xoá; `?canh=` không còn. Các mục 
 - **Va chạm theo cảnh** (`bo-cuc.datCanhChan`): văn phòng ĐO hộp từng con trực tiếp của mỗi món lúc dựng (`datNhom`),
   không gộp cả nhóm (bàn họp + người ngồi gộp một hộp thì phủ luôn ghế trống `actor.sit` cần). Nhánh `userData.khongChan`
   (ghế trống, sofa) không tính — chỗ ngồi phải đi tới được; sofa khai tay lưng tựa + bàn + người ngồi. Khung sàn
-  24 × 17 m. `datCanhChan(null)` = sàn văn phòng trống (trước khi dựng / test dọn). Test va chạm (b1, f2, h1) nạp
-  vật cản TỔNG HỢP qua đúng cửa đó — hộp thật chỉ có sau khi dựng bằng three (kiểm trên trình duyệt).
+  24 × 17 m. `datCanhChan(null)` = sàn văn phòng trống (trước khi dựng / test dọn). Test CƠ CHẾ va chạm (b1, f2, h1)
+  nạp vật cản tổng hợp; test BỐ CỤC (j2 "không xuyên nội thất", vp "mọi place đi tới được") đọc bộ vật cản THẬT chụp
+  sẵn `src/api/__tests__/vat-can-van-phong.json` (527 hộp). **Sửa `van-phong.ts` thì chạy lại**
+  `GEN_STAGE_WEB_PORT=<cổng dev> node scripts/chup-vat-can.mjs` — không thì test kiểm trên bố cục cũ.
 - **`moveTo`/`sit` đi theo đường A\*** (`bo-cuc.timDuong`, lưới 0,25 m, 8 hướng không cắt góc, kéo căng): đi thẳng +
   trượt mép đủ cho căn nhà trống nhưng kẹt giữa các cụm bàn (đo thật: lối vào → `ke-module` dừng ở Pantry, lệch 7,8 m).
   Lưới chừa thêm lề 8 cm ngoài bán kính thân (sát đúng bán kính thì `truotVaCham` giữ lại ở khe hẹp rồi kẹt luôn);

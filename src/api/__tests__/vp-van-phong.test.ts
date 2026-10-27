@@ -8,6 +8,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { biChan, datCanhChan, kepTrongPhong, thongDuong, timDuong, truotVaCham } from '../../stage/bo-cuc';
 import { dsPlaces, PLACES, timPlace } from '../../stage/noi-dung';
+import { vatCanVanPhong } from './vat-can';
 
 afterEach(() => {
   datCanhChan(null);
@@ -105,5 +106,23 @@ describe('tìm đường — đích bị khép kín', () => {
     expect(x).toBeLessThan(3); // dừng ngoài bức chắn tây, không xuyên
     expect(biChan(x, z, 0.34)).toBeNull();
     expect(Math.hypot(x - 5, z)).toBeLessThan(3);
+  });
+});
+
+describe('bộ vật cản THẬT của văn phòng (chụp từ cảnh đã dựng)', () => {
+  const vp = { x0: -12, x1: 12, z0: -9, z1: 8 };
+
+  it('mọi chỗ đứng của place nằm ngoài vật cản, và A* tới đúng nơi từ buc-trung-tam', () => {
+    datCanhChan({ hop: vatCanVanPhong(), ...vp });
+    const goc = timPlace('buc-trung-tam')!.pos;
+    for (const p of PLACES) {
+      const [x, , z] = p.standAt ?? p.pos;
+      // ghế không có chỗ đứng riêng thì chỗ đứng chính là ghế — `sit` lo, bỏ qua
+      if (p.kind === 'seat' && !p.standAt) continue;
+      expect(biChan(x, z, 0.3), `${p.id}: chỗ đứng nằm trong vật cản`).toBeNull();
+      const d = timDuong(goc[0], goc[2], x, z, 0.34);
+      const [ex, ez] = d[d.length - 1]!;
+      expect(Math.hypot(ex - x, ez - z), `${p.id}: A* dừng xa đích`).toBeLessThan(0.75);
+    }
   });
 });

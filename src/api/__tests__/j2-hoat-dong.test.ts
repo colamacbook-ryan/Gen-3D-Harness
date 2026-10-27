@@ -37,7 +37,8 @@ import {
 } from '../../behavior/hoat-dong';
 import { MAC_DINH_TU_SINH, batTuSinhHoat } from '../../behavior/tu-sinh-hoat';
 import { PLACES, timPlace } from '../../stage/noi-dung';
-import { biChan } from '../../stage/bo-cuc';
+import { biChan, datCanhChan, SAN_MAC_DINH } from '../../stage/bo-cuc';
+import { vatCanVanPhong } from './vat-can';
 
 const nhipMicro = () => new Promise<void>((r) => setTimeout(r, 0));
 
@@ -134,16 +135,22 @@ describe('J2 bảng hoạt động — mọi bước phải hợp lệ với reg
      * nhân vật đứng xuyên nội thất, bằng số, không phải bằng mắt.
      *
      * Chỗ NGỒI (`actor.sit`) cố ý không soi: ghế là nội thất mình phải chồng
-     * lên mới ngồi được, và `ghe-*`/`sofa` không khai `chan` (ghế phải kéo
-     * qua được — xem `bo-cuc.ts`).
+     * lên mới ngồi được, và văn phòng không tính ghế trống/sofa vào vật cản
+     * (`userData.khongChan` trong `van-phong.ts`).
      */
-    for (const h of BANG_HOAT_DONG) {
-      for (const b of h.buoc) {
-        if (b.cmd !== 'actor.moveTo' || typeof b.args?.to !== 'string') continue;
-        const p = timPlace(b.args.to)!;
-        const [x, , z] = p.standAt ?? p.pos;
-        expect(biChan(x, z), `${h.id}: chỗ đứng của «${b.args.to}» nằm trong hộp chắn`).toBeNull();
+    // bộ vật cản THẬT của văn phòng (đo lúc dựng, chụp bằng scripts/chup-vat-can.mjs)
+    datCanhChan({ hop: vatCanVanPhong(), ...SAN_MAC_DINH });
+    try {
+      for (const h of BANG_HOAT_DONG) {
+        for (const b of h.buoc) {
+          if (b.cmd !== 'actor.moveTo' || typeof b.args?.to !== 'string') continue;
+          const p = timPlace(b.args.to)!;
+          const [x, , z] = p.standAt ?? p.pos;
+          expect(biChan(x, z), `${h.id}: chỗ đứng của «${b.args.to}» nằm trong hộp chắn`).toBeNull();
+        }
       }
+    } finally {
+      datCanhChan(null);
     }
   });
 
