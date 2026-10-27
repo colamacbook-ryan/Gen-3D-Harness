@@ -843,6 +843,11 @@ interface ClipDangChay {
 interface ChuyenDi {
   tu: THREE.Vector3;
   den: THREE.Vector3;
+  /**
+   * Đường gấp khúc (văn phòng 27/10, A* của `bo-cuc.timDuong`): các điểm từ `tu`
+   * tới `den`, kèm quãng cộng dồn. Vắng = đi thẳng như cũ.
+   */
+  duong?: { diem: THREE.Vector3[]; cong: number[] };
   batDau: number;
   dai: number;
   hd: HanhDongCoTay;
@@ -1607,6 +1612,11 @@ export class NhanVat {
     return this.trangThai;
   }
 
+  /** Cao độ mặt ghế (m) đang ngồi — lớp hình búp bê đặt hông đúng lên đó. */
+  get matGheHienTai(): number {
+    return this.seatYHienTai;
+  }
+
   get busy(): boolean {
     return this.viec !== null;
   }
@@ -1775,13 +1785,22 @@ export class NhanVat {
   }
 
   /** Đi tới một điểm trên sàn. Tới nơi đúng `durationMs` đã hứa. */
-  diToi(v: THREE.Vector3, speed?: number): Action {
+  diToi(v: THREE.Vector3, speed?: number, quaDiem?: Array<[number, number]>): Action {
     this.huyViec();
     this.roiGhe();
 
     const tu = new THREE.Vector3(this.goc.position.x, 0, this.goc.position.z);
     const den = new THREE.Vector3(v.x, 0, v.z);
-    const kc = tu.distanceTo(den);
+    let kc = tu.distanceTo(den);
+    let duong: ChuyenDi['duong'];
+    if (quaDiem && quaDiem.length > 1) {
+      const diem = [tu.clone(), ...quaDiem.map(([x, z]) => new THREE.Vector3(x, 0, z))];
+      den.copy(diem[diem.length - 1]!);
+      const cong = [0];
+      for (let i = 1; i < diem.length; i += 1) cong.push(cong[i - 1]! + diem[i]!.distanceTo(diem[i - 1]!));
+      kc = cong[cong.length - 1]!;
+      duong = { diem, cong };
+    }
     if (kc < 0.04) return hanhDongXongNgay(0);
 
     /**
@@ -1810,7 +1829,7 @@ export class NhanVat {
       this.phaBuoc = 0;
       this.traViec(hd);
     });
-    this.di = { tu, den, batDau: bayGio(), dai, hd, tocDo };
+    this.di = { tu, den, batDau: bayGio(), dai, hd, tocDo, duong };
     this.batDauViec(hd, 'walking');
     return hd;
   }
@@ -2667,7 +2686,26 @@ export class NhanVat {
        * `bo-cuc.ts` — xem `buocDiToi`. Chặn một trục thì trượt dọc mép bàn,
        * chặn cả hai thì đứng yên chứ không xuyên qua sofa.
        */
-      const kqDi = buocDiToi(this.goc.position.x, this.goc.position.z, d.tu.x + (d.den.x - d.tu.x) * u, d.tu.z + (d.den.z - d.tu.z) * u);
+      // điểm mong muốn theo đồng hồ: trên đoạn thẳng, hoặc dọc đường gấp khúc
+      let mx = d.tu.x + (d.den.x - d.tu.x) * u;
+      let mz = d.tu.z + (d.den.z - d.tu.z) * u;
+      let huongX = d.den.x - d.tu.x;
+      let huongZ = d.den.z - d.tu.z;
+      if (d.duong) {
+        const { diem, cong } = d.duong;
+        const s = u * cong[cong.length - 1]!;
+        let k = 1;
+        while (k < cong.length - 1 && cong[k]! < s) k += 1;
+        const a = diem[k - 1]!;
+        const b = diem[k]!;
+        const doan = cong[k]! - cong[k - 1]!;
+        const t = doan > 1e-9 ? Math.min(1, Math.max(0, (s - cong[k - 1]!) / doan)) : 1;
+        mx = a.x + (b.x - a.x) * t;
+        mz = a.z + (b.z - a.z) * t;
+        huongX = b.x - a.x;
+        huongZ = b.z - a.z;
+      }
+      const kqDi = buocDiToi(this.goc.position.x, this.goc.position.z, mx, mz);
       this.goc.position.x = kqDi.x;
       this.goc.position.z = kqDi.z;
       // Nhún thân + pha bước chỉ chạy khi THẬT SỰ dời được chỗ: ép vào sofa
@@ -2694,7 +2732,7 @@ export class NhanVat {
         dangDi = kqDi.daDi > 1e-5;
         // F2 — cùng một phép xoay độc lập FPS như phần lái (xem `heSoBam`):
         // `dt * 7` cũ quay tức thì ở FPS thấp và quay 600°/s ở 60 FPS.
-        const goc = Math.atan2(d.den.x - d.tu.x, d.den.z - d.tu.z);
+        const goc = Math.atan2(huongX, huongZ);
         const lech = lechGoc(goc, this.goc.rotation.y);
         const buoc = lech * heSoBam(dt, LERP_XOAY_LAI);
         const tran = TOC_XOAY_LAI * dt;

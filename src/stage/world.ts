@@ -39,7 +39,8 @@ import {
 } from './phong';
 import { chonCanh, dungLang, type Lang } from './lang';
 import { BupBe, DAN_LANG, KIEU_NHAN_VAT } from './bup-be';
-import { dungVanPhong } from './van-phong';
+import { dungVanPhong, MAN_HINH_VP } from './van-phong';
+import { datCanhChan, timDuong } from './bo-cuc';
 import { DoFps } from './do-fps';
 import { DT_TOI_DA_NEN, nenVeKhung, TY_LE_PIXEL_NEN, type RenderMode } from './che-do-nen';
 import { heSoBam, NhanVat, TOC_DO_DI, uocThoiLuongNoi } from './nhanvat';
@@ -56,7 +57,9 @@ import {
   DAI_CLIP,
   EMOTES,
   layMatGhe,
-  PLACES,
+  datPlacesCanh,
+  dsPlaces,
+  PLACES_VAN_PHONG,
   PRESET_DEN,
   PRESET_MAY,
   TEN_HIEN_THI,
@@ -64,7 +67,7 @@ import {
   type DinhNghiaPlace,
 } from './noi-dung';
 import { noiTiep, hanhDongHenGio } from './hanh-dong';
-import { ManHinh, MAC_DINH_MAN_HINH } from './man-hinh';
+import { ManHinh, MAC_DINH_MAN_HINH, type MacDinhManHinh } from './man-hinh';
 import { KetTinh, maySurfacePoints } from '../fx/hat-ket-tinh';
 import { taoHieuUng, type HieuUng } from '../fx/hieu-ung';
 // C0 (#28) — sổ "có não nối hay chưa" do bridge ghi vào (xem `src/behavior/so-nao.ts`).
@@ -706,7 +709,16 @@ export class World implements StageWorld {
         : this.canh === 'lang'
           ? await dungLang(this.scene)
           : await dungPhong(this.scene);
-    if (this.canh === 'van-phong') this.apAnhSangVanPhong((phong as Lang).denLong);
+    if (this.canh === 'van-phong') {
+      this.apAnhSangVanPhong((phong as Lang).denLong);
+      // va chạm + place theo VĂN PHÒNG (một chỗ cho steer/moveTo/sit — xem `bo-cuc.datCanhChan`)
+      const vp = phong as Lang;
+      if (vp.vatCan && vp.khungSan) datCanhChan({ hop: vp.vatCan, ...vp.khungSan });
+      datPlacesCanh(PLACES_VAN_PHONG);
+    } else {
+      datCanhChan(null);
+      datPlacesCanh(null);
+    }
     if (this.canh === 'lang') {
       this.apAnhSangLang((phong as Lang).denLong);
       // dân làng trang trí (tĩnh, không phải actor): làm vườn, bưng rổ — như ảnh mẫu
@@ -751,7 +763,7 @@ export class World implements StageWorld {
 
     tienTrinh?.('Đang dựng màn hình…');
     // Bản thử làng: màn hình máy tính/TV neo vào bàn/kệ của CĂN NHÀ — ngoài sân làng không có chỗ đặt.
-    if (!this.dioRama) for (const id of Object.keys(MAC_DINH_MAN_HINH)) await this.screenSpawn({ id });
+    if (this.canh !== 'lang') for (const id of Object.keys(this.manHinhMacDinh())) await this.screenSpawn({ id });
 
     return { dungKenney: phong.dungKenney };
   }
@@ -886,9 +898,15 @@ export class World implements StageWorld {
       const bb = this.bupBe.get(nv.id);
       if (bb) {
         // đế búp bê luôn ở mặt sàn (gốc VRM bị hạ/nâng để chân VRM chạm sàn — không áp cho búp bê)
-        bb.goc.position.set(nv.goc.position.x, 0, nv.goc.position.z);
+        const ngoi = nv.state === 'sitting';
+        bb.goc.position.set(nv.goc.position.x, ngoi ? nv.matGheHienTai + 0.04 : 0, nv.goc.position.z);
         bb.goc.rotation.y = nv.goc.rotation.y;
-        bb.dien(dt, nv.state, nv.bongBong !== null);
+        bb.dien(dt, nv.state, nv.bongBong !== null, nv.objCam ? nv.tayCam : null);
+        // đồ đang cầm bám TAY BÚP BÊ (tay VRM ẩn nằm chỗ khác)
+        if (nv.objCam) {
+          bb.viTriTay(nv.tayCam, nv.objCam.position);
+          nv.objCam.position.y += 0.02;
+        }
       }
     }
 
@@ -1347,7 +1365,7 @@ export class World implements StageWorld {
   }
 
   placeIds(): string[] {
-    return PLACES.map((p) => p.id);
+    return dsPlaces().map((p) => p.id);
   }
 
   propIds(): string[] {
@@ -1435,7 +1453,10 @@ export class World implements StageWorld {
     nv.goc.rotation.y = ((place?.facing ?? 20) * Math.PI) / 180;
     this.actors.set(p.id, nv);
     if (this.dioRama) {
-      nv.vrm.scene.visible = false;
+      // ẩn TỪNG mesh của VRM (không ẩn cả `vrm.scene`): xương vẫn chạy cho bộ não hành động
+      nv.vrm.scene.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) o.visible = false;
+      });
       const bb = new BupBe(KIEU_NHAN_VAT[p.id] ?? DAN_LANG[this.bupBe.size % DAN_LANG.length]!);
       this.scene.add(bb.goc);
       this.bupBe.set(p.id, bb);
@@ -1470,7 +1491,7 @@ export class World implements StageWorld {
   actorMoveTo(id: string, to: string | Vec3, speed?: number): Action {
     const nv = this.nv(id);
     const { v, place } = this.choDung(to);
-    const hd = nv.diToi(v, speed);
+    const hd = nv.diToi(v, speed, this.duongToi(nv, v));
     if (place?.facing !== undefined) {
       // chỉnh hướng sau khi tới nơi: KHÔNG chiếm thân, vì lệnh moveTo đã xong
       void hd.done.then(() => {
@@ -1533,13 +1554,24 @@ export class World implements StageWorld {
     this.nv(id).datNgheNgong(bat, cauHoi);
   }
 
+  /** Đường tránh vật cản (A*) từ chỗ actor đang đứng tới `v` — chỉ ở cảnh diorama (văn phòng/làng). */
+  private duongToi(nv: NhanVat, v: THREE.Vector3): Array<[number, number]> | undefined {
+    if (!this.dioRama) return undefined;
+    const d = timDuong(nv.goc.position.x, nv.goc.position.z, v.x, v.z, 0.34);
+    // A* chừa lề rộng hơn thân; chặng CUỐI ngắn thì đi thẳng vào đúng đích (vd ghế
+    // sát bàn họp) — va chạm thường của `buocDiToi` vẫn chặn nếu thật sự kẹt.
+    const cuoi = d[d.length - 1]!;
+    if (Math.hypot(cuoi[0] - v.x, cuoi[1] - v.z) > 0.05 && Math.hypot(cuoi[0] - v.x, cuoi[1] - v.z) < 0.7) d.push([v.x, v.z]);
+    return d.length > 1 ? d : undefined;
+  }
+
   actorSit(id: string, seat: string): Action {
     const nv = this.nv(id);
     const p = timPlace(seat);
     if (!p) throw new Error(`Không có place "${seat}"`);
     if (p.kind !== 'seat') {
       throw new Error(
-        `"${seat}" là loại "${p.kind}", không phải ghế. Ghế đang có: ${PLACES.filter(
+        `"${seat}" là loại "${p.kind}", không phải ghế. Ghế đang có: ${dsPlaces().filter(
           (q) => q.kind === 'seat',
         )
           .map((q) => q.id)
@@ -1554,7 +1586,7 @@ export class World implements StageWorld {
     const matGhe = layMatGhe(seat);
     return noiTiep(
       [
-        () => nv.diToi(dich),
+        () => nv.diToi(dich, undefined, this.duongToi(nv, dich)),
         () => nv.xoayVe(p.facing ?? 180),
         () => nv.ngoi(matGhe),
       ],
@@ -1976,11 +2008,16 @@ export class World implements StageWorld {
 
   /* ------------------------------------------------- A3: màn hình hologram */
 
+  /** Màn hình mặc định theo cảnh: văn phòng (bàn Nhi + màn phòng họp) hay căn nhà. */
+  private manHinhMacDinh(): Record<string, MacDinhManHinh> {
+    return this.canh === 'van-phong' ? MAN_HINH_VP : MAC_DINH_MAN_HINH;
+  }
+
   async screenSpawn(p: ThamSoSpawnScreen): Promise<ScreenSnapshot> {
     if (!p.id.trim()) throw new Error('"id" không được rỗng');
     if (this.screens.has(p.id)) throw new Error(`Màn hình "${p.id}" đã có`);
 
-    const mac = MAC_DINH_MAN_HINH[p.id as keyof typeof MAC_DINH_MAN_HINH];
+    const mac = this.manHinhMacDinh()[p.id];
     let pos: THREE.Vector3;
     let rotY: number;
     if (p.at !== undefined) {
@@ -2087,6 +2124,7 @@ export class World implements StageWorld {
    */
   screenFocus(id: string): Action {
     const mh = this.manHinh(id);
+    mh.anChan(true);
     const dich = this.choPanelTruocMay(mh.beRong());
     const huongMay = new THREE.Vector3()
       .subVectors(this.camera.position, dich)
@@ -2297,7 +2335,7 @@ export class World implements StageWorld {
     });
     this.actorIdleStyle(GEN.id, 'cham-chu');
     this.actorLookAt(GEN.id, 'ban-dieu-khien');
-    for (const id of Object.keys(MAC_DINH_MAN_HINH)) await this.screenSpawn({ id });
+    if (this.canh !== 'lang') for (const id of Object.keys(this.manHinhMacDinh())) await this.screenSpawn({ id });
   }
 
   /* -------------------------------------------------------------- describe */
@@ -2336,7 +2374,7 @@ export class World implements StageWorld {
    * một actor không bao giờ bị tính là đang chiếm hai place cùng lúc.
    */
   private snapPlaces(dsActor: ActorSnapshot[]): PlaceSnapshot[] {
-    return PLACES.map((p) => ({
+    return dsPlaces().map((p) => ({
       id: p.id,
       pos: p.pos,
       kind: p.kind,
@@ -2346,7 +2384,7 @@ export class World implements StageWorld {
 
   private snapActor(nv: NhanVat): ActorSnapshot {
     const distances: Record<string, number> = {};
-    for (const p of PLACES) {
+    for (const p of dsPlaces()) {
       distances[p.id] = tron(khoangCach(nv.goc.position, p.pos));
     }
     for (const d of this.props.values()) {
@@ -2358,7 +2396,7 @@ export class World implements StageWorld {
     // place gần nhất — luôn tính, không phụ thuộc trạng thái
     let ganNhat: string | null = null;
     let gan = Infinity;
-    for (const p of PLACES) {
+    for (const p of dsPlaces()) {
       const kc = Math.min(
         khoangCach(nv.goc.position, p.pos),
         p.standAt ? khoangCach(nv.goc.position, p.standAt) : Infinity,

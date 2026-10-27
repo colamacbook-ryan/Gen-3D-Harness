@@ -214,8 +214,48 @@ export const PRESET_MAY = [
   'cua-so',
 ] as const;
 
+/**
+ * PLACE CỦA VĂN PHÒNG (cảnh mặc định từ 27/10) — CÙNG BỘ ID với căn nhà cũ, chỉ
+ * đổi chỗ, để lệnh / não / 12 hoạt động J2 / `MAN_HINH_THAT` chạy tiếp không sửa
+ * một dòng. Toạ độ khớp `src/stage/van-phong.ts` (sàn x −12…12 · z −9…8; +Z là
+ * phía trước, nơi máy quay đứng; `facing` 0 = nhìn +Z, 180 = nhìn vào trong).
+ *
+ *   · `ban-dieu-khien` → bàn riêng của Nhi cạnh lối đi chính (màn hình `may-tinh`)
+ *   · `ghe-2` → ghế ở bàn đó · `ghe-1` → ghế trống trong Phòng họp
+ *   · `ke-module` → kệ thấp giữa Kinh doanh và Phòng họp
+ *   · `sofa` → sofa Khu nghỉ · `ban-an` → bàn tròn Pantry · `bep` → quầy Pantry
+ *   · `cua` → lối vào phía trước (cạnh Lễ tân) · `cua-so` → cửa sổ tường tây
+ *   · `buc-trung-tam`, `ban-1`, `ban-2` → điểm trên lối đi chính (mốc test)
+ */
+export const PLACES_VAN_PHONG: readonly DinhNghiaPlace[] = [
+  { id: 'ban-dieu-khien', pos: [2.6, 0, -4.2], kind: 'desk', standAt: [2.6, 0, -2.9], facing: 180 },
+  { id: 'ban-1', pos: [-1.5, 0, -2], kind: 'desk', standAt: [-1.5, 0, -1], facing: 180 },
+  { id: 'ban-2', pos: [-1.5, 0, 2.5], kind: 'desk', standAt: [-1.5, 0, 3.5], facing: 0 },
+  { id: 'ghe-1', pos: [6.45, 0, -0.72], kind: 'seat', facing: 0, seatY: 0.335 },
+  { id: 'ghe-2', pos: [2.6, 0, -3.56], kind: 'seat', facing: 180, seatY: 0.335 },
+  { id: 'buc-trung-tam', pos: [0, 0, 1.5], kind: 'stage', facing: 0 },
+  { id: 'cua', pos: [3.6, 0, 7.8], kind: 'door', standAt: [3.6, 0, 7.0], facing: 180 },
+  { id: 'ke-module', pos: [7.6, 0, -2.7], kind: 'shelf', standAt: [7.0, 0, -2.0], facing: 180 },
+  { id: 'sofa', pos: [0.8, 0, -7.06], kind: 'seat', standAt: [1.6, 0, -6.2], facing: 0, seatY: 0.33 },
+  { id: 'ban-an', pos: [6.2, 0, 5.4], kind: 'desk', standAt: [6.2, 0, 4.1], facing: 0 },
+  { id: 'bep', pos: [11.0, 0, 5.0], kind: 'desk', standAt: [10.1, 0, 4.9], facing: 90 },
+  { id: 'cua-so', pos: [-12, 0, 0.4], kind: 'door', standAt: [-10.9, 0, 0.6], facing: 270 },
+];
+
+/** Bộ place đang có hiệu lực — mặc định căn nhà; `world.ts` đổi khi dựng văn phòng. */
+let placesHienTai: readonly DinhNghiaPlace[] = PLACES;
+
+export function datPlacesCanh(ds: readonly DinhNghiaPlace[] | null): void {
+  placesHienTai = ds ?? PLACES;
+}
+
+/** Danh sách place của cảnh đang dựng (dùng thay cho `PLACES` ở mọi chỗ đọc lúc chạy). */
+export function dsPlaces(): readonly DinhNghiaPlace[] {
+  return placesHienTai;
+}
+
 export function timPlace(id: string): DinhNghiaPlace | undefined {
-  return PLACES.find((p) => p.id === id);
+  return placesHienTai.find((p) => p.id === id);
 }
 
 /* ------------------------------------------- C2 (#32) — tên gọi nhân vật */

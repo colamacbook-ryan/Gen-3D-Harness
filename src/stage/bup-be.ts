@@ -262,10 +262,15 @@ export class BupBe {
     this.goc.scale.setScalar(co);
   }
 
-  /** Diễn một khung theo trạng thái: đi = nhún + lắc + vung tay; nói = gật + nhép miệng; đứng = thở. */
-  dien(dt: number, trangThai: string, dangNoi: boolean): void {
+  /**
+   * Diễn một khung theo trạng thái: đi = nhún + lắc + vung tay; nói = gật + nhép
+   * miệng; ngồi = gập chân (hông đặt lên mặt ghế — `World` nâng `goc` lên đúng
+   * mặt ghế); cầm đồ = tay đó đưa ra trước.
+   */
+  dien(dt: number, trangThai: string, dangNoi: boolean, tayCam: 'left' | 'right' | null = null): void {
     this.t += dt;
     const t = this.t;
+    const ngoi = trangThai === 'sitting';
     let nhun = 0;
     let lac = 0;
     let vung = 0;
@@ -276,13 +281,24 @@ export class BupBe {
     } else if (trangThai === 'emoting' || trangThai === 'playing') {
       nhun = Math.abs(Math.sin(t * 6)) * 0.05;
       vung = 0.9 + Math.sin(t * 6) * 0.4;
-    } else {
+    } else if (!ngoi) {
       nhun = Math.sin(t * 2) * 0.004;
     }
-    this.than.position.y = nhun;
+    if (ngoi) {
+      this.than.position.y = -0.27;
+      this.chan.rotation.x = -Math.PI / 2 + 0.15;
+      this.chan.position.set(0, 0.32, 0.02);
+    } else {
+      this.than.position.y = nhun;
+      this.chan.rotation.x = 0;
+      this.chan.position.set(0, 0.3, 0);
+    }
     this.than.rotation.z = lac;
-    this.tayTrai.rotation.x = vung;
-    this.tayPhai.rotation.x = trangThai === 'emoting' || trangThai === 'playing' ? vung : -vung;
+    const vui = trangThai === 'emoting' || trangThai === 'playing';
+    this.tayTrai.rotation.x = ngoi ? -0.55 : vung;
+    this.tayPhai.rotation.x = ngoi ? -0.55 : vui ? vung : -vung;
+    if (tayCam === 'left') this.tayTrai.rotation.x = -1.0;
+    if (tayCam === 'right') this.tayPhai.rotation.x = -1.0;
     this.dau.rotation.x = dangNoi ? Math.sin(t * 7) * 0.06 : Math.sin(t * 1.3) * 0.03;
     this.dau.rotation.z = Math.sin(t * 0.9) * 0.04;
     if (dangNoi) {
@@ -291,6 +307,13 @@ export class BupBe {
     } else {
       this.mat.map = matKhep;
     }
+  }
+
+  /** Vị trí THẾ GIỚI của bàn tay (để đồ đang cầm bám theo búp bê, không theo VRM ẩn). */
+  viTriTay(tay: 'left' | 'right', ra: THREE.Vector3): THREE.Vector3 {
+    const nhom = tay === 'left' ? this.tayTrai : this.tayPhai;
+    nhom.updateWorldMatrix(true, false);
+    return ra.set(0, -0.22, 0.03).applyMatrix4(nhom.matrixWorld);
   }
 
   /**

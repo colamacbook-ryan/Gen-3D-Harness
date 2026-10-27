@@ -20,6 +20,8 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { gopTinh } from './phong';
 import { vanBongDat, type Lang } from './lang';
 import { BupBe, NHAN_VIEN } from './bup-be';
+import type { MacDinhManHinh } from './man-hinh';
+import type { HopChan } from './bo-cuc';
 
 /* ---------------------------------------------------------------- kích thước */
 
@@ -214,6 +216,8 @@ function vanVung(): THREE.CanvasTexture {
 
 interface Bo {
   nhom: THREE.Group;
+  /** Hộp vật cản ĐO lúc dựng — mỗi con trực tiếp của một món nội thất một hộp. */
+  vatCan: HopChan[];
   den: THREE.Vector3[];
   chan: Array<{ id: string; min: [number, number, number]; max: [number, number, number] }>;
   bong: THREE.MeshBasicMaterial;
@@ -258,11 +262,36 @@ function bongDat(b: Bo, cha: THREE.Object3D, x: number, z: number, rx: number, r
   cha.add(m);
 }
 
-/** Đặt một nhóm con tại (x, z) quay `quay` độ rồi gắn vào cảnh. */
+/**
+ * Đặt một nhóm con tại (x, z) quay `quay` độ rồi gắn vào cảnh — và ĐO VẬT CẢN
+ * của nó: mỗi con trực tiếp một hộp (không gộp cả nhóm: bàn họp + người ngồi
+ * gộp một hộp thì phủ luôn cái ghế trống mà `actor.sit` cần tới). Bỏ qua: bóng
+ * tiếp xúc, đồ phẳng sát sàn, và mọi nhánh khai `userData.khongChan` (ghế trống,
+ * sofa — chỗ ngồi phải đi tới được).
+ */
 function datNhom(b: Bo, g: THREE.Group, x: number, z: number, quay: number): THREE.Group {
   g.position.set(x, 0, z);
   g.rotation.y = THREE.MathUtils.degToRad(quay);
   b.nhom.add(g);
+  if (g.userData.khongChan) return g;
+  g.updateMatrixWorld(true);
+  const hopCon = new THREE.Box3();
+  for (const con of g.children) {
+    if (con.userData.khongChan) continue;
+    hopCon.makeEmpty();
+    con.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh || m.material === b.bong) return;
+      let p: THREE.Object3D | null = o;
+      while (p && p !== con) {
+        if (p.userData.khongChan) return;
+        p = p.parent;
+      }
+      hopCon.expandByObject(m);
+    });
+    if (hopCon.isEmpty() || hopCon.max.y < 0.06) continue;
+    b.vatCan.push({ id: `${g.name || 'do'}-${b.vatCan.length}`, x0: hopCon.min.x, x1: hopCon.max.x, z0: hopCon.min.z, z1: hopCon.max.z });
+  }
   return g;
 }
 
@@ -285,6 +314,7 @@ function vlManHinh(i: number): THREE.MeshStandardMaterial {
 /** Ghế văn phòng: đệm + lưng bo tròn, trụ + chân sao. Gốc (0,0,0), mặt ghế hướng +Z. */
 function ghe(mau: number): THREE.Group {
   const g = new THREE.Group();
+  g.userData.khongChan = true;
   hop(g, 0.38, 0.07, 0.36, vl(mau, 0.8), 0, CAO_GHE, 0, 0.03);
   hop(g, 0.38, 0.36, 0.07, vl(mau, 0.8), 0, CAO_GHE + 0.2, -0.18, 0.03);
   tru(g, 0.025, 0.025, CAO_GHE - 0.06, vl(MAU_KIM, 0.4), 0, (CAO_GHE - 0.06) / 2 + 0.03, 0, false);
@@ -297,20 +327,22 @@ let soBan = 0;
  * Một chỗ làm việc: bàn + màn hình + bàn phím + ghế (+ đồ lặt vặt). Bàn ở z=0,
  * ghế ở z=−0,5 nhìn về +Z. `nguoi` = một búp bê ngồi làm việc ở ghế.
  */
-function choLamViec(b: Bo, x: number, z: number, quay: number, mauGhe: number, nguoi: number | null): void {
+function choLamViec(b: Bo, x: number, z: number, quay: number, mauGhe: number, nguoi: number | null, coManHinh = true): void {
   const g = new THREE.Group();
   soBan += 1;
   // mặt bàn + 2 chân tấm
   hop(g, 1.1, 0.05, 0.6, vl(MAU_GO, 0.6), 0, CAO_BAN, 0.05, 0.02);
   for (const dau of [1, -1]) hop(g, 0.05, CAO_BAN - 0.03, 0.52, vl(MAU_TRANG, 0.6), dau * 0.5, (CAO_BAN - 0.03) / 2, 0.05, 0.015);
-  // màn hình
-  hop(g, 0.5, 0.31, 0.035, vl(0x2a2d34, 0.4), 0, CAO_BAN + 0.27, 0.22, 0.015);
-  const mh = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.27), vlManHinh(soBan));
-  mh.position.set(0, CAO_BAN + 0.27, 0.2);
-  mh.rotation.y = Math.PI;
-  g.add(mh);
-  tru(g, 0.015, 0.015, 0.12, vl(0x2a2d34, 0.4), 0, CAO_BAN + 0.08, 0.25, false);
-  hop(g, 0.14, 0.012, 0.1, vl(0x2a2d34, 0.4), 0, CAO_BAN + 0.03, 0.25, 0.005, false);
+  // màn hình (bàn của Nhi thì KHÔNG: màn hình thật `may-tinh` của sân khấu đứng ở đó)
+  if (coManHinh) {
+    hop(g, 0.5, 0.31, 0.035, vl(0x2a2d34, 0.4), 0, CAO_BAN + 0.27, 0.22, 0.015);
+    const mh = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.27), vlManHinh(soBan));
+    mh.position.set(0, CAO_BAN + 0.27, 0.2);
+    mh.rotation.y = Math.PI;
+    g.add(mh);
+    tru(g, 0.015, 0.015, 0.12, vl(0x2a2d34, 0.4), 0, CAO_BAN + 0.08, 0.25, false);
+    hop(g, 0.14, 0.012, 0.1, vl(0x2a2d34, 0.4), 0, CAO_BAN + 0.03, 0.25, 0.005, false);
+  }
   // bàn phím + chuột
   hop(g, 0.32, 0.015, 0.1, vl(0xe9e6e0, 0.5), 0, CAO_BAN + 0.033, -0.05, 0.006, false);
   hop(g, 0.04, 0.02, 0.06, vl(0xe9e6e0, 0.5), 0.24, CAO_BAN + 0.035, -0.05, 0.01, false);
@@ -370,7 +402,6 @@ function keThap(b: Bo, x: number, z: number, dai: number, quay: number): void {
   }
   bongDat(b, g, 0, 0, dai / 2 + 0.2, 0.35);
   datNhom(b, g, x, z, quay);
-  b.chan.push({ id: `ke-${b.chan.length}`, min: [x - dai / 2, 0, z - 0.2], max: [x + dai / 2, 0.9, z + 0.2] });
 }
 
 /** Biển tên phòng ban đứng (hai mặt) — thứ làm khu "rõ ràng" khi không có vách. */
@@ -512,11 +543,8 @@ function khuPhongHop(b: Bo): void {
   for (let i = 0; i < 4; i += 1) hop(g, 0.22, 0.006, 0.3, vl(0xfbfaf6, 0.7), -1.2 + i * 0.8, CAO_BAN + 0.04, 0.3 * (i % 2 ? 1 : -1), 0.002, false);
   // màn trình chiếu đứng ở đầu bàn
   hop(g, 0.08, 1.0, 0.08, vl(0x2f3138, 0.4), 2.35, 0.5, 0, 0.02);
-  hop(g, 0.08, 0.95, 1.6, vl(0x2a2d34, 0.4), 2.35, 1.35, 0, 0.02);
-  const mh = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.85), vlManHinh(1));
-  mh.position.set(2.3, 1.35, 0);
-  mh.rotation.y = -Math.PI / 2;
-  g.add(mh);
+  // khung màn trình chiếu — tấm màn THẬT là `tivi` của sân khấu (`MAN_HINH_VP`)
+  hop(g, 0.08, 0.95, 1.6, vl(0x2a2d34, 0.4), 2.4, 1.35, 0, 0.02);
   const tr = new BupBe(NHAN_VIEN[7]!);
   tr.tuThe('dung-noi');
   tr.goc.position.set(1.95, 0, 0.75);
@@ -524,7 +552,6 @@ function khuPhongHop(b: Bo): void {
   g.add(tr.goc);
   bongDat(b, g, 0, 0, 2.2, 1.4);
   datNhom(b, g, 7.6, 0.3, 0);
-  b.chan.push({ id: 'ban-hop', min: [5.6, 0, -0.7], max: [10.2, 1.0, 1.3] });
   bienTen(b, 'Phòng họp', KHU_VP[3].mau, 4.9, 2.9, 0);
 }
 
@@ -558,10 +585,10 @@ function khuPantry(b: Bo): void {
   }
   const c1 = new BupBe(NHAN_VIEN[2]!);
   c1.tuThe('bung-coc');
-  datNhom(b, c1.goc, 10.2, 4.6, -90);
+  datNhom(b, c1.goc, 10.2, 6.4, -90);
   const c2 = new BupBe(NHAN_VIEN[5]!);
   c2.tuThe('bung-coc');
-  datNhom(b, c2.goc, 7.4, 6.6, 200);
+  datNhom(b, c2.goc, 9.9, 7.0, 200);
   bienTen(b, 'Pantry', KHU_VP[4].mau, 4.9, 4.3, 0);
 }
 
@@ -582,7 +609,6 @@ function khuLeTan(b: Bo): void {
   datNhom(b, bb.goc, 0.2, 5.2, 0);
   bongDat(b, g, 0, 0, 1.6, 0.6);
   datNhom(b, g, 0.2, 6.2, 0);
-  b.chan.push({ id: 'le-tan', min: [-1.15, 0, 5.85], max: [1.55, 1.0, 6.55] });
   cayChau(b, -1.9, 6.9, 1.2);
   cayChau(b, 2.3, 6.9, 1.0, 0x46557c);
 }
@@ -595,17 +621,25 @@ function khuNghi(b: Bo): void {
   for (const dau of [1, -1]) hop(g, 0.18, 0.36, 0.7, vl(mauSofa, 0.85), dau * 0.95, 0.3, 0, 0.08);
   hop(g, 0.3, 0.28, 0.1, vl(0xf5d6a0, 0.9), -0.5, 0.44, -0.18, 0.05);
   hop(g, 0.3, 0.28, 0.1, vl(0xa9d3c4, 0.9), 0.55, 0.44, -0.18, 0.05);
-  tru(g, 0.45, 0.45, 0.05, vl(MAU_GO, 0.5), 0, 0.3, 0.95);
-  tru(g, 0.3, 0.3, 0.28, vl(MAU_GO_DAM, 0.5), 0, 0.14, 0.95, false);
-  hop(g, 0.25, 0.04, 0.18, vl(0xe8a87c, 0.7), -0.1, 0.345, 0.9, 0.01, false);
-  tru(g, 0.035, 0.03, 0.08, vl(MAU_TRANG, 0.4), 0.18, 0.37, 1.0, false);
+  tru(g, 0.45, 0.45, 0.05, vl(MAU_GO, 0.5), -0.3, 0.3, 1.2);
+  tru(g, 0.3, 0.3, 0.28, vl(MAU_GO_DAM, 0.5), -0.3, 0.14, 1.2, false);
+  hop(g, 0.25, 0.04, 0.18, vl(0xe8a87c, 0.7), -0.4, 0.345, 1.15, 0.01, false);
+  tru(g, 0.035, 0.03, 0.08, vl(MAU_TRANG, 0.4), -0.12, 0.37, 1.25, false);
   const ngoi = new BupBe(NHAN_VIEN[0]!);
   ngoi.tuThe('ngoi');
   ngoi.goc.position.set(-0.4, 0.33, 0.05);
   g.add(ngoi.goc);
   bongDat(b, g, 0, 0.4, 1.3, 1.0);
+  // chỗ ngồi sofa phải đi tới được (place `sofa`) → không đo tự động; khai tay
+  // lưng tựa + tay vịn + bàn tròn + người đang ngồi
+  g.userData.khongChan = true;
   datNhom(b, g, 0.4, -7.3, 0);
-  b.chan.push({ id: 'sofa-nghi', min: [-0.65, 0, -7.7], max: [1.45, 0.7, -5.9] });
+  b.vatCan.push(
+    // tay vịn thấp, không khai: hộp của nó (nở 0,34 m) nuốt mất chỗ ngồi sofa
+    { id: 'sofa-lung', x0: -0.65, x1: 1.45, z0: -7.75, z1: -7.45 },
+    { id: 'sofa-ban', x0: -0.35, x1: 0.55, z0: -6.55, z1: -5.65 },
+    { id: 'sofa-nguoi', x0: -0.25, x1: 0.25, z0: -7.45, z1: -7.0 },
+  );
   denSan(b, -1.6, -7.8);
   cayChau(b, 2.8, -7.9, 1.3);
   bienTen(b, 'Khu nghỉ', KHU_VP[6].mau, -2.0, -5.1, 0);
@@ -663,6 +697,7 @@ export async function dungVanPhong(scene: THREE.Scene): Promise<Lang> {
   nhom.name = 'van-phong';
   const b: Bo = {
     nhom,
+    vatCan: [],
     den: [],
     chan: [],
     bong: new THREE.MeshBasicMaterial({ map: vanBongDat(), transparent: true, opacity: 0.5, depthWrite: false, color: 0x000000 }),
@@ -677,11 +712,14 @@ export async function dungVanPhong(scene: THREE.Scene): Promise<Lang> {
   khuPantry(b);
   khuLeTan(b);
   khuNghi(b);
+  // BÀN RIÊNG CỦA NHI cạnh lối đi chính (place `ban-dieu-khien`/`ghe-2`, màn hình `may-tinh`)
+  choLamViec(b, 2.6, -4.2, 180, 0xe0607e, null, false);
 
   // ngăn mềm giữa các khu: kệ thấp + cây (KHÔNG vách)
   keThap(b, -7.5, -0.4, 4.6, 0);
-  keThap(b, 8.0, -2.7, 3.2, 0);
-  keThap(b, 8.0, 3.3, 3.2, 0);
+  // kệ ngắn hơn mép khu: mỗi khu phải có LỐI VÀO ≥ 1 m (đo thật: Pantry từng khép kín, A* không ra được)
+  keThap(b, 7.6, -2.7, 2.4, 0);
+  keThap(b, 7.4, 3.3, 2.4, 0);
   for (const [x, z, h] of [
     [-11.2, -0.4, 1.3],
     [-3.9, -0.4, 1.0],
@@ -725,10 +763,23 @@ export async function dungVanPhong(scene: THREE.Scene): Promise<Lang> {
     nhom,
     dungKenney: false,
     gop: { truoc, sau: gopKq.sau },
-    noc: new Map(),
+    noc: new Map([['ban-nhi', CAO_BAN + 0.025]]),
     day: new Map(),
     matNgoi: new Map(),
     hopKhoi,
     denLong: b.den,
+    vatCan: b.vatCan,
+    khungSan: { ...SAN_VP },
   };
 }
+
+/**
+ * Màn hình mặc định của văn phòng — CÙNG ID với căn nhà (`may-tinh`, `tivi`) nên
+ * não/`MAN_HINH_THAT`/`module.demo` không phải đổi gì: `may-tinh` đứng trên bàn
+ * Nhi (mặt nhìn +Z về phía Nhi đứng), `tivi` là màn trình chiếu Phòng họp
+ * (nhìn −X vào bàn họp).
+ */
+export const MAN_HINH_VP: Record<string, MacDinhManHinh> = {
+  'may-tinh': { pos: new THREE.Vector3(2.6, CAO_BAN + 0.29, -4.42), rotY: 0, size: 0.5, doTren: 'ban-nhi' },
+  tivi: { pos: new THREE.Vector3(9.94, 1.35, 0.3), rotY: -Math.PI / 2, size: 1.5 },
+};

@@ -205,6 +205,15 @@ export class ManHinh {
     // lọc nữa) — giữ phương thức để `world.ts` gọi không lỗi, không làm gì.
   }
 
+  /**
+   * Ẩn/hiện chân đế. `screen.focus` kéo panel sát máy quay: chân đế bàn (vốn
+   * nhỏ) lúc đó chiếm nửa khung hình như một cái nón khổng lồ (ảnh văn phòng
+   * 27/10) — panel đã rời bàn thì chân đế không còn nghĩa gì.
+   */
+  anChan(an: boolean): void {
+    this.chan.visible = !an;
+  }
+
   dispose(): void {
     this.panel.geometry.dispose();
     this.khung.geometry.dispose();

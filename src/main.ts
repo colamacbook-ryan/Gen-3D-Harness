@@ -10,6 +10,7 @@ import { NhatKy } from './log';
 import { taoRegistry } from './api/commands/index';
 import { Dispatcher } from './api/dispatcher';
 import { World } from './stage/world';
+import { hopChanHienTai, timDuong } from './stage/bo-cuc';
 import { dungGiaoDien } from './ui/index';
 import { batPhim } from './ui/phim';
 import { batDoFps, coDoFps } from './ui/do-fps';
@@ -70,6 +71,10 @@ export interface CuaStage {
    * cảm giác. Mốc tự đặt: `calls ≤ 150`, `triangles ≤ 300k`.
    */
   hieuNang(): Record<string, unknown>;
+  /** Văn phòng 27/10 — bộ hộp vật cản ĐANG có hiệu lực (căn nhà hoặc cảnh đã nạp), cho script bằng chứng. */
+  vatCan(): ReadonlyArray<{ id: string; x0: number; x1: number; z0: number; z1: number }>;
+  /** Đường A* mà `actor.moveTo` sẽ đi từ (x0,z0) tới (x1,z1) — cùng hàm sân khấu dùng. */
+  duongDi(x0: number, z0: number, x1: number, z1: number): Array<[number, number]>;
   /** D1b — chiếu điểm thế giới ra toạ độ điểm ảnh (đo luma ĐÚNG vùng mặt). */
   chieuDiem(p: [number, number, number]): { x: number; y: number };
   /** Đặt góc máy thủ công, tức thì (ảnh bằng chứng — xem `World.datMayThu`). */
@@ -186,6 +191,8 @@ window.stage = {
     return ra;
   },
   hieuNang: () => world.doHieuNang(),
+  vatCan: () => hopChanHienTai(),
+  duongDi: (x0, z0, x1, z1) => timDuong(x0, z0, x1, z1, 0.34),
   chieuDiem: (p) => world.chieuDiem(p),
   datMay: (vt, tam) => world.datMayThu(vt, tam),
   batTieng: () => tieng?.batTieng() ?? Promise.resolve(false),

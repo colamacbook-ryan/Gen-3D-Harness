@@ -287,7 +287,7 @@ describe('H1 mục 38 + 39 — actor.moveTo đi qua va chạm', () => {
 
   it('speed của moveTo bị kẹp ≤ TOC_DO_STEER trong diToi()', () => {
     const nguon = readFileSync(new URL('../../stage/nhanvat.ts', import.meta.url), 'utf8');
-    const i = nguon.indexOf('  diToi(v: THREE.Vector3, speed?: number): Action {');
+    const i = nguon.indexOf('  diToi(v: THREE.Vector3, speed?: number, quaDiem?: Array<[number, number]>): Action {');
     expect(i).toBeGreaterThan(0);
     const than = nguon.slice(i, nguon.indexOf('\n  }\n', i));
     expect(than).toContain('Math.min(speed && speed > 0 ? speed : TOC_DO_DI, TOC_DO_STEER)');

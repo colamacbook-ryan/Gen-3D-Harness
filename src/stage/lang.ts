@@ -732,6 +732,10 @@ function tanAnhDao(hat: number): THREE.BufferGeometry {
 export interface Lang extends Phong {
   /** Vị trí đèn lồng (thế giới) — `World` đặt vài đèn điểm thật ở các đèn gần tâm. */
   denLong: THREE.Vector3[];
+  /** Hộp vật cản đo lúc dựng (văn phòng) — `World` nạp vào `bo-cuc.datCanhChan`. */
+  vatCan?: Array<{ id: string; x0: number; x1: number; z0: number; z1: number }>;
+  /** Khung sàn (mép tường) của cảnh. */
+  khungSan?: { x0: number; x1: number; z0: number; z1: number };
 }
 
 /**
