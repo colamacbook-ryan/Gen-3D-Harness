@@ -73,7 +73,7 @@ describe('khuôn stage.describe', () => {
     });
   });
 
-  it('places: 12 điểm gốc + 3 ghế nhân viên (INT-07), kèm toạ độ mét', async () => {
+  it('places: 12 điểm gốc + bàn/ghế CEO + 3 ghế nhân viên (INT-07), kèm toạ độ mét', async () => {
     const st = await moTa();
     expect(st.places.map((p) => p.id)).toEqual([
       'ban-dieu-khien',
@@ -81,6 +81,8 @@ describe('khuôn stage.describe', () => {
       'ban-2',
       'ghe-1',
       'ghe-2',
+      'ban-ceo',
+      'ghe-ceo',
       'cho-kt-1',
       'cho-kt-2',
       'cho-kd-1',
@@ -225,7 +227,7 @@ describe('stage.bootstrap là sách hướng dẫn tự sinh', () => {
       quyUocDo: Record<string, unknown>;
     };
     expect(boot.version).toBe('0.1');
-    expect(boot.places.length).toBe(15);
+    expect(boot.places.length).toBe(17);
     expect(boot.clips).toContain('wave');
     expect(boot.expressions).toContain('happy');
     // 15 emote A2 + `chu-y` của C0 (#28)

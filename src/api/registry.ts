@@ -46,6 +46,17 @@ export const SU_KIEN_HE_THONG = [
   'screen.fed',
   /** V1 (INT-06) — sân khấu đổi chế độ vẽ `full`/`nen` (focus/ẩn/vỏ VS Code). */
   'stage.renderMode',
+  /**
+   * INT-07 — máy QUY TRÌNH đội ngũ (`src/behavior/doi-ngu.ts`) bắn, không lệnh nào:
+   * pha công ty, vòng đời nhân viên, cuộc họp, dấu duyệt bài, báo cáo CEO, và
+   * `team.record` = một bản giấy tờ trong sổ quy trình (biên bản, dấu kiểm nhận…).
+   */
+  'team.phase',
+  'team.member',
+  'team.meeting',
+  'team.review',
+  'team.report',
+  'team.record',
 ] as const;
 
 export class Registry implements RegistryLike {

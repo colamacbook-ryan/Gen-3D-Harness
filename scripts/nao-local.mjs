@@ -455,6 +455,8 @@ export function taoLuotLocal({
   msHan = MS_HAN_LOCAL,
   msXinCho = MS_XIN_CHO,
   vongToiDa = VONG_TOI_DA,
+  chiaViec = null,
+  msChiaViec = MS_CHIA_VIEC,
 }) {
   /** Ai đang chờ `actor.sayStart` của nhân vật nào (nhận cả `data` để lọc câu "xin chờ"). */
   const choNoi = new Set();
@@ -484,11 +486,14 @@ export function taoLuotLocal({
       if (!moMieng && !ide) void san.goi('actor.say', { actor: nguoiTraLoi, text: CAU_XIN_CHO, emotion: 'suy-nghi', interrupt: true });
     }, msXinCho);
     const ac = new AbortController();
-    const henHan = setTimeout(() => ac.abort(), msHan);
+    // câu là yêu cầu việc ⇒ có thể phải chờ cả đội làm: thêm ngân sách cho quy trình
+    const quyTrinh = Boolean(chiaViec) && !ide && nguoiTraLoi === 'gen' && laYeuCauViec(cau);
+    const henHan = setTimeout(() => ac.abort(), msHan + (quyTrinh ? msChiaViec : 0));
     const huyLuon = new Promise((_, rej) => ac.signal.addEventListener('abort', () => rej(new LoiOllama('quá hạn', { quaHan: true }))));
     huyLuon.catch(() => {}); // tránh unhandledRejection khi lượt xong trước hạn
 
     let daNoi = false;
+    let ketQuaDoi = [];
     /** Có lệnh diễn (không phải actor.say) chạy thành công trên người trả lời — E2E 26/10. */
     let daDien = false;
     let noiDung = '';
@@ -503,9 +508,17 @@ export function taoLuotLocal({
       const mt = await san.goi('stage.describe', {});
       const cuaBoss = cuaBossTuDescribe(mt.ok ? mt.result : undefined);
       if (mt.ok) capNhatActors(mt.result?.actors);
+      if (quyTrinh) {
+        const cv = await Promise.race([chiaViec.chia({ cau, model, signal: ac.signal }), huyLuon]);
+        ketQuaDoi = cv.ketQua;
+        if (ketQuaDoi.length) nhat.doiNgu = ketQuaDoi.map(({ vai, viec, ok }) => ({ vai, viec, ok }));
+      }
       const messages = [
         { role: 'system', content: dungNhacHeThong({ persona: layPersona(nguoiTraLoi), actor: nguoiTraLoi }) },
-        { role: 'user', content: dungDongNhac({ cau, ide, describe: gonDescribe(mt.result, { suKien: san.suKienCuoi() }) }) },
+        {
+          role: 'user',
+          content: dungDongNhac({ cau, ide, describe: gonDescribe(mt.result, { suKien: san.suKienCuoi() }) }) + nhacTongHop(ketQuaDoi),
+        },
       ];
 
       const toolLuot = await layTools();
@@ -554,6 +567,8 @@ export function taoLuotLocal({
       clearTimeout(henXinCho);
       clearTimeout(henHan);
       choNoi.delete(thoi);
+      // bước cuối của quy trình: báo cáo CEO (sân khấu tự hoãn tới khi cả đội nộp bài)
+      if (quyTrinh) void chiaViec.xongLuot(nhat.ok);
     }
 
     // Ollama không có tool_choice: model trả chữ thuần → driver nói hộ
@@ -602,6 +617,224 @@ export function taoLuotLocal({
   }
 }
 
+/* ======================================================= 5b. chia việc (INT-07) */
+
+/**
+ * NÃO LOCAL CHIA VIỆC CHO NHÂN VIÊN — theo QUY TRÌNH, do DRIVER cầm lái
+ * (Ryan 27/10: "luôn phải theo quy trình, không tự biên tự diễn"). Model chỉ
+ * được hỏi đúng câu của từng bước; thứ tự bước là của driver, không của model:
+ *
+ *   1. nhận việc     `team.event brief`   — chỉ khi câu của Sếp là YÊU CẦU VIỆC
+ *   2. lập kế hoạch  model trả JSON `{"viec":[{"vai","viec"}]}` (≤ 3 việc, vai trong bảng)
+ *   3. giao việc     `team.event spawn` cho từng việc (sân khấu họp / giao riêng)
+ *   4. thực hiện     mỗi nhân viên = một lượt model riêng với vai riêng, KHÔNG tool
+ *                    (nhân viên không điều khiển sân khấu, chỉ làm việc chuyên môn)
+ *   5. nộp + KIỂM NHẬN  Giám đốc duyệt từng bài bằng một lượt model trả JSON
+ *                    `{"dat":bool,"ly_do":"…"}`: đạt ⇒ `done` (dấu ĐÃ KIỂM NHẬN);
+ *                    chưa đạt lần đầu ⇒ `rework` (dấu TRẢ LẠI, nhân viên làm lại
+ *                    với góp ý); chưa đạt lần hai / hỏng ⇒ `fail`
+ *   6. tổng hợp      lượt chính của Nhi chỉ nhận bài ĐÃ KIỂM NHẬN rồi nói với Sếp
+ *   7. báo cáo       `team.event report` (sân khấu hoãn tới khi cả đội nộp xong)
+ *
+ * Câu nói chuyện thường (hỏi han, chào) KHÔNG đi quy trình — không ai họp vì
+ * một câu "chào em".
+ */
+export const VAI_NHAN_VIEN_LOCAL = Object.freeze({
+  builder: 'thợ xây — viết/sửa code',
+  tester: 'kiểm thử — nghĩ ca test, tìm lỗi',
+  debugger: 'bác sĩ debug — tìm nguyên nhân gốc',
+  designer: 'thiết kế — giao diện, trải nghiệm',
+  researcher: 'nghiên cứu — tra cứu, so sánh phương án',
+  reviewer: 'reviewer — soát lỗi, rủi ro',
+  architect: 'kiến trúc sư — thiết kế hệ thống, chia bước',
+  scribe: 'thư ký — viết tài liệu, tóm tắt',
+});
+export const TOI_DA_VIEC_LOCAL = 3;
+export const MS_CHIA_VIEC = 90_000;
+
+// `\b` của JS chỉ hiểu chữ ASCII ("gì" kết thúc bằng "ì" thì `\bgì\b` không bao giờ khớp) → biên chữ theo \p{L}
+const tuRieng = (ds, them = '') => new RegExp(`(?<![\\p{L}\\p{N}])(?:${ds.join('|')})(?![\\p{L}\\p{N}])${them}`, 'iu');
+const DONG_TU_VIEC = tuRieng([
+  'viết', 'sửa', 'kiểm tra', 'kiểm thử', 'test', 'nghiên cứu', 'thiết kế', 'review', 'rà soát', 'soát',
+  'tìm hiểu', 'phân tích', 'dựng', 'xây', 'triển khai', 'tối ưu', 'refactor', 'debug', 'lập kế hoạch',
+  'soạn', 'tổng hợp', 'so sánh', 'đánh giá', 'cài đặt', 'làm giúp', 'làm cho',
+]);
+const DAU_HOI = /\?|(?<![\p{L}])(?:gì|sao|nhỉ|đâu|nào)(?![\p{L}])|(?<![\p{L}])(?:không|chưa|à|hả)\s*[.!]*$/iu;
+
+/** Câu của Sếp có phải một YÊU CẦU VIỆC (đáng đi quy trình) không. Thuần. */
+export function laYeuCauViec(cau) {
+  const c = String(cau ?? '').trim();
+  if (c.split(/\s+/).length < 4) return false;
+  if (DAU_HOI.test(c)) return false;
+  return DONG_TU_VIEC.test(c);
+}
+
+/** Đọc kế hoạch model trả về (JSON, có thể lẫn chữ / khối ```). Sai khuôn → []. Thuần. */
+export function docKeHoach(text) {
+  const s = String(text ?? '');
+  const dau = s.indexOf('{');
+  const cuoi = s.lastIndexOf('}');
+  if (dau < 0 || cuoi <= dau) return [];
+  let j;
+  try {
+    j = JSON.parse(s.slice(dau, cuoi + 1));
+  } catch {
+    return [];
+  }
+  const ds = Array.isArray(j?.viec) ? j.viec : [];
+  const ra = [];
+  for (const v of ds) {
+    const vai = String(v?.vai ?? '').trim().toLowerCase();
+    const viec = String(v?.viec ?? '').replace(/\s+/g, ' ').trim().slice(0, 120);
+    if (!VAI_NHAN_VIEN_LOCAL[vai] || !viec) continue;
+    ra.push({ vai, viec });
+    if (ra.length >= TOI_DA_VIEC_LOCAL) break;
+  }
+  return ra;
+}
+
+const NHAC_LAP_KE_HOACH = [
+  'Bạn là Nhi — Giám đốc kỹ thuật. Sếp (CEO) vừa giao một yêu cầu.',
+  'Quyết định có cần CHIA VIỆC cho nhân viên không. Việc nhỏ, một người làm được thì KHÔNG chia.',
+  `Chỉ dùng các vai: ${Object.entries(VAI_NHAN_VIEN_LOCAL).map(([k, v]) => `${k} (${v})`).join('; ')}.`,
+  `Tối đa ${TOI_DA_VIEC_LOCAL} việc, mỗi việc một câu ngắn tiếng Việt.`,
+  'CHỈ trả về JSON, không giải thích: {"viec":[{"vai":"builder","viec":"..."}]} — không chia thì {"viec":[]}.',
+].join('\n');
+
+const NHAC_DUYET = [
+  'Bạn là Nhi — Giám đốc kỹ thuật, đang DUYỆT bài nhân viên nộp.',
+  'Đạt khi bài làm đúng việc được giao, cụ thể, không bịa. Khắt khe nhưng công bằng.',
+  'CHỈ trả về JSON: {"dat":true,"ly_do":"..."} hoặc {"dat":false,"ly_do":"cần sửa gì"}.',
+].join('\n');
+
+/** Đọc kết quả duyệt. Không đọc được ⇒ coi là ĐẠT (không bắt nhân viên làm lại vì model nói lan man). Thuần. */
+export function docDuyet(text) {
+  const s = String(text ?? '');
+  const dau = s.indexOf('{');
+  const cuoi = s.lastIndexOf('}');
+  if (dau >= 0 && cuoi > dau) {
+    try {
+      const j = JSON.parse(s.slice(dau, cuoi + 1));
+      if (typeof j?.dat === 'boolean') return { dat: j.dat, lyDo: String(j.ly_do ?? '').slice(0, 200) };
+    } catch {
+      /* rơi xuống dưới */
+    }
+  }
+  return { dat: true, lyDo: 'không đọc được phiếu duyệt — mặc định kiểm nhận' };
+}
+
+const nhacNhanVien = (vai) =>
+  [
+    `Bạn là nhân viên ${VAI_NHAN_VIEN_LOCAL[vai] ?? vai} trong đội của Giám đốc Nhi.`,
+    'Làm đúng việc được giao, nộp KẾT QUẢ ngắn gọn (≤ 5 câu tiếng Việt, có ý cụ thể). Không chào hỏi.',
+  ].join('\n');
+
+/**
+ * Bộ chia việc. `chia({cau, model, signal})` chạy bước 1–5 và trả
+ * `{ yeuCau: bool, ketQua: [{vai, viec, ok, traLoi}] }`; `xongLuot()` là bước 7.
+ * Mọi lệnh sân khấu đi qua `team.event` (ws, nguồn `nao-local`).
+ */
+export function taoChiaViec({ san, ollama, ghi = console.log }) {
+  let dem = 0;
+  const gui = (args) => san.goi('team.event', { source: 'nao-local', ...args });
+  return {
+    async chia({ cau, model, signal }) {
+      if (!laYeuCauViec(cau)) return { yeuCau: false, ketQua: [] };
+      const luotId = `nl${Date.now().toString(36)}${(dem++).toString(36)}`;
+      await gui({ kind: 'brief', id: `${luotId}-b` });
+      await gui({ kind: 'work', id: `${luotId}-p`, tool: 'ke-hoach' });
+      let keHoach = [];
+      try {
+        const msg = await ollama.chat({
+          model,
+          messages: [
+            { role: 'system', content: NHAC_LAP_KE_HOACH },
+            { role: 'user', content: String(cau) },
+          ],
+          signal,
+        });
+        keHoach = docKeHoach(msg.content);
+      } catch (e) {
+        if (signal?.aborted) throw e;
+        ghi(`[nao-local] ${gio()} lập kế hoạch lỗi: ${e?.message ?? e} — Nhi tự làm`);
+      }
+      ghi(`[nao-local] ${gio()} KẾ HOẠCH: ${keHoach.length ? keHoach.map((k) => `${k.vai}: ${k.viec}`).join(' | ') : 'không chia, Nhi tự làm'}`);
+      if (!keHoach.length) return { yeuCau: true, ketQua: [] };
+      const viec = keHoach.map((k, i) => ({ ...k, id: `${luotId}-${i}` }));
+      for (const v of viec) await gui({ kind: 'spawn', id: v.id, role: v.vai, task: v.viec });
+      const ketQua = [];
+      // Ollama phục vụ tuần tự: chạy lần lượt cho số đo dễ đọc, kết quả không đổi
+      const lam = async (v, gopY) => {
+        if (signal?.aborted) throw new LoiOllama('quá hạn', { quaHan: true });
+        const msg = await ollama.chat({
+          model,
+          messages: [
+            { role: 'system', content: nhacNhanVien(v.vai) },
+            {
+              role: 'user',
+              content: `Yêu cầu của Sếp: «${String(cau)}»\nViệc của bạn: ${v.viec}${gopY ? `\nGiám đốc TRẢ LẠI bài trước, góp ý: ${gopY}` : ''}`,
+            },
+          ],
+          signal,
+        });
+        return sachNoiDung(msg.content).slice(0, 600);
+      };
+      const duyet = async (v, bai) => {
+        const msg = await ollama.chat({
+          model,
+          messages: [
+            { role: 'system', content: NHAC_DUYET },
+            { role: 'user', content: `Việc giao: ${v.viec}\nBài nộp của ${v.vai}: ${bai}` },
+          ],
+          signal,
+        });
+        return docDuyet(msg.content);
+      };
+      for (const v of viec) {
+        let traLoi = '';
+        let ok = false;
+        let lyDo = '';
+        try {
+          traLoi = await lam(v);
+          if (traLoi) {
+            let d = await duyet(v, traLoi);
+            if (!d.dat) {
+              ghi(`[nao-local] ${gio()} TRẢ LẠI ${v.vai}: ${d.lyDo}`);
+              await gui({ kind: 'rework', id: v.id });
+              traLoi = await lam(v, d.lyDo);
+              d = traLoi ? await duyet(v, traLoi) : { dat: false, lyDo: 'nộp trống' };
+            }
+            ok = d.dat;
+            lyDo = d.lyDo;
+          }
+        } catch (e) {
+          if (signal?.aborted) {
+            await gui({ kind: 'fail', id: v.id });
+            throw e;
+          }
+          ghi(`[nao-local] ${gio()} nhân viên ${v.vai} hỏng: ${e?.message ?? e}`);
+        }
+        ghi(`[nao-local] ${gio()} ${ok ? 'ĐÃ KIỂM NHẬN' : 'TRẢ LẠI'} ${v.vai}${lyDo ? ` — ${lyDo}` : ''}`);
+        await gui({ kind: ok ? 'done' : 'fail', id: v.id });
+        ketQua.push({ vai: v.vai, viec: v.viec, ok, traLoi, lyDo });
+      }
+      return { yeuCau: true, ketQua };
+    },
+    async xongLuot(ok = true) {
+      await gui({ kind: 'report', id: `nl${Date.now().toString(36)}r${(dem++).toString(36)}`, ok });
+    },
+  };
+}
+
+/** Phần thêm vào dòng nhắc của Nhi: kết quả nhân viên để DUYỆT + tổng hợp báo Sếp. */
+export function nhacTongHop(ketQua) {
+  if (!ketQua?.length) return '';
+  const dong = ketQua
+    .map((k) => `- ${k.vai} («${k.viec}»): ${k.ok ? `[ĐÃ KIỂM NHẬN] ${k.traLoi}` : `[TRẢ LẠI] ${k.lyDo || 'không đạt'}`}`)
+    .join(' ');
+  return ` | ĐỘI ĐÃ NỘP BÀI (em là Giám đốc, đã đóng dấu từng bài: chỉ TỔNG HỢP bài ĐÃ KIỂM NHẬN thành MỘT câu trả lời ngắn cho Sếp bằng actor_say, bài TRẢ LẠI thì nói thật là chưa xong) ${dong}`;
+}
+
 /* ================================================================ 6. driver */
 
 /**
@@ -626,6 +859,7 @@ export async function batDriver({
   khiXongLuot = () => {},
   layPersona = docPersona,
   msGiuaIde = MS_GIUA_LUOT_IDE,
+  msChiaViec = MS_CHIA_VIEC,
 }) {
   const san = await noiSanKhau({ WebSocket, cong, token, ghi, msNhipTim, msQuaHanTim, backoff });
   const ollama = taoOllama({ url: ollamaUrl, fetch: f, msDo });
@@ -645,7 +879,8 @@ export async function batDriver({
     },
   });
   const layTools = taoToolSong({ san, tools, banDo, ghi });
-  const luot = taoLuotLocal({ san, ollama, doNao, tools, banDo, layTools, capNhatActors, ghi, msHan, msXinCho, layPersona });
+  const chiaViec = taoChiaViec({ san, ollama, ghi });
+  const luot = taoLuotLocal({ san, ollama, doNao, tools, banDo, layTools, capNhatActors, ghi, msHan, msXinCho, layPersona, chiaViec, msChiaViec });
   const nhatKy = [];
   const hangDoi = taoHangDoi({
     chay: async (x) => {

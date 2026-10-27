@@ -178,7 +178,7 @@ describe('kẹp sàn + va chạm (bo-cuc.ts)', () => {
 });
 
 describe('place giữ ĐỦ id cũ (hợp đồng agent/MCP không đổi)', () => {
-  it('đủ 12 id cũ (INT-07 thêm ghế `cho-*` cho nhân viên, không bớt id nào)', () => {
+  it('đủ 12 id cũ (INT-07 thêm bàn/ghế CEO + ghế `cho-*` cho nhân viên, không bớt id nào)', () => {
     const can = [
       'ban-dieu-khien',
       'ban-1',
@@ -195,7 +195,7 @@ describe('place giữ ĐỦ id cũ (hợp đồng agent/MCP không đổi)', () 
     ];
     const co = new Set(PLACES.map((p) => p.id));
     for (const id of can) expect(co.has(id), id).toBe(true);
-    for (const p of PLACES) if (!can.includes(p.id)) expect(p.id, 'id mới phải là ghế nhân viên').toMatch(/^cho-/);
+    for (const p of PLACES) if (!can.includes(p.id)) expect(p.id, 'id mới phải là chỗ CEO / ghế nhân viên').toMatch(/^(cho-|ban-ceo$|ghe-ceo$)/);
     expect(timPlace('ghe-1')?.kind).toBe('seat');
   });
 });

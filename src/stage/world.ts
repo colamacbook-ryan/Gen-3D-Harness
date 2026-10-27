@@ -546,7 +546,8 @@ export class World implements StageWorld {
       id: OWNER.id,
       name: OWNER.ten,
       model: OWNER.model,
-      at: 'buc-trung-tam',
+      // INT-07: Nam là CEO — xuất hiện ở bàn CEO (máy đội ngũ cho ngồi vào ghế nếu đang rảnh)
+      at: 'ban-ceo',
       controlledBy: 'owner',
     });
     // 2) Gen (nữ) đứng ở bàn điều khiển, dáng chờ `cham-chu` (Issue #18 mục 3)
@@ -2114,7 +2115,8 @@ export class World implements StageWorld {
       id: OWNER.id,
       name: OWNER.ten,
       model: OWNER.model,
-      at: 'buc-trung-tam',
+      // INT-07: Nam là CEO — xuất hiện ở bàn CEO (máy đội ngũ cho ngồi vào ghế nếu đang rảnh)
+      at: 'ban-ceo',
       controlledBy: 'owner',
     });
     await this.actorSpawn({

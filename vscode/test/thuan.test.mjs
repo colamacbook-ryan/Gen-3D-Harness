@@ -187,6 +187,16 @@ test('taoLenhNoi: actor.say lên owner, to = nhân vật đang chọn, interrupt
   assert.match(khongOwner.loi, /owner/);
 });
 
+test('suKienThanhDong: team.record (INT-07 sổ quy trình) → một dòng hệ thống có số + người ký', () => {
+  assert.deepEqual(lg.suKienThanhDong('team.record', { so: 7, loai: 'kiem-nhan', ky: 'Nhi', tomTat: 'ĐÃ KIỂM NHẬN: Thợ xây — Viết test' }, DS, 5), {
+    t: 5,
+    loai: 'he-thong',
+    ai: '',
+    text: '📋 #7 ĐÃ KIỂM NHẬN: Thợ xây — Viết test — ký: Nhi',
+  });
+  assert.equal(lg.suKienThanhDong('team.record', { tomTat: 'thiếu số' }, DS, 5), null);
+});
+
 test('suKienThanhDong: user.text/user.speech/sayStart/user.command', () => {
   assert.deepEqual(lg.suKienThanhDong('user.text', { actor: 'owner', text: 'chào', to: 'gen' }, DS, 5), { t: 5, loai: 'sep', ai: 'owner', text: 'chào', toi: 'gen' });
   assert.equal(lg.suKienThanhDong('user.speech', { actor: 'owner', text: 'chào' }, DS, 5).giong, true);

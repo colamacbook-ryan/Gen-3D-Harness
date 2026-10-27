@@ -643,6 +643,57 @@ function khuNghi(b: Bo): void {
   bienTen(b, 'Khu nghỉ', KHU_VP[6].mau, -2.0, -5.1, 0);
 }
 
+/**
+ * INT-07 — chỗ làm của CEO: bàn gỗ đậm 1,5 m + màn hình + bảng tên "CEO", ghế
+ * bành tối (`khongChan` — place `ghe-ceo` phải ngồi được), thảm xanh đậm làm
+ * "phòng riêng không vách". Toạ độ khớp place `ban-ceo`/`ghe-ceo` trong `noi-dung.ts`.
+ */
+function banCeo(b: Bo): void {
+  const X = -0.6;
+  const Z = -4.2;
+  // thảm riêng (dưới cùng, không chặn đường)
+  const tham = new THREE.Mesh(
+    new RoundedBoxGeometry(2.4, 0.02, 1.9, 2, 0.008),
+    new THREE.MeshStandardMaterial({ color: 0x34405e, roughness: 1 }),
+  );
+  tham.position.set(X, 0.012, Z + 0.15);
+  tham.receiveShadow = true;
+  b.nhom.add(tham);
+  const g = new THREE.Group();
+  hop(g, 1.5, 0.06, 0.72, vl(MAU_GO_DAM, 0.45), 0, CAO_BAN, 0.05, 0.02);
+  hop(g, 1.44, CAO_BAN - 0.04, 0.06, vl(MAU_GO_DAM, 0.5), 0, (CAO_BAN - 0.04) / 2, 0.36, 0.015);
+  for (const dau of [1, -1]) hop(g, 0.06, CAO_BAN - 0.04, 0.66, vl(MAU_GO_DAM, 0.5), dau * 0.71, (CAO_BAN - 0.04) / 2, 0.05, 0.015);
+  // màn hình + bàn phím + bảng tên
+  hop(g, 0.56, 0.33, 0.035, vl(0x2a2d34, 0.4), 0.15, CAO_BAN + 0.29, 0.25, 0.015);
+  const mh = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.29), vlManHinh(1));
+  mh.position.set(0.15, CAO_BAN + 0.29, 0.23);
+  mh.rotation.y = Math.PI;
+  g.add(mh);
+  tru(g, 0.015, 0.015, 0.12, vl(0x2a2d34, 0.4), 0.15, CAO_BAN + 0.08, 0.28, false);
+  hop(g, 0.32, 0.015, 0.1, vl(0xe9e6e0, 0.5), 0.15, CAO_BAN + 0.038, -0.05, 0.006, false);
+  const bt = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.34, 0.1),
+    new THREE.MeshStandardMaterial({ map: vanBien('CEO', 0x34405e), roughness: 0.6 }),
+  );
+  bt.position.set(-0.45, CAO_BAN + 0.09, -0.27);
+  bt.rotation.set(-0.35, Math.PI, 0);
+  g.add(bt);
+  hop(g, 0.36, 0.1, 0.06, vl(0xd8c08a, 0.4), -0.45, CAO_BAN + 0.06, -0.24, 0.01, false);
+  // ghế bành: rộng + lưng cao, tối màu
+  const gh = new THREE.Group();
+  gh.userData.khongChan = true;
+  hop(gh, 0.5, 0.09, 0.46, vl(0x2b2f3a, 0.7), 0, CAO_GHE, 0, 0.04);
+  hop(gh, 0.5, 0.56, 0.09, vl(0x2b2f3a, 0.7), 0, CAO_GHE + 0.3, -0.22, 0.04);
+  for (const dau of [1, -1]) hop(gh, 0.07, 0.16, 0.4, vl(0x2b2f3a, 0.7), dau * 0.26, CAO_GHE + 0.12, 0, 0.03);
+  tru(gh, 0.03, 0.03, CAO_GHE - 0.06, vl(MAU_KIM, 0.4), 0, (CAO_GHE - 0.06) / 2 + 0.03, 0, false);
+  tru(gh, 0.2, 0.2, 0.03, vl(MAU_KIM, 0.4), 0, 0.03, 0, false);
+  gh.position.z = -0.48;
+  g.add(gh);
+  bongDat(b, g, 0, -0.15, 0.95, 0.7);
+  datNhom(b, g, X, Z, 180);
+  cayChau(b, X - 1.15, Z - 0.45, 1.0, 0x34405e);
+}
+
 /* ---------------------------------------------------------------- vỏ toà nhà */
 
 function voToaNha(b: Bo): void {
@@ -712,6 +763,8 @@ export async function dungVanPhong(scene: THREE.Scene): Promise<Canh> {
   khuNghi(b);
   // BÀN RIÊNG CỦA NHI cạnh lối đi chính (place `ban-dieu-khien`/`ghe-2`, màn hình `may-tinh`)
   choLamViec(b, 2.6, -4.2, 180, 0xe0607e, null, false);
+  // INT-07 — BÀN CEO (Nam / Sếp): đối xứng bàn Nhi qua lối đi chính, to hơn, ghế bành, thảm riêng
+  banCeo(b);
 
   // ngăn mềm giữa các khu: kệ thấp + cây (KHÔNG vách)
   keThap(b, -7.5, -0.4, 4.6, 0);

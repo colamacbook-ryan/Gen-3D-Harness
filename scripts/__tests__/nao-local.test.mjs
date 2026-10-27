@@ -21,6 +21,9 @@ import {
   boSungGiaTri,
   taoToolSong,
   sinhToolLocal,
+  laYeuCauViec,
+  docKeHoach,
+  docDuyet,
 } from '../nao-local.mjs';
 
 // GEN_STAGE_TEST_CONG: đổi cổng gốc khi nhiều phiên cùng chạy test trên một máy
@@ -548,5 +551,95 @@ describe('nao-local — V3 giác quan IDE', () => {
     await ngu(30);
     expect(ollama.yeuCau).toHaveLength(1);
     expect(lenhSay()).toEqual([]);
+  });
+});
+
+describe('nao-local — INT-07 chia việc THEO QUY TRÌNH (driver cầm lái, model chỉ trả lời từng bước)', () => {
+  const suKienDoi = () => bridge.lenh.filter((l) => l.cmd === 'team.event').map((l) => l.args);
+
+  it('thuần: nhận ra yêu cầu việc; câu hỏi / chào / lệnh đi lại thì không', () => {
+    expect(laYeuCauViec('Nhi viết giúp anh bộ test cho thuật toán tìm đường')).toBe(true);
+    expect(laYeuCauViec('em nghiên cứu xem nên dùng Ollama hay llama.cpp')).toBe(true);
+    expect(laYeuCauViec('hôm nay làm gì')).toBe(false);
+    expect(laYeuCauViec('em sửa lỗi này được không')).toBe(false);
+    expect(laYeuCauViec('Gen ơi, ra cửa sổ đi')).toBe(false);
+    expect(laYeuCauViec('Chào em')).toBe(false);
+  });
+
+  it('thuần: kế hoạch chỉ nhận vai trong bảng, tối đa 3 việc; JSON hỏng → []', () => {
+    const k = docKeHoach('```json\n{"viec":[{"vai":"builder","viec":"Viết test"},{"vai":"hacker","viec":"x"},{"vai":"Tester","viec":"kiểm"},{"vai":"designer","viec":"a"},{"vai":"scribe","viec":"b"}]}\n```');
+    expect(k).toEqual([
+      { vai: 'builder', viec: 'Viết test' },
+      { vai: 'tester', viec: 'kiểm' },
+      { vai: 'designer', viec: 'a' },
+    ]);
+    expect(docKeHoach('em nghĩ là không cần')).toEqual([]);
+    expect(docDuyet('{"dat":false,"ly_do":"thiếu ca biên"}')).toEqual({ dat: false, lyDo: 'thiếu ca biên' });
+    expect(docDuyet('lan man').dat).toBe(true);
+  });
+
+  it('yêu cầu việc → brief → lập kế hoạch → giao 2 người → làm → DUYỆT (1 bài trả lại, làm lại) → tổng hợp → báo cáo', async () => {
+    await bat();
+    ollama.kichBan.push(
+      { content: '{"viec":[{"vai":"builder","viec":"Viết test A*"},{"vai":"tester","viec":"Nghĩ ca biên"}]}' },
+      { content: 'Đã viết 5 test cho A*.' },
+      { content: '{"dat":true,"ly_do":"đủ"}' },
+      { content: 'Ca biên: ô kẹt.' },
+      { content: '{"dat":false,"ly_do":"thiếu ca đích ngoài sàn"}' },
+      { content: 'Ca biên: ô kẹt, đích ngoài sàn, đích trùng gốc.' },
+      { content: '{"dat":true,"ly_do":"đủ"}' },
+      { tool_calls: [goiTool('actor_say', { actor: 'gen', text: 'Dạ xong: 5 test + 3 ca biên ạ' })] },
+      { content: '' },
+    );
+    await sepNoi({ text: 'Nhi viết giúp anh bộ test cho thuật toán tìm đường' });
+    await ngu(50);
+    const sk = suKienDoi();
+    expect(sk.map((x) => x.kind)).toEqual(['brief', 'work', 'spawn', 'spawn', 'done', 'rework', 'done', 'report']);
+    expect(sk.every((x) => x.source === 'nao-local')).toBe(true);
+    expect(sk[2]).toMatchObject({ role: 'builder', task: 'Viết test A*' });
+    expect(sk[5].id).toBe(sk[3].id); // trả lại đúng bài của tester
+    // nhân viên không có tool: không điều khiển được sân khấu
+    expect(ollama.yeuCau[1].tools).toBeUndefined();
+    // bài làm lại mang góp ý của Giám đốc
+    expect(JSON.stringify(ollama.yeuCau[5].messages)).toContain('thiếu ca đích ngoài sàn');
+    // lượt chính của Nhi nhận bài ĐÃ KIỂM NHẬN để tổng hợp
+    expect(JSON.stringify(ollama.yeuCau[7].messages)).toContain('ĐÃ KIỂM NHẬN');
+    expect(lenhSay()).toEqual([{ cmd: 'actor.say', args: { actor: 'gen', text: 'Dạ xong: 5 test + 3 ca biên ạ' } }]);
+    expect(driver.nhatKy[0].doiNgu).toEqual([
+      { vai: 'builder', viec: 'Viết test A*', ok: true },
+      { vai: 'tester', viec: 'Nghĩ ca biên', ok: true },
+    ]);
+  });
+
+  it('kế hoạch không chia → Nhi tự làm, vẫn đi quy trình brief → report, không ai được sinh ra', async () => {
+    await bat();
+    ollama.kichBan.push({ content: '{"viec":[]}' }, { tool_calls: [goiTool('actor_say', { actor: 'gen', text: 'Dạ em làm' })] }, { content: '' });
+    await sepNoi({ text: 'Nhi viết giúp anh một hàm cộng hai số' });
+    await ngu(50);
+    expect(suKienDoi().map((x) => x.kind)).toEqual(['brief', 'work', 'report']);
+  });
+
+  it('bài trả lại lần hai → fail (không kiểm nhận), Nhi được báo là TRẢ LẠI', async () => {
+    await bat();
+    ollama.kichBan.push(
+      { content: '{"viec":[{"vai":"researcher","viec":"So sánh Ollama vs llama.cpp"}]}' },
+      { content: 'Ollama tốt.' },
+      { content: '{"dat":false,"ly_do":"không có số đo"}' },
+      { content: 'Ollama vẫn tốt.' },
+      { content: '{"dat":false,"ly_do":"vẫn không có số đo"}' },
+      { content: 'Dạ phần so sánh chưa đạt, em làm tiếp ạ' },
+    );
+    await sepNoi({ text: 'em nghiên cứu so sánh Ollama với llama.cpp cho anh' });
+    await ngu(50);
+    expect(suKienDoi().map((x) => x.kind)).toEqual(['brief', 'work', 'spawn', 'rework', 'fail', 'report']);
+    expect(JSON.stringify(ollama.yeuCau[5].messages)).toContain('TRẢ LẠI');
+  });
+
+  it('câu nói chuyện thường KHÔNG đi quy trình (không ai họp vì một câu chào)', async () => {
+    await bat();
+    ollama.kichBan.push({ content: 'Dạ chào Sếp' });
+    await sepNoi({ text: 'Chào em' });
+    expect(suKienDoi()).toEqual([]);
+    expect(ollama.yeuCau).toHaveLength(1);
   });
 });

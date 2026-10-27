@@ -2056,8 +2056,41 @@ quá trình làm việc"*; nguồn **cả hai** (Claude Code + não local). Chi 
   **`actor.label {actor, text?, tone}`** (thẻ tên DOM nổi trên đầu, cùng lớp bong bóng, nhường chỗ khi bong bóng hiện;
   `stage.describe().actors[].label`): `truong` cam · `nhan-vien` xanh · `sep` xám. Gắn lại sau `stage.reset`.
 - **3 ghế trống mới là place `cho-kt-1`/`cho-kt-2`/`cho-kd-1`** (kind `seat`) — `actor.sit` chỉ nhận place. Test b1
-  giữ "đủ 12 id cũ + id mới phải `cho-*`".
+  giữ "đủ 12 id cũ + id mới phải `cho-*` / `ban-ceo` / `ghe-ceo`".
 - **`actorSit` không ngồi tại chỗ kẹt nữa**: đo thật — 4 nhân viên cùng chạy làm swiftshader tụt khung, cú đi tụt sau
   đồng hồ → cắt góc → kẹt → `diToi` bỏ cuộc → nhân vật NGỒI giữa lối đi cách ghế 1 m. Nay sau cú đi, còn xa ghế
   > `CON_XA_GHE` 0,3 m thì tìm đường lại từ chỗ đang đứng (tối đa 2 lần). Máy yếu thật cũng gặp đúng ca này.
-- Não local: chưa tự chia việc cho subagent; khi có thì gửi đúng `team.event` với `source: "nao-local"`.
+
+### Vòng 2 — CEO + Giám đốc + QUY TRÌNH có giấy tờ (27/10, Ryan)
+
+Ryan: *"1 nhân vật CEO và 1 nhân vật Giám đốc, leader phải có bàn riêng"* → *"phải phối hợp theo quy trình thực sự,
+không tự biên tự diễn"* → *"cấp trên đóng dấu kiểm nhận, họp hành có biên bản"*. Đặc tả: **`docs/doi-ngu/QUY-TRINH.md`**.
+
+- **CEO = Nam** (bàn `ban-ceo` mới dựng trong `van-phong.ts`, ghế `ghe-ceo`; owner spawn ở `ban-ceo`), thẻ tone
+  **`ceo`**. **Giám đốc kỹ thuật = Nhi** (bàn `ban-dieu-khien`, ghế `ghe-2`). Đo lại vật cản: 545 hộp.
+- **Máy đội ngũ là MÁY PHA, không phải "nghe gì diễn nấy"**: `nghi → nhan-viec → lap-ke-hoach → giao-viec →
+  thuc-hien → duyet → bao-cao`. Lý do: bản v1 phản ứng từng sự kiện độc lập ⇒ nhân viên tự về chỗ, tự nộp, Nhi vừa
+  họp vừa duyệt — đúng cái Ryan gọi là "tự biên tự diễn". Bảy luật trong QUY-TRINH.md, mỗi luật một test.
+- **Mọi việc của Giám đốc qua MỘT hàng tuần tự (`hangTruong`)**; nhân viên có chuỗi riêng. Chống deadlock: việc
+  Giám đốc chỉ chờ `vaoXong` (bước spawn, không phụ thuộc ai), chuỗi nhân viên chờ `giaoXong` / việc duyệt — không
+  bao giờ có vòng chờ ngược.
+- **Nhân viên đứng chờ giao việc**: gom 1,2 s (`CUA_SO_GIAO_MS`), ≥ 2 người ⇒ họp ở Phòng họp (Nhi đầu bàn
+  `CHO_CHU_TRI_HOP`, nhân viên `CHO_HOP`), 1 người ⇒ phiếu giao tại bàn Nhi. `done` tới trước khi được giao vẫn phải chờ.
+- **Thân Nhi đang bận việc của não thì CHỜ (trần 20 s), không cắt** — đổi giao kèo v1 ("không kéo về bàn"): quy
+  trình phải đi tiếp, nhưng không bao giờ `interrupt` việc của não.
+- **Giấy tờ = sổ quy trình** (`soQuyTrinh`, ≤ 300 bản, số thứ tự không tái dùng, sự kiện `team.record`): nhận việc,
+  biên bản họp (chủ trì/thành phần/phân công, hiện lên màn `tivi`), phiếu giao, dấu `ĐÃ KIỂM NHẬN` / `TRẢ LẠI`
+  (hiện lên thẻ người nộp), xin duyệt, báo cáo, **CEO duyệt** (ngay sau mỗi báo cáo), `vi-pham`. Chatroom VS Code
+  hiện mỗi bản một dòng `📋 #n … — ký: …`.
+- **`team.event` thêm kind**: `session-start brief work work-result rework ask report compact session-end` + tham số
+  `tool` (loại việc) / `ok`. Sự kiện máy bắn (`team.phase/member/meeting/review/report/record`) khai trong
+  `SU_KIEN_HE_THONG`.
+- **Hook phủ cả phiên** (`bao-doi-ngu.mjs`): 10 mốc → kind; tool thường phân LOẠI ngay trong tiến trình hook (Bash
+  đọc lệnh để biết test/build/git rồi bỏ) — không gửi lệnh/đường dẫn/prompt. PostToolUse đạt của tool thường thì im
+  (không ồn); test/build/lệnh/git đạt vẫn báo để thấy "sửa xong lỗi".
+- **Não local chia việc DO DRIVER CẦM LÁI** (`taoChiaViec`): model chỉ trả lời câu hỏi từng bước (kế hoạch JSON, bài
+  làm, phiếu duyệt JSON), thứ tự bước là của driver. Nhân viên không có tool. Duyệt: chưa đạt lần đầu ⇒ `rework`
+  kèm góp ý, lần hai ⇒ `fail`. Chỉ câu YÊU CẦU VIỆC mới đi quy trình (`laYeuCauViec`; `\b` của JS không hiểu chữ có
+  dấu ⇒ biên chữ bằng `\p{L}`). Thêm `MS_CHIA_VIEC` 90 s vào hạn lượt. Chưa đo với Ollama thật.
+- Cạm bẫy đo: sửa file `src/` trong lúc script trình duyệt chạy ⇒ Vite HMR tải lại trang, `window.stage` mất giữa
+  chừng — chạy kiểm thì không sửa `src/`.

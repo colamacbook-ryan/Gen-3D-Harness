@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { suKienTuHook } from '../bao-doi-ngu.mjs';
+import { loaiViec, suKienTuHook } from '../bao-doi-ngu.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../bao-doi-ngu.mjs', import.meta.url));
 const CONG = Number(process.env.GEN_STAGE_TEST_CONG_DOI_NGU ?? 8996);
@@ -51,9 +51,63 @@ describe('suKienTuHook — dịch JSON hook', () => {
     expect(suKienTuHook({ ...post, tool_response: { is_error: true } })?.kind).toBe('fail');
   });
 
-  it('tool khác (Bash, Edit…) → null, không làm phiền sân khấu', () => {
-    expect(suKienTuHook({ ...pre, tool_name: 'Bash' })).toBeNull();
+  it('tool khác → work {tool} theo LOẠI việc; KHÔNG mang lệnh/đường dẫn', () => {
+    const bash = { ...pre, tool_name: 'Bash', tool_input: { command: 'cd /bí/mật && pnpm test -- --run' } };
+    const a = suKienTuHook(bash);
+    expect(a).toMatchObject({ kind: 'work', tool: 'test', source: 'claude-code' });
+    expect(JSON.stringify(a)).not.toContain('bí');
+    expect(suKienTuHook({ ...pre, tool_name: 'Edit', tool_input: { file_path: '/x/BÍ-MẬT.ts' } })).toMatchObject({
+      kind: 'work',
+      tool: 'viet',
+    });
+    expect(JSON.stringify(suKienTuHook({ ...pre, tool_name: 'Edit', tool_input: { file_path: '/x/BÍ-MẬT.ts' } }))).not.toContain('BÍ');
     expect(suKienTuHook(null)).toBeNull();
+    expect(suKienTuHook({ hook_event_name: 'SubagentStop' })).toBeNull();
+  });
+
+  it('phân loại Bash: test / build / git / lệnh thường', () => {
+    expect(loaiViec('Bash', { command: 'npx vitest run' })).toBe('test');
+    expect(loaiViec('Bash', { command: 'bash tools/test.sh' })).toBe('test');
+    expect(loaiViec('Bash', { command: 'pnpm build' })).toBe('build');
+    expect(loaiViec('Bash', { command: 'npx tsc --noEmit' })).toBe('build');
+    expect(loaiViec('Bash', { command: 'cd repo && git commit -m x' })).toBe('git');
+    expect(loaiViec('Bash', { command: 'ls -la' })).toBe('chay-lenh');
+    expect(loaiViec('Read')).toBe('doc');
+    expect(loaiViec('Grep')).toBe('tim');
+    expect(loaiViec('TodoWrite')).toBe('ke-hoach');
+    expect(loaiViec('mcp__x__y')).toBe('khac');
+  });
+
+  it('PostToolUse tool thường: đạt → im (không ồn), lỗi → work-result ok:false; test đạt vẫn báo', () => {
+    const post = { ...pre, hook_event_name: 'PostToolUse', tool_name: 'Read', tool_response: { content: 'x' } };
+    expect(suKienTuHook(post)).toBeNull();
+    expect(suKienTuHook({ ...post, tool_response: { is_error: true } })).toMatchObject({ kind: 'work-result', ok: false, tool: 'doc' });
+    const test = { ...post, tool_name: 'Bash', tool_input: { command: 'pnpm test' } };
+    expect(suKienTuHook({ ...test, tool_response: { stdout: 'ok', exit_code: 0 } })).toMatchObject({ kind: 'work-result', ok: true, tool: 'test' });
+    expect(suKienTuHook({ ...test, tool_response: { stdout: 'đỏ', exit_code: 1 } })).toMatchObject({ ok: false });
+    expect(suKienTuHook({ ...test, hook_event_name: 'PostToolUseFailure' })).toMatchObject({ ok: false });
+  });
+
+  it('mốc phiên → bước quy trình, không mang prompt/nội dung thông báo', () => {
+    const ms = { session_id: 's1', prompt: 'BÍ MẬT CỦA RYAN', message: 'BÍ MẬT thông báo' };
+    const bang = {
+      SessionStart: 'session-start',
+      UserPromptSubmit: 'brief',
+      Notification: 'ask',
+      Stop: 'report',
+      PreCompact: 'compact',
+      SessionEnd: 'session-end',
+    };
+    for (const [hook, kind] of Object.entries(bang)) {
+      const a = suKienTuHook({ ...ms, hook_event_name: hook });
+      expect(a?.kind, hook).toBe(kind);
+      expect(a.id).toMatch(/^s[0-9a-f]{16}$/);
+      expect(JSON.stringify(a)).not.toContain('BÍ MẬT');
+    }
+  });
+
+  it('PostToolUseFailure của Task → fail', () => {
+    expect(suKienTuHook({ ...pre, hook_event_name: 'PostToolUseFailure' })?.kind).toBe('fail');
   });
 
   it('không có tool_use_id → Pre và Post vẫn ghép cặp bằng băm (phiên + mô tả + prompt)', () => {

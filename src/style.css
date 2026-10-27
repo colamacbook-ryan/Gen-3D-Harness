@@ -118,6 +118,7 @@ html, body {
 .the-ten--truong { background: #c4632b; font-weight: 600; }
 .the-ten--nhan-vien { background: #3f6fa8; }
 .the-ten--sep { background: rgba(60, 64, 74, 0.85); }
+.the-ten--ceo { background: #2b3a63; font-weight: 600; }
 .bong-bong b {
   display: block;
   font-size: 10.5px;

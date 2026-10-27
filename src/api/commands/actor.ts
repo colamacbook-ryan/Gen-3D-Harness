@@ -502,7 +502,7 @@ export const LENH_ACTOR: CommandSpec[] = [
     params: [
       P_ACTOR,
       { name: 'text', type: 'text', desc: `Chữ trên thẻ (≤ ${TOI_DA_THE} ký tự); trống = gỡ` },
-      pEnum('tone', 'Kiểu thẻ', { values: ['thuong', 'truong', 'nhan-vien', 'sep'], default: 'thuong' }),
+      pEnum('tone', 'Kiểu thẻ', { values: ['thuong', 'truong', 'nhan-vien', 'sep', 'ceo'], default: 'thuong' }),
     ],
     example: { cmd: 'actor.label', args: { actor: 'gen', text: 'Nhi · Kỹ sư trưởng', tone: 'truong' } },
     handler(a, ctx) {
