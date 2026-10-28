@@ -20,6 +20,8 @@ export interface SoDoHomNay {
   traLai: number;
   ceoDuyet: number;
   viPham: number;
+  /** Token đã xử lý hôm nay (nhân viên + Giám đốc), cộng từ `chiTiet.tokens` của giấy tờ. */
+  token: number;
 }
 
 /** Nhãn tiếng Việt cho loại giấy tờ (cột "Loại" của sổ). */
@@ -58,7 +60,7 @@ export function hangCanQuyet(tt: TrangThaiDoiNgu): ViecCanQuyet[] {
       khoa: `bc-${bc.so}`,
       t: bc.t,
       tieuDe: `Ký báo cáo #${bc.so}`,
-      moTa: `${bc.dat} bài kiểm nhận · ${bc.traLai} bài trả lại${bc.ok ? '' : ' · phiên có lỗi'}`,
+      moTa: `${bc.dat} bài kiểm nhận · ${bc.traLai} bài trả lại${bc.ok ? '' : ' · phiên có lỗi'}${tongTokenPhien(tt.soQuyTrinh, bc.so) ? ` · ${soGon(tongTokenPhien(tt.soQuyTrinh, bc.so))} token` : ''}`,
       baoCao: bc,
       lienQuan: giayToCuaBaoCao(tt.soQuyTrinh, bc.so),
     }));
@@ -91,8 +93,50 @@ export function soDoHomNay(tt: TrangThaiDoiNgu, bayGio: number): SoDoHomNay {
     traLai: dem('tra-lai') + dem('ceo-tra-lai'),
     ceoDuyet: dem('ceo-duyet'),
     viPham: dem('vi-pham'),
+    token: hn.reduce((s, b) => s + tokenCua(b), 0),
   };
 }
+
+const tokenCua = (b: BanGhi): number => {
+  const t = b.chiTiet?.tokens;
+  return typeof t === 'number' && Number.isFinite(t) && t > 0 ? t : 0;
+};
+
+/** Token cả phiên của một báo cáo: Giám đốc (trên chính báo cáo) + mọi bài nộp trong phiên. */
+export function tongTokenPhien(so: readonly BanGhi[], soBc: number): number {
+  return giayToCuaBaoCao(so, soBc).reduce((s, b) => s + tokenCua(b), 0);
+}
+
+/** "950", "12,3 nghìn", "4,2 triệu" — đọc nhanh, không giả chính xác. */
+export function soGon(n: number): string {
+  const f = (x: number) => x.toLocaleString('vi-VN', { maximumFractionDigits: 1 });
+  if (n < 1000) return String(Math.round(n));
+  if (n < 1e6) return `${f(n / 1e3)} nghìn`;
+  if (n < 1e9) return `${f(n / 1e6)} triệu`;
+  return `${f(n / 1e9)} tỷ`;
+}
+
+/** Số cho ô KPI: một dòng, không xuống hàng ("19.300", "4,2 tr", "1,2 tỷ"). */
+export function soO(n: number): string {
+  if (n < 1e6) return Math.round(n).toLocaleString('vi-VN');
+  const f = (x: number) => x.toLocaleString('vi-VN', { maximumFractionDigits: 1 });
+  return n < 1e9 ? `${f(n / 1e6)} tr` : `${f(n / 1e9)} tỷ`;
+}
+
+/** Tên việc của Giám đốc (mã nội bộ của hàng việc tuần tự → chữ cho người đọc). */
+export const TEN_VIEC_TRUONG: Readonly<Record<string, string>> = {
+  'mo-phien': 'Chào CEO đầu phiên',
+  'nhan-viec': 'Nhận việc từ CEO',
+  'giao-viec': 'Giao việc cho đội',
+  duyet: 'Duyệt bài nộp',
+  'bao-cao': 'Báo cáo CEO',
+  'xin-duyet': 'Xin CEO duyệt',
+  'het-cho-duyet': 'Nghe CEO trả lời',
+  'gon-ngu': 'Sắp xếp hồ sơ',
+  'het-phien': 'Kết thúc phiên',
+  'ceo-ky': 'Nhận chữ ký CEO',
+  'ceo-tra-lai': 'Nhận góp ý của CEO',
+};
 
 /** Lọc sổ: theo loại (rỗng = mọi loại) + chữ (không dấu, không phân biệt hoa). Mới nhất trước. */
 export function locSo(so: readonly BanGhi[], loai: LoaiBanGhi | '', chu: string): BanGhi[] {

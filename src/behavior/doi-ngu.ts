@@ -344,6 +344,8 @@ export interface SuKienDoiNgu {
   source: string;
   tool: LoaiViec;
   ok: boolean;
+  /** Số token đã dùng (done/fail: của subagent; report: của Giám đốc từ lần báo cáo trước). Chỉ là con số. */
+  tokens?: number;
 }
 
 /** Cửa duy nhất máy này cần ở dispatcher (test dựng được trên sân khấu giả). */
@@ -369,6 +371,8 @@ export interface ThamSoDoiNgu {
   tranChoMs?: number;
   /** Cửa sổ gom giao việc (ms). */
   cuaSoGiaoMs?: number;
+  /** Trần một việc của Giám đốc (ms) — quá thì bỏ phần diễn còn lại, hàng việc đi tiếp. */
+  tranViecTruongMs?: number;
   /**
    * Bàn duyệt (phương án 1): CEO THẬT (Ryan) ký báo cáo bằng tay qua `team.sign`
    * thay vì Nam tự đóng dấu. Báo cáo nằm trong `choKy` tới khi được ký.
@@ -389,6 +393,8 @@ export interface BaoCaoChoKy {
   traLai: number;
   /** Phiên không có lỗi lặp lại / bài trả lại. */
   ok: boolean;
+  /** Token Giám đốc dùng cho phiên này (không gồm nhân viên — mỗi bài nộp mang token của mình). */
+  tokens?: number;
 }
 
 /** Dữ liệu lưu được của máy (sổ giấy tờ + hàng chờ ký). */
@@ -403,6 +409,9 @@ export interface KhoSoDoiNgu {
 }
 
 export type QuyetDinhCeo = 'approve' | 'reject';
+
+/** Trần một việc của Giám đốc trong hàng tuần tự (ms). Màn diễn dài nhất (họp 6 người) ~60 s trên máy chậm. */
+export const TRAN_VIEC_TRUONG_MS = 120_000;
 
 /** Trần chữ góp ý của CEO khi trả lại. */
 export const TOI_DA_GOP_Y = 200;
@@ -444,6 +453,8 @@ export interface TrangThaiDoiNgu {
   choKy: BaoCaoChoKy[];
   /** Lúc Giám đốc bắt đầu đứng chờ CEO trả lời (`ask`), null = không chờ. */
   xinDuyetLuc: number | null;
+  /** Chẩn đoán: lệnh máy đang chờ dispatcher trả lời (`cmd:actor@ms`). */
+  lenhDangCho?: string[];
 }
 
 export interface MayDoiNgu {
@@ -483,6 +494,7 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
   const bayGio = ts.bayGio ?? (() => Date.now());
   const tranCho = ts.tranChoMs ?? 20000;
   const cuaSoGiao = ts.cuaSoGiaoMs ?? CUA_SO_GIAO_MS;
+  const tranViecTruong = ts.tranViecTruongMs ?? TRAN_VIEC_TRUONG_MS;
   const tenTruong = TEN_HIEN_THI[truong] ?? truong;
   const tenSep = TEN_HIEN_THI[sep] ?? sep;
 
@@ -539,9 +551,21 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
   };
   /** Dấu kiểm nhận từ lần báo cáo trước — báo cáo CEO mang theo. */
   let demKiemNhan = { dat: 0, traLai: 0 };
+  /** Token của Giám đốc dồn từ các `report` (Stop) tới lần báo cáo kế. */
+  let tokenTruongCho = 0;
 
+  /** Chẩn đoán: lệnh đang chờ dispatcher trả lời (Bàn duyệt 28/10 — tìm chỗ quy trình treo). */
+  const dangCho = new Map<number, string>();
+  let soCho = 0;
   const chay = async (cmd: string, args: Record<string, unknown>): Promise<Result> => {
-    const r = await dispatcher.run(cmd, args, NGUON_DOI_NGU);
+    const k = ++soCho;
+    dangCho.set(k, `${cmd}:${String(args.actor ?? '')}@${Math.round(bayGio())}`);
+    let r: Result;
+    try {
+      r = await dispatcher.run(cmd, args, NGUON_DOI_NGU);
+    } finally {
+      dangCho.delete(k);
+    }
     if (!r.ok) console.warn(`[đội ngũ] ${cmd} lỗi: ${r.error}`);
     return r;
   };
@@ -684,13 +708,22 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
   function lamTruong(ten: string, viec: () => Promise<void>): Promise<void> {
     soViecTruong += 1;
     const sau = hangTruong.then(async () => {
+      let hen: ReturnType<typeof setTimeout> | undefined;
       try {
         if (tat) return;
         viecTruong = ten;
-        await viec();
+        // TRẦN cho một việc của Giám đốc: một bước diễn kẹt (lệnh xếp hàng sau hành động không
+        // bao giờ xong, khung hình ngừng vì tab bị che…) không được làm đứng CẢ hàng việc.
+        // Giấy tờ đã ghi trước phần diễn nên bỏ dở phần diễn không làm sai sổ.
+        const quaHan = new Promise<'qua-han'>((r) => (hen = setTimeout(() => r('qua-han'), tranViecTruong)));
+        if ((await Promise.race([viec().then(() => 'xong' as const), quaHan])) === 'qua-han') {
+          console.warn(`[đội ngũ] việc "${ten}" quá ${tranViecTruong} ms — bỏ phần diễn còn lại, đi tiếp`);
+          if (ten === 'bao-cao' && pha === 'bao-cao') sangPha('nghi');
+        }
       } catch (e) {
         console.warn('[đội ngũ]', ten, e);
       } finally {
+        if (hen) clearTimeout(hen);
         viecTruong = null;
         soViecTruong -= 1;
       }
@@ -890,8 +923,21 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
    * Luật 3 + 7: Giám đốc duyệt bài một nhân viên đang đứng trước bàn và ĐÓNG
    * DẤU: `ok` ⇒ "ĐÃ KIỂM NHẬN"; không ⇒ "TRẢ LẠI" (`lamLai` = về làm lại).
    */
-  async function duyet(nv: NhanVienNoi, ok: boolean, lamLai = false): Promise<void> {
+  async function duyet(nv: NhanVienNoi, ok: boolean, lamLai = false, tokens?: number): Promise<void> {
     if (pha !== 'bao-cao') sangPha('duyet');
+    // GIẤY TỜ TRƯỚC, DIỄN SAU (Bàn duyệt 28/10): dấu đóng ngay khi có quyết định — phần diễn
+    // có kẹt (máy chậm, tab sân khấu bị che nên khung hình ngừng) thì sổ vẫn đúng.
+    const dau = ok ? 'ĐÃ KIỂM NHẬN' : lamLai ? 'TRẢ LẠI — LÀM LẠI' : 'TRẢ LẠI';
+    if (ok) demKiemNhan.dat += 1;
+    else demKiemNhan.traLai += 1;
+    const b = ghiSo(ok ? 'kiem-nhan' : 'tra-lai', tenTruong, `${dau}: ${tenCuaVai(nv.role)} — ${nv.task || '(việc chưa ghi)'}`, {
+      actor: nv.actor,
+      vai: tenCuaVai(nv.role),
+      viec: nv.task,
+      dau,
+      lamLai,
+      ...(tokens ? { tokens } : {}),
+    });
     await capNhatThe();
     await veBan();
     await chay('actor.lookAt', { actor: truong, target: nv.actor });
@@ -905,18 +951,9 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     }
     await noiCauXong(truong, ok ? LOI.kiemNhan : lamLai ? LOI.traLaiLamLai : LOI.traLai);
     await chay('actor.listen', { actor: truong, on: false });
-    const dau = ok ? 'ĐÃ KIỂM NHẬN' : lamLai ? 'TRẢ LẠI — LÀM LẠI' : 'TRẢ LẠI';
-    if (ok) demKiemNhan.dat += 1;
-    else demKiemNhan.traLai += 1;
-    const b = ghiSo(ok ? 'kiem-nhan' : 'tra-lai', tenTruong, `${dau}: ${tenCuaVai(nv.role)} — ${nv.task || '(việc chưa ghi)'}`, {
-      actor: nv.actor,
-      vai: tenCuaVai(nv.role),
-      viec: nv.task,
-      dau,
-      lamLai,
-    });
     // dấu hiện ngay trên thẻ người nộp — ai nhìn cũng biết bài đã qua cấp trên
     await chay('actor.label', { actor: nv.actor, text: `${tenCuaVai(nv.role)} · ${ok ? '✔' : '✘'} ${dau}`, tone: 'nhan-vien' });
+    // sự kiện của phần DIỄN (dấu đã lên thẻ) — giấy tờ thì `team.record` đã bắn từ đầu hàm
     bus.emit('team.review', { truong, actor: nv.actor, role: nv.role, ok, lamLai, dau, so: b.so });
   }
 
@@ -924,34 +961,45 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     damBaoDaNhanViec();
     sangPha('bao-cao');
     viecDangLam = null;
+    // GIẤY TỜ TRƯỚC, DIỄN SAU (Bàn duyệt 28/10): bản cũ ghi báo cáo SAU màn đi + cúi chào + nói,
+    // nên một bước diễn kẹt là báo cáo không bao giờ tới Bàn duyệt (đo thật: 4/9 lượt kiểm).
+    const tot = loiLienTiep === 0;
+    const dem = { ...demKiemNhan };
+    const tomTat = `Báo cáo CEO: ${dem.dat} bài kiểm nhận, ${dem.traLai} bài trả lại`;
+    const tokens = tokenTruongCho;
+    tokenTruongCho = 0;
+    const bc = ghiSo('bao-cao', tenTruong, tomTat, {
+      ...dem,
+      ok: tot,
+      ...(tokens ? { tokens } : {}),
+      ...(kyTay ? { choKy: true } : {}),
+    });
+    if (kyTay) {
+      choKy.push({ so: bc.so, t: bc.t, tomTat, dat: dem.dat, traLai: dem.traLai, ok: tot, ...(tokens ? { tokens } : {}) });
+      luuLai();
+      bus.emit('team.report', { truong, sep, ok: tot, baoCao: bc.so, choKy: true, ...dem });
+    } else {
+      const dauCeo = ghiSo('ceo-duyet', tenSep, `CEO ĐÃ DUYỆT báo cáo số ${bc.so}`, { baoCao: bc.so });
+      bus.emit('team.report', { truong, sep, ok: tot, baoCao: bc.so, dauCeo: dauCeo.so, ...dem });
+    }
+    const coLoi = loiLienTiep > 0 || dem.traLai > 0;
+    demKiemNhan = { dat: 0, traLai: 0 };
+    loiLienTiep = 0;
     await capNhatThe();
     if (await diToi(truong, CHO_BAO_CAO_CEO, sep)) {
       await cuiChao(truong, sep);
       await choThan(truong);
       await chay('actor.lookAt', { actor: sep, target: truong });
-      await noiCauXong(truong, LOI.baoCao(demKiemNhan.dat, demKiemNhan.traLai));
+      await noiCauXong(truong, LOI.baoCao(dem.dat, dem.traLai));
       await chay('actor.listen', { actor: sep, on: true });
       await nghi(600);
       await chay('actor.listen', { actor: sep, on: false });
       // ký tay: CEO thật ký ở Bàn duyệt, Nam không tự đóng dấu thay
       if (kyTay) await noiCauXong(sep, LOI.ceoXemSau);
-      else await noiCauXong(sep, loiLienTiep || demKiemNhan.traLai ? LOI.ceoDuyetCoLoi : LOI.ceoDuyet);
+      else await noiCauXong(sep, coLoi ? LOI.ceoDuyetCoLoi : LOI.ceoDuyet);
       await noiCauXong(truong, LOI.daA);
       await veBan();
     }
-    const tot = loiLienTiep === 0;
-    const tomTat = `Báo cáo CEO: ${demKiemNhan.dat} bài kiểm nhận, ${demKiemNhan.traLai} bài trả lại`;
-    const bc = ghiSo('bao-cao', tenTruong, tomTat, { ...demKiemNhan, ok: tot, ...(kyTay ? { choKy: true } : {}) });
-    if (kyTay) {
-      choKy.push({ so: bc.so, t: bc.t, tomTat, dat: demKiemNhan.dat, traLai: demKiemNhan.traLai, ok: tot });
-      luuLai();
-      bus.emit('team.report', { truong, sep, ok: tot, baoCao: bc.so, choKy: true, ...demKiemNhan });
-    } else {
-      const dauCeo = ghiSo('ceo-duyet', tenSep, `CEO ĐÃ DUYỆT báo cáo số ${bc.so}`, { baoCao: bc.so });
-      bus.emit('team.report', { truong, sep, ok: tot, baoCao: bc.so, dauCeo: dauCeo.so, ...demKiemNhan });
-    }
-    demKiemNhan = { dat: 0, traLai: 0 };
-    loiLienTiep = 0;
     sangPha('nghi');
     await capNhatThe();
   }
@@ -1103,7 +1151,7 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
       nv.pha = 'cho-duyet';
       phatNv(nv, { ok: tot });
       // luật 3: chờ Giám đốc duyệt + đóng dấu xong mới được đi
-      await lamTruong('duyet', () => duyet(nv, tot, lamLai));
+      await lamTruong('duyet', () => duyet(nv, tot, lamLai, sk.tokens));
       await cuiChao(nv.actor, truong);
       await noiCauXong(nv.actor, tot ? LOI.camOn : lamLai ? LOI.suaNgay : LOI.xinLoi);
       if (lamLai) {
@@ -1172,6 +1220,7 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
       source: typeof d.source === 'string' ? d.source : 'khac',
       tool: (LOAI_VIEC as readonly string[]).includes(String(d.tool)) ? (d.tool as LoaiViec) : 'khac',
       ok: d.ok !== false,
+      ...(typeof d.tokens === 'number' && Number.isFinite(d.tokens) && d.tokens > 0 ? { tokens: Math.round(d.tokens) } : {}),
     };
     // luật 6: sự kiện nào (trừ một lần hỏi nữa) cũng nghĩa là CEO đã trả lời
     if (choCeoDuyet && sk.kind !== 'ask') void lamTruong('het-cho-duyet', hetChoDuyet);
@@ -1201,6 +1250,7 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
         if (!choCeoDuyet) void lamTruong('xin-duyet', xinDuyet);
         break;
       case 'report':
+        tokenTruongCho += sk.tokens ?? 0;
         // luật 4: còn nhân viên chưa nộp bài thì hoãn
         if (theoSuKien.size > 0 || choGiao.length) {
           baoCaoCho = true;
@@ -1263,6 +1313,7 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
       ceoKyTay: kyTay,
       choKy: choKy.map((c) => ({ ...c })),
       xinDuyetLuc,
+      lenhDangCho: [...dangCho.values()],
     }),
     async xong() {
       // chuỗi + hàng Giám đốc + hẹn gom có thể nối thêm bước — chờ tới khi đứng yên

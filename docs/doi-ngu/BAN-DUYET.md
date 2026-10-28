@@ -54,6 +54,32 @@ Ký không chặn quy trình. Báo cáo chờ ký vẫn nằm trong hàng; Nhi v
 | Máy khác trong mạng | **Không** | Mặc định bridge chỉ nghe `127.0.0.1`. Muốn mở ra ngoài thì bắt buộc có token |
 | Tiến trình chạy dưới **cùng user** trên máy (kể cả agent có shell) | **Có, không chặn được** | Tiến trình đó đọc được mọi file, sửa được localStorage và lái được cả trình duyệt. Cổng phần mềm cùng user không ngăn nổi; muốn ngăn thì phải tách user / sandbox ở mức hệ điều hành. Bàn duyệt bảo đảm **đường chính thức** của não không ký được, không bảo đảm chống một agent cố tình phá |
 
+## Token (28/10, Gen quyết — Ryan "bạn quyết đi")
+
+- **Subagent**: hook đọc `totalTokens` trong kết quả tool Task/Agent, không có thì cộng `usage`. Chỉ lấy **con số**, gửi kèm `done`/`fail`; số này nằm ở `chiTiet.tokens` của dấu kiểm nhận.
+- **Giám đốc (phiên chính)**: mỗi `Stop`, hook đọc **phần mới** của transcript và cộng `message.usage`.
+  - Vị trí đã đọc lưu ở `~/.cache/gen-stage/token/<băm phiên>.json`.
+  - Khử trùng theo `message.id`, vì Claude Code ghi mỗi khối nội dung một dòng mang cùng một `usage`.
+  - Bỏ sidechain, chờ dòng đang ghi dở, mỗi lần đọc tối đa 32 MB.
+  - Số này đi theo `report` vào `chiTiet.tokens` của báo cáo.
+  - Đối chiếu với một phép đếm độc lập trên transcript thật: **3.303.799 = 3.303.799**.
+- **Trang hiển thị**:
+  - ô **Token hôm nay** (cộng từ giấy tờ trong ngày);
+  - mỗi báo cáo chờ ký ghi **token cả phiên** (Giám đốc + mọi bài nộp).
+- Token = input + cache tạo + cache đọc + output, tức số token **đã xử lý**. **Không quy ra tiền**: giá mỗi model khác nhau, mà ghi một con số $ sai thì tệ hơn không ghi.
+
+## Giấy tờ trước, diễn sau (28/10)
+
+Lượt kiểm đầu tiên có token hỏng **4/9 lượt**: báo cáo không bao giờ vào hàng chờ ký.
+Gốc là kiểm nhận và báo cáo được ghi sổ **sau** phần diễn (đi tới bàn CEO, cúi chào, nói), nên một bước diễn kẹt là giấy tờ không bao giờ ra.
+Ngoài đời việc này dễ xảy ra hơn máy kiểm: tab sân khấu trong VS Code bị che thì khung hình có thể ngừng, mà `moveTo` chỉ kết thúc khi có khung hình.
+
+Sửa theo **cùng luật đã áp cho `brief`**:
+- `duyet()` và `baoCao()` ghi sổ + đẩy vào hàng chờ ký **ngay khi có quyết định**, rồi mới diễn.
+- Mỗi việc của Giám đốc có **trần** `TRAN_VIEC_TRUONG_MS` = 120 s; quá trần thì bỏ phần diễn còn lại và hàng việc đi tiếp.
+
+Test: "moveTo của Giám đốc không bao giờ trả lời ⇒ kiểm nhận + báo cáo vẫn vào sổ, việc sau vẫn chạy".
+
 ## Sửa kèm: thứ tự "nhận việc"
 
 `brief` trước đây chỉ xếp hàng sau màn chào CEO (vài giây). Subagent tới trong khoảng đó thì máy ghi oan
@@ -69,7 +95,7 @@ Nay giấy tờ + pha ghi **ngay lúc nhận** `brief`; hàng việc chỉ còn 
 
 ## Chưa có (để sau, nếu Ryan muốn)
 
-- **Chi phí token / $ theo agent**: hook hiện không gửi số liệu này.
+- **Quy token ra $**: cố ý không làm (xem mục Token).
 - Ô sân khấu thu nhỏ trên trang (cần một luồng chỉ-xem, không thay tab).
 - Lịch sử nhiều ngày ngoài 300 bản ghi gần nhất (cần lưu ở bridge).
 - Thông báo đẩy về điện thoại.

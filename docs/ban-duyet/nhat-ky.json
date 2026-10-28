@@ -18,12 +18,18 @@
         "kiem-nhan",
         "bao-cao"
       ],
-      "giay": 295
+      "giay": 273
     },
     {
       "ten": "Bàn duyệt hiện \"Ký báo cáo\" trong Cần anh quyết",
       "dat": true,
       "tieuDe": "Ký báo cáo #5"
+    },
+    {
+      "ten": "token: báo cáo ghi token cả phiên, ô \"Token hôm nay\" khác 0",
+      "dat": true,
+      "moTa": "2 bài kiểm nhận · 0 bài trả lại · 19,3 nghìn token",
+      "oToken": "Token hôm nay19.300"
     },
     {
       "ten": "Trả lại thiếu góp ý ⇒ không gửi, nhắc ghi góp ý",
@@ -35,7 +41,7 @@
       "dau": {
         "so": 6,
         "loai": "ceo-duyet",
-        "t": 1793186007125,
+        "t": 1793207730893,
         "ky": "Nam",
         "tomTat": "CEO ĐÃ DUYỆT báo cáo số 5 (ký tay)",
         "chiTiet": {
@@ -45,7 +51,7 @@
       }
     },
     {
-      "ten": "sân khấu: Nam nói \"Đã ký duyệt…\" bằng bong bóng",
+      "ten": "sân khấu: Nam nói \"Đã ký duyệt…\" bằng bong bóng (sau khi Nhi diễn xong phần báo cáo)",
       "dat": true
     },
     {
@@ -54,7 +60,7 @@
       "dau2": {
         "so": 12,
         "loai": "ceo-tra-lai",
-        "t": 1793186288438,
+        "t": 1793208023086,
         "ky": "Nam",
         "tomTat": "CEO TRẢ LẠI báo cáo số 11: Thiếu test cho ca token sai",
         "chiTiet": {
@@ -82,5 +88,9 @@
     }
   ],
   "loiConsole": [],
+  "loiSanKhau": [
+    "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  ],
   "dat": true
 }

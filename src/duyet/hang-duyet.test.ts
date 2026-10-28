@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BanGhi, TrangThaiDoiNgu } from '../behavior/doi-ngu';
-import { boDau, daCho, giayToCuaBaoCao, gioNgan, hangCanQuyet, locSo, soDoHomNay } from './hang-duyet';
+import { boDau, daCho, giayToCuaBaoCao, gioNgan, hangCanQuyet, locSo, soDoHomNay, soGon, soO, tongTokenPhien } from './hang-duyet';
 import { urlBridgeMacDinh } from './ket-noi';
 
 const T = new Date(2026, 9, 28, 10, 0).getTime();
@@ -58,7 +58,7 @@ describe('Bàn duyệt — logic thuần', () => {
       }),
       T,
     );
-    expect(s).toEqual({ choKy: 1, dangLam: 0, kiemNhan: 1, traLai: 2, ceoDuyet: 1, viPham: 1 });
+    expect(s).toEqual({ choKy: 1, dangLam: 0, kiemNhan: 1, traLai: 2, ceoDuyet: 1, viPham: 1, token: 0 });
   });
 
   it('lọc sổ: theo loại + chữ không dấu, mới nhất trước', () => {
@@ -82,5 +82,26 @@ describe('Bàn duyệt — logic thuần', () => {
     const u = urlBridgeMacDinh({ search: '?bridgePort=8797', protocol: 'http:', hostname: '192.168.1.5' });
     expect(u).toBe('ws://192.168.1.5:8797/');
     expect(u).not.toContain('role=stage');
+  });
+});
+
+describe('Bàn duyệt — token', () => {
+  const tk = (so: number, loai: BanGhi['loai'], tokens?: number, t = T): BanGhi => ({ so, loai, t, ky: 'Nhi', tomTat: '', ...(tokens ? { chiTiet: { tokens } } : {}) });
+  it('token hôm nay chỉ cộng giấy tờ cùng ngày; token phiên = bài nộp + Giám đốc', () => {
+    const so = [tk(1, 'kiem-nhan', 300, T - 86400000), tk(2, 'bao-cao', 50, T - 86400000), tk(3, 'kiem-nhan', 4200), tk(4, 'tra-lai', 800), tk(5, 'bao-cao', 1000)];
+    expect(soDoHomNay(tt({ soQuyTrinh: so }), T).token).toBe(6000);
+    expect(tongTokenPhien(so, 5)).toBe(6000);
+    expect(tongTokenPhien(so, 2)).toBe(350);
+    const h = hangCanQuyet(tt({ soQuyTrinh: so, choKy: [{ so: 5, t: T, tomTat: '', dat: 1, traLai: 1, ok: true }] }));
+    expect(h[0]!.moTa).toContain('6 nghìn token');
+  });
+  it('số cho ô KPI không xuống dòng', () => {
+    expect(soO(19300)).toBe('19.300');
+    expect(soO(4_200_000)).toBe('4,2 tr');
+  });
+  it('số gọn', () => {
+    expect(soGon(950)).toBe('950');
+    expect(soGon(12345)).toBe('12,3 nghìn');
+    expect(soGon(4_200_000)).toBe('4,2 triệu');
   });
 });

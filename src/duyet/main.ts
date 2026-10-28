@@ -8,7 +8,7 @@
  */
 import type { BanGhi, LoaiBanGhi, TrangThaiDoiNgu } from '../behavior/doi-ngu';
 import { TEN_PHA, tenCuaVai } from '../behavior/doi-ngu';
-import { daCho, gioNgan, hangCanQuyet, locSo, soDoHomNay, TEN_LOAI, TEN_PHA_NV, type ViecCanQuyet } from './hang-duyet';
+import { daCho, gioNgan, hangCanQuyet, locSo, soDoHomNay, soO, TEN_LOAI, TEN_PHA_NV, TEN_VIEC_TRUONG, type ViecCanQuyet } from './hang-duyet';
 import { noiBridge, urlBridgeMacDinh } from './ket-noi';
 
 type Trang = 'hom-nay' | 'so' | 'doi-ngu';
@@ -142,6 +142,10 @@ function veTrang(viecs: ViecCanQuyet[]): Node[] {
   return veHomNay(viecs);
 }
 
+function oSoChu(nhan: string, gt: string, goiY: string): HTMLElement {
+  return h('div', { class: 'kpi', title: goiY }, h('div', { class: 'kpi-nhan' }, nhan), h('div', { class: 'kpi-so mono' }, gt));
+}
+
 function oSo(nhan: string, gt: number, loai = ''): HTMLElement {
   return h('div', { class: `kpi ${loai}` }, h('div', { class: 'kpi-nhan' }, nhan), h('div', { class: 'kpi-so mono' }, String(gt)));
 }
@@ -158,6 +162,7 @@ function veHomNay(viecs: ViecCanQuyet[]): Node[] {
     oSo('Trả lại hôm nay', sd.traLai, sd.traLai ? 'canh' : ''),
     oSo('CEO đã duyệt hôm nay', sd.ceoDuyet),
     oSo('Vi phạm quy trình', sd.viPham, sd.viPham ? 'loi' : ''),
+    oSoChu('Token hôm nay', soO(sd.token), 'Token đã xử lý (gồm cache), cộng từ giấy tờ trong ngày'),
   );
 
   const hang = h(
@@ -180,7 +185,7 @@ function veHomNay(viecs: ViecCanQuyet[]): Node[] {
       h('dt', {}, 'Pha'),
       h('dd', {}, TEN_PHA[tt!.pha] ?? tt!.pha),
       h('dt', {}, 'Giám đốc'),
-      h('dd', {}, tt!.choCeoDuyet ? 'Đang chờ anh trả lời' : tt!.viecTruong ? `Đang: ${tt!.viecTruong}` : 'Rảnh'),
+      h('dd', {}, tt!.choCeoDuyet ? 'Đang chờ anh trả lời' : tt!.viecTruong ? `Đang: ${TEN_VIEC_TRUONG[tt!.viecTruong] ?? tt!.viecTruong}` : 'Rảnh'),
       h('dt', {}, 'Báo cáo'),
       h('dd', {}, tt!.baoCaoCho ? 'Đang hoãn — chờ nhân viên nộp đủ bài' : '—'),
       h('dt', {}, 'Đã nhận'),

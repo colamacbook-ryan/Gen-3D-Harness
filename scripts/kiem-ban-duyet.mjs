@@ -6,6 +6,7 @@
  *   3. bấm "Ký duyệt" ⇒ sổ có dấu CEO ký tay, hàng chờ rỗng, sân khấu diễn bong bóng của Nam;
  *   4. vòng hai: trả lại kèm góp ý ⇒ dấu CEO TRẢ LẠI mang góp ý;
  *   5. tải lại tab sân khấu ⇒ sổ còn nguyên (localStorage), Bàn duyệt tự cập nhật lại;
+ *   5b. token: bài nộp + báo cáo mang token (như hook thật) ⇒ báo cáo và ô "Token hôm nay" hiện đúng tổng;
  *   6. màn 390 px dùng được (không cuộn ngang trang); 0 lỗi console ở Bàn duyệt.
  * Cổng riêng: bridge GOC..GOC+3 (mặc định 8961, env KIEM_CONG_GOC), web 5481 — không đụng 8787–8790/5173.
  * Chạy: node scripts/kiem-ban-duyet.mjs  →  docs/ban-duyet/ (ảnh + nhat-ky.json)
@@ -62,6 +63,7 @@ async function noiHook() {
   throw new Error('không nối được bridge');
 }
 let soId = 0;
+const traLoiHook = [];
 const guiSuKien = (w, kind, them = {}) =>
   new Promise((res) => {
     const id = `k${++soId}`;
@@ -69,6 +71,7 @@ const guiSuKien = (w, kind, them = {}) =>
       const g = JSON.parse(String(t));
       if (g.id === id) {
         w.off('message', nghe);
+        if (!g.ok) traLoiHook.push(`${kind}: ${g.error}`);
         res(g);
       }
     };
@@ -90,6 +93,9 @@ try {
   br = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
   const ctx = await br.newContext({ viewport: { width: 1440, height: 900 } });
   const sk = await ctx.newPage();
+  ket.loiSanKhau = [];
+  sk.on('console', (m) => m.type() === 'error' && ket.loiSanKhau.push(m.text().slice(0, 300)));
+  sk.on('pageerror', (e) => ket.loiSanKhau.push(`pageerror: ${String(e?.stack ?? e).slice(0, 600)}`));
   await sk.goto(`http://127.0.0.1:${WEB}/?bridgePort=${GOC}`);
   await sk.waitForFunction(() => window.stage?.san === true, null, { timeout: 240000 });
   kiem('sân khấu lên và nối bridge', true);
@@ -108,9 +114,9 @@ try {
     await guiSuKien(hook, 'spawn', { id: `${tag}-a`, role: 'builder', task: 'Viết test cho Bàn duyệt' });
     await guiSuKien(hook, 'spawn', { id: `${tag}-b`, role: 'reviewer', task: 'Rà bảo mật lệnh team.sign' });
     await ngu(4000);
-    await guiSuKien(hook, 'done', { id: `${tag}-a` });
-    await guiSuKien(hook, 'done', { id: `${tag}-b` });
-    await guiSuKien(hook, 'report');
+    await guiSuKien(hook, 'done', { id: `${tag}-a`, tokens: 4200 });
+    await guiSuKien(hook, 'done', { id: `${tag}-b`, tokens: 3100 });
+    await guiSuKien(hook, 'report', { tokens: 12000 });
   };
   const doiNgu = () => sk.evaluate(() => window.stage.doiNgu());
   const choBaoCao = async (n) => {
@@ -120,7 +126,20 @@ try {
       if (t && t.choKy.length >= n) return t;
       await ngu(1000);
     }
-    throw new Error('báo cáo không vào hàng chờ ký trong 300 s');
+    const t = await doiNgu();
+    const chiTietSk = await sk.evaluate(async () => {
+      const d = await window.stage.run('stage.describe', {});
+      const ds = (d.result?.data ?? d.result).actors.filter((a) => a.id === 'gen' || a.id === 'owner').map((a) => ({ id: a.id, state: a.state, busy: a.busy, queued: a.queued, at: a.at, pos: a.pos }));
+      const nk = JSON.parse(window.stage.log());
+      const dong = (nk.banGhi ?? []).slice(-30).map((x) => `${x.kind ?? x.loai ?? ''} ${x.cmd ?? x.event ?? ''} ${JSON.stringify(x.args ?? x.data ?? '').slice(0, 90)} ${x.ok === false ? 'LỖI ' + (x.error ?? '') : ''}`);
+      const x = window.stage.doXuong('gen');
+      return { ds, dong, di: x.di, vanToc: x.vanToc, state: x.state };
+    }).catch((e) => String(e));
+    ket.chanDoan = chiTietSk;
+    ket.khungChay = await sk.evaluate(() => new Promise((r) => { let n = 0; const f = () => { n += 1; if (n < 5) requestAnimationFrame(f); }; requestAnimationFrame(f); setTimeout(() => r(n), 2000); }));
+    ket.lenhDangCho = t?.lenhDangCho;
+    const kq = { pha: t?.pha, viecTruong: t?.viecTruong, baoCaoCho: t?.baoCaoCho, nhanVien: t?.nhanVien?.map((n) => `${n.actor}:${n.pha}`), so: t?.soQuyTrinh?.map((b) => b.loai) };
+    throw new Error(`báo cáo không vào hàng chờ ký trong 300 s — ${JSON.stringify(kq)}`);
   };
 
   const t0 = Date.now();
@@ -134,6 +153,9 @@ try {
   await bd.waitForSelector('.viec .chip.nhan', { timeout: 20000 });
   const tieuDe = await bd.textContent('.viec h3');
   kiem('Bàn duyệt hiện "Ký báo cáo" trong Cần anh quyết', tieuDe?.includes(`#${soBc1}`), { tieuDe });
+  const moTa = await bd.textContent('.viec .viec-mo');
+  const oToken = await bd.evaluate(() => [...document.querySelectorAll('.kpi')].find((k) => /Token/.test(k.textContent ?? ''))?.textContent ?? '');
+  kiem('token: báo cáo ghi token cả phiên, ô "Token hôm nay" khác 0', /19,3 nghìn token/.test(moTa ?? '') && /19\.300/.test(oToken), { moTa, oToken });
   await bd.click('.giay-to summary');
   await bd.screenshot({ path: path.join(RA, '1-hom-nay-cho-ky.png') });
 
@@ -150,10 +172,10 @@ try {
   kiem('Ký duyệt ⇒ dấu CEO ký tay, hàng chờ rỗng', dau?.loai === 'ceo-duyet' && dau?.chiTiet?.kyTay === true && tt2.choKy.length === 0, { dau });
   // sân khấu diễn: Nam nói câu đã ký (bong bóng)
   const coBongBong = await sk
-    .waitForFunction(() => [...document.querySelectorAll('.bong-bong, .bubble, [class*="bong"]')].some((e) => /Đã ký duyệt/.test(e.textContent ?? '')), null, { timeout: 15000 })
+    .waitForFunction(() => [...document.querySelectorAll('.bong-bong, .bubble, [class*="bong"]')].some((e) => /Đã ký duyệt/.test(e.textContent ?? '')), null, { timeout: 125000 }) // giấy tờ đi trước; câu của Nam xếp hàng sau phần Nhi diễn báo cáo (trần 120 s)
     .then(() => true)
     .catch(() => false);
-  kiem('sân khấu: Nam nói "Đã ký duyệt…" bằng bong bóng', coBongBong);
+  kiem('sân khấu: Nam nói "Đã ký duyệt…" bằng bong bóng (sau khi Nhi diễn xong phần báo cáo)', coBongBong);
   await sk.screenshot({ path: path.join(RA, '2-san-khau-sau-ky.png') });
   await bd.waitForFunction(() => !document.querySelector('.viec .chip.nhan'), null, { timeout: 10000 });
   await bd.screenshot({ path: path.join(RA, '3-hom-nay-da-ky.png') });
@@ -196,7 +218,8 @@ try {
   kiem('Bàn duyệt: 0 lỗi console', ket.loiConsole.length === 0, { loi: ket.loiConsole });
   thoat = ket.muc.every((m) => m.dat) ? 0 : 1;
 } catch (e) {
-  ket.loi = String(e?.message ?? e).slice(0, 400);
+  ket.loi = String(e?.message ?? e).slice(0, 900);
+  ket.lenhHookLoi = traLoiHook;
   console.error('LỖI', ket.loi);
 } finally {
   ket.dat = thoat === 0;

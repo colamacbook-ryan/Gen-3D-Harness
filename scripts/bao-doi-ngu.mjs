@@ -18,6 +18,13 @@
  *   | PreCompact                   | compact        | Nhi ra kệ hồ sơ sắp xếp ghi chép               |
  *   | SessionEnd                   | session-end    | đội về, Nhi ra sofa                            |
  *
+ * TOKEN (Bàn duyệt 28/10): `done`/`fail` mang `totalTokens` của subagent (đọc từ kết
+ * quả tool, chỉ lấy số); `report` (Stop) mang token của phiên chính kể từ lần Stop
+ * trước — đọc PHẦN MỚI của transcript (nhớ vị trí trong
+ * `~/.cache/gen-stage/token/<băm phiên>.json`), cộng `message.usage`, khử trùng theo
+ * `message.id` (Claude Code ghi mỗi khối nội dung một dòng, cùng một `usage`).
+ * Token = input + cache tạo + cache đọc + output: số token ĐÃ XỬ LÝ, không quy ra tiền.
+ *
  * RIÊNG TƯ: chỉ gửi vai + mô tả ngắn của subagent và LOẠI việc (`doc`, `test`…).
  * Không bao giờ gửi prompt, lệnh shell, đường dẫn file, nội dung thông báo hay
  * kết quả tool — loại việc được phân ngay trong tiến trình này rồi bỏ.
@@ -33,6 +40,9 @@
  * Biến môi trường: `GEN_STAGE_PORT` (8787), `GEN_STAGE_TOKEN` (nếu bridge bật token).
  */
 import { createHash } from 'node:crypto';
+import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readFileSync, readSync, renameSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const HAN_MS = 1500;
@@ -102,6 +112,82 @@ export function loaiViec(tenTool, ti = {}) {
   return LOAI_THEO_TOOL[tenTool] ?? 'khac';
 }
 
+/** Token đã xử lý của một `usage` Anthropic (thiếu trường nào coi là 0). */
+export function tongUsage(u) {
+  if (!u || typeof u !== 'object') return 0;
+  const so = (k) => (typeof u[k] === 'number' && Number.isFinite(u[k]) && u[k] > 0 ? u[k] : 0);
+  return so('input_tokens') + so('cache_creation_input_tokens') + so('cache_read_input_tokens') + so('output_tokens');
+}
+
+/** Token của subagent từ kết quả tool Task/Agent: `totalTokens` nếu có, không thì cộng `usage`. */
+export function tokenTuKetQua(res) {
+  if (!res || typeof res !== 'object') return 0;
+  if (typeof res.totalTokens === 'number' && Number.isFinite(res.totalTokens) && res.totalTokens > 0) return Math.round(res.totalTokens);
+  return tongUsage(res.usage);
+}
+
+/** Trần đọc transcript mỗi lần (hook có hạn 1,5 s): phiên tiếp tục từ file lớn thì chỉ đếm phần cuối. */
+const TRAN_DOC = 32 * 1024 * 1024;
+
+/**
+ * Token phiên chính từ lần gọi trước: đọc từ vị trí đã nhớ tới dòng hoàn chỉnh cuối,
+ * cộng `usage` của tin `assistant` (bỏ sidechain), khử trùng theo `message.id`.
+ * Không bao giờ ném; lỗi ⇒ 0. Trạng thái: `{ viTri, idCuoi }`.
+ */
+export function tokenPhienMoi(duongTranscript, maPhien, thuMucTrangThai = join(process.env.XDG_CACHE_HOME || join(homedir(), '.cache'), 'gen-stage', 'token')) {
+  try {
+    if (typeof duongTranscript !== 'string' || !duongTranscript.endsWith('.jsonl') || !maPhien) return 0;
+    if (!existsSync(duongTranscript)) return 0;
+    const fileTt = join(thuMucTrangThai, `${createHash('sha1').update(String(maPhien)).digest('hex').slice(0, 24)}.json`);
+    let tt = { viTri: 0, idCuoi: '' };
+    try {
+      tt = { ...tt, ...JSON.parse(readFileSync(fileTt, 'utf8')) };
+    } catch {
+      /* lần đầu */
+    }
+    const fd = openSync(duongTranscript, 'r');
+    let tong = 0;
+    let viTriMoi = tt.viTri;
+    let idCuoi = tt.idCuoi;
+    try {
+      const co = fstatSync(fd).size;
+      let tu = Number.isInteger(tt.viTri) && tt.viTri >= 0 && tt.viTri <= co ? tt.viTri : 0;
+      if (co - tu > TRAN_DOC) tu = co - TRAN_DOC;
+      const buf = Buffer.alloc(co - tu);
+      readSync(fd, buf, 0, buf.length, tu);
+      const het = buf.lastIndexOf(10); // chỉ tới dòng hoàn chỉnh cuối
+      if (het < 0) return 0;
+      viTriMoi = tu + het + 1;
+      const daDem = new Set(idCuoi ? [idCuoi] : []);
+      for (const dong of buf.subarray(0, het).toString('utf8').split('\n')) {
+        if (!dong.includes('"usage"')) continue;
+        let d;
+        try {
+          d = JSON.parse(dong);
+        } catch {
+          continue;
+        }
+        if (d?.type !== 'assistant' || d.isSidechain === true || !d.message?.usage) continue;
+        const id = String(d.message.id ?? d.requestId ?? d.uuid ?? '');
+        if (id && daDem.has(id)) continue;
+        if (id) daDem.add(id);
+        idCuoi = id || idCuoi;
+        tong += tongUsage(d.message.usage);
+      }
+    } finally {
+      closeSync(fd);
+    }
+    mkdirSync(thuMucTrangThai, { recursive: true });
+    const tam = `${fileTt}.${process.pid}`;
+    writeFileSync(tam, JSON.stringify({ viTri: viTriMoi, idCuoi }));
+    renameSync(tam, fileTt);
+    return tong;
+  } catch (e) {
+    ghiLog('đọc token lỗi:', e?.message ?? e);
+    return 0;
+  }
+}
+
 /** Mã cho sự kiện cấp phiên (không có tool_use_id): băm phiên + loại + mốc thời gian. */
 function maPhien(p, kind) {
   const h = createHash('sha1').update(`${p.session_id ?? ''}|${kind}|${Date.now()}|${Math.random()}`).digest('hex');
@@ -156,9 +242,11 @@ export function suKienTuHook(p) {
       source: 'claude-code',
     };
   }
-  if (p.hook_event_name === 'PostToolUseFailure') return { kind: 'fail', id, source: 'claude-code' };
+  const tokens = tokenTuKetQua(p.tool_response);
+  const coToken = tokens > 0 ? { tokens } : {};
+  if (p.hook_event_name === 'PostToolUseFailure') return { kind: 'fail', id, source: 'claude-code', ...coToken };
   if (p.hook_event_name === 'PostToolUse') {
-    return { kind: laLoi(p.tool_response) ? 'fail' : 'done', id, source: 'claude-code' };
+    return { kind: laLoi(p.tool_response) ? 'fail' : 'done', id, source: 'claude-code', ...coToken };
   }
   return null;
 }
@@ -220,6 +308,10 @@ async function chinh() {
   try {
     const p = JSON.parse(await docStdin());
     const args = suKienTuHook(p);
+    if (args?.kind === 'report') {
+      const t = tokenPhienMoi(p.transcript_path, p.session_id);
+      if (t > 0) args.tokens = t;
+    }
     if (args) await guiLenBridge(args);
   } catch (e) {
     ghiLog(e);

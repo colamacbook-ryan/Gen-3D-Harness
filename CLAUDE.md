@@ -2016,6 +2016,11 @@ Boss 27/10: *"nội thất nên thiết kế sát tường để chừa không g
   nối được bridge và gửi mọi lệnh (`team.sign`, `stage.hear`). Nay: không Origin (tiến trình Node) ⇒ cho; có Origin ⇒ chỉ
   localhost/127.0.0.1/::1, `vscode-webview:`, hoặc (`--host` + token) cùng máy với Host. Tiến trình cùng user nằm trong
   vùng tin cậy — không chặn được, ghi rõ trong `BAN-DUYET.md`.
+- **Token** (Gen quyết 28/10): subagent = `totalTokens` của kết quả tool; Giám đốc = phần MỚI của transcript mỗi `Stop`
+  (nhớ vị trí ở `~/.cache/gen-stage/token/`, khử trùng `message.id`, bỏ sidechain). Chỉ gửi con số; không quy ra $.
+- **Giấy tờ trước, diễn sau**: `duyet()`/`baoCao()` ghi sổ + hàng chờ ký NGAY khi có quyết định, diễn sau; mỗi việc của
+  Giám đốc có trần `TRAN_VIEC_TRUONG_MS` 120 s. Lý do đo thật: ghi sổ sau phần diễn ⇒ một bước diễn kẹt (máy chậm, tab
+  sân khấu bị che nên khung hình ngừng — `moveTo` chỉ xong khi có khung) là báo cáo không bao giờ tới Bàn duyệt (4/9 lượt).
 - **Lỗi lộ nhờ sổ**: `brief` chỉ xếp hàng sau màn chào ⇒ subagent tới sát bị ghi oan "nhận việc NGẦM" + pha lùi. Giấy
   tờ/pha của `brief` giờ ghi ngay lúc nhận, hàng việc chỉ diễn.
 

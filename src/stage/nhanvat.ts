@@ -1700,6 +1700,10 @@ export class NhanVat {
       huongGoc: this.huongGoc(),
       huongMat: this.huongMat(),
       gocY: +this.goc.position.y.toFixed(4),
+      // chẩn đoán cú đi đang chạy (Bàn duyệt 28/10: "walking mãi tại đích")
+      di: this.di
+        ? { dai: Math.round(this.di.dai), daQua: Math.round(bayGio() - this.di.batDau), ketTu: Math.round(this.ketTu), coDuong: !!this.di.duong }
+        : null,
       // G1 (#56) — cao độ MẶT ĐẾ GIÀY (m): thước thật của "chân chạm sàn".
       // `tuThe.minY` KHÔNG dùng được cho việc này ở model tóc dài (đuôi tóc
       // thấp hơn gót chân) — xem `chotDeChan()`.

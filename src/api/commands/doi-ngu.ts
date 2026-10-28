@@ -41,6 +41,7 @@ export const LENH_DOI_NGU: CommandSpec[] = [
       { name: 'source', type: 'string', desc: 'Nguồn: claude-code | nao-local | khac' },
       { name: 'tool', type: 'enum', desc: 'work/work-result: loại việc Giám đốc đang làm', values: LOAI_VIEC },
       { name: 'ok', type: 'boolean', desc: 'work-result: kết quả đạt hay lỗi' },
+      { name: 'tokens', type: 'number', desc: 'done/fail: token subagent đã dùng; report: token Giám đốc từ lần báo cáo trước (chỉ con số)' },
     ],
     example: { cmd: 'team.event', args: { kind: 'spawn', id: 'toolu_01abc', role: 'builder', task: 'Viết test A*' } },
     handler(a, ctx) {
@@ -54,6 +55,11 @@ export const LENH_DOI_NGU: CommandSpec[] = [
       const ev: Record<string, unknown> = { kind: String(a.kind), id, role, task, source };
       if (a.tool !== undefined) ev.tool = String(a.tool);
       if (a.ok !== undefined) ev.ok = a.ok === true;
+      if (a.tokens !== undefined) {
+        const n = Number(a.tokens);
+        if (!Number.isFinite(n) || n < 0 || n > 1e10) throw new Error('tokens phải là số 0…1e10');
+        if (n > 0) ev.tokens = Math.round(n);
+      }
       ctx.bus.emit('team.event', ev);
       return ngay({ team: true, kind: ev.kind, id });
     },

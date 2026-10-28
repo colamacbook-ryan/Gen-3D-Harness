@@ -177,3 +177,58 @@ describe('thứ tự giấy tờ khi subagent tới sát lệnh giao việc', ()
     expect(tt.lichSuPha.indexOf('giao-viec')).toBeGreaterThan(tt.lichSuPha.indexOf('nhan-viec'));
   });
 });
+
+describe('token trên giấy tờ', () => {
+  it('bài nộp mang token của nhân viên; báo cáo mang token Giám đốc dồn từ các report', async () => {
+    await su('brief');
+    await d.run('team.event', { kind: 'spawn', id: 'tk', role: 'builder', task: 'Viết test' });
+    await may.xong();
+    await d.run('team.event', { kind: 'done', id: 'tk', tokens: 4200 });
+    await may.xong();
+    await su('report', { tokens: 1000 });
+    await may.xong();
+    const so = may.trangThai().soQuyTrinh;
+    expect(so.find((b) => b.loai === 'kiem-nhan')!.chiTiet).toMatchObject({ tokens: 4200 });
+    expect(so.find((b) => b.loai === 'bao-cao')!.chiTiet).toMatchObject({ tokens: 1000 });
+    expect(may.trangThai().choKy.at(-1)).toMatchObject({ tokens: 1000 });
+    // báo cáo kế không mang lại token cũ
+    await su('report');
+    await may.xong();
+    expect(may.trangThai().soQuyTrinh.filter((b) => b.loai === 'bao-cao').at(-1)!.chiTiet!.tokens).toBeUndefined();
+  });
+
+  it('tokens âm / không phải số ⇒ lệnh từ chối', async () => {
+    expect((await su('report', { tokens: -1 })).ok).toBe(false);
+    expect((await su('report', { tokens: 'nhiều' })).ok).toBe(false);
+  });
+});
+
+describe('giấy tờ trước, diễn sau — phần diễn kẹt không làm đứng quy trình', () => {
+  it('moveTo của Giám đốc không bao giờ trả lời ⇒ kiểm nhận + báo cáo vẫn vào sổ, hàng chờ ký có báo cáo, việc sau vẫn chạy', async () => {
+    may.dung();
+    let treo = false;
+    const cua = {
+      run: (cmd: string, args: Record<string, unknown> = {}, nguon?: string) =>
+        treo && cmd === 'actor.moveTo' && args.actor === 'gen' ? new Promise<never>(() => {}) : d.run(cmd, args, nguon),
+      dangBan: (a: string) => d.dangBan(a),
+      world,
+    };
+    may = batDoiNgu({ dispatcher: cua, bus, nghi, ceoKyTay: true, luu: khoGia, tranViecTruongMs: 300 });
+    datMayDoiNgu(may);
+    await su('brief');
+    await d.run('team.event', { kind: 'spawn', id: 'k1', role: 'builder', task: 'Viết test' });
+    await may.xong();
+    treo = true; // từ đây mọi cú đi của Nhi kẹt mãi (máy chậm / tab sân khấu bị che)
+    await d.run('team.event', { kind: 'done', id: 'k1' });
+    await su('report');
+    // không dùng may.xong() (chuỗi diễn kẹt thật) — chờ theo đồng hồ, có trần
+    for (let i = 0; i < 100 && may.trangThai().choKy.length === 0; i++) await new Promise((r) => setTimeout(r, 30));
+    const tt = may.trangThai();
+    expect(tt.soQuyTrinh.map((b) => b.loai)).toEqual(expect.arrayContaining(['kiem-nhan', 'bao-cao']));
+    expect(tt.choKy).toHaveLength(1);
+    // hàng việc của Giám đốc không đứng: một ask sau đó vẫn tới lượt
+    await su('ask');
+    for (let i = 0; i < 100 && may.trangThai().xinDuyetLuc === null; i++) await new Promise((r) => setTimeout(r, 30));
+    expect(may.trangThai().xinDuyetLuc).not.toBeNull();
+  });
+});
