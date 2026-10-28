@@ -52,6 +52,22 @@ Script làm sáu việc:
 Bước 1–3 đã chạy tự động trên VS Code 1.143.1 thật, trong một thư mục **không phải** repo, không đặt `genStage.root`:
 `scripts/kiem-cai-vsix.mjs`, kết quả ở `docs/e2e/cai-vsix.json` và `docs/e2e/cai-vsix-chatroom.png`.
 
+Lượt kiểm 28/10 chạy trên máy sạch:
+- cổng 8787 / 5173 trống trước khi chạy;
+- thư mục extension và user-data mới tinh;
+- `CLAUDE_CONFIG_DIR` tạm, có sẵn một setting cũ (`theme`) để chắc hook không xoá setting của anh.
+
+Kết quả:
+- **Cài:** 25 s khi lõi đã cài; lần đầu cài cả lõi là 1 phút 36 s.
+- **Mở sân khấu:** sân khấu lên sau 21 s kể từ lúc bấm lệnh.
+- **Hook:** setting `theme` cũ còn nguyên, có đủ 8 mốc hook.
+- **Repo trỏ qua đường dẫn có khoảng trắng** (`…/Games 3d/Gen-3D-Harness`): đạt 6/6.
+- **VS Code bị giết đột ngột:** bridge và vite vẫn sống. Cửa sổ VS Code mở sau **nhận lại** hai dịch vụ đó (log ghi `nhận lại bridge … chủ cũ đã tắt`) và tắt sạch được.
+
+Chưa kiểm được trên cloud:
+- **Giọng Edge TTS:** proxy của container chặn, sân khấu rơi về nhép miệng theo chữ.
+- Mic thật, GPU thật, Ollama, hook trong một phiên Claude Code thật.
+
 ## Bật thêm
 
 - **Não local:**

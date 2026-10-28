@@ -134,7 +134,16 @@ try {
   quet(path.join(E, 'ud', 'logs'));
   const dongRoot = logs.flatMap((f) => fs.readFileSync(f, 'utf8').split('\n')).find((d) => d.includes('root:'));
   kq.dongRoot = dongRoot?.trim();
-  if (!dongRoot || !dongRoot.includes(`root: ${GOC}`) || dongRoot.includes('tự dò')) throw new Error(`root sai: ${dongRoot}`);
+  // so bằng realpath: repo có thể được trỏ qua symlink / đường có khoảng trắng ("Games 3d")
+  const rootLog = dongRoot?.match(/root: (.+?) · /)?.[1];
+  const thuc = (p) => {
+    try {
+      return fs.realpathSync(p);
+    } catch {
+      return p;
+    }
+  };
+  if (!rootLog || thuc(rootLog) !== thuc(GOC) || dongRoot.includes('tự dò')) throw new Error(`root sai: ${dongRoot}`);
   moc('extension đọc repo từ ~/.config/gen-stage/root (không tự dò, không phải đặt setting)');
 
   await lenh('Gen-Stage: Tắt dịch vụ do VS Code bật');

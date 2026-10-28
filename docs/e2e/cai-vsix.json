@@ -2,32 +2,32 @@
   "buoc": [
     {
       "ten": "VS Code mở thư mục KHÔNG phải repo",
-      "s": 2,
+      "s": 15.1,
       "thuMuc": "<thư mục tạm>/du-an-bat-ky"
     },
     {
       "ten": "bấm \"Gen-Stage: Mở sân khấu\"",
-      "s": 7.9
+      "s": 24.6
     },
     {
       "ten": "sân khấu lên (window.stage.san) — bridge + vite do extension tự bật",
-      "s": 21.3
+      "s": 45.8
     },
     {
       "ten": "chatroom mở ở cột phải",
-      "s": 36.6
+      "s": 61.4
     },
     {
       "ten": "gõ ở chatroom → sân khấu nhận user.text",
-      "s": 38.9
+      "s": 63.1
     },
     {
       "ten": "extension đọc repo từ ~/.config/gen-stage/root (không tự dò, không phải đặt setting)",
-      "s": 46.1
+      "s": 69.5
     },
     {
       "ten": "tắt dịch vụ do VS Code bật",
-      "s": 51.8
+      "s": 75.5
     }
   ],
   "loi": [],
@@ -35,6 +35,6 @@
     "owner:Nam · CEO",
     "gen:Nhi · Giám đốc kỹ thuật"
   ],
-  "dongRoot": "23:26:27 [khởi động] node 24.21.0 · WebSocket: toan-cuc · root: /home/user/Gen-3D-Harness · workspace tin cậy: có",
+  "dongRoot": "00:06:34 [khởi động] node 24.21.0 · WebSocket: toan-cuc · root: /home/user/Gen-3D-Harness · workspace tin cậy: có",
   "dat": true
 }
