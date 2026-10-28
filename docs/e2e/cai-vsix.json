@@ -2,32 +2,32 @@
   "buoc": [
     {
       "ten": "VS Code mở thư mục KHÔNG phải repo",
-      "s": 15.1,
+      "s": 28.2,
       "thuMuc": "<thư mục tạm>/du-an-bat-ky"
     },
     {
       "ten": "bấm \"Gen-Stage: Mở sân khấu\"",
-      "s": 24.6
+      "s": 38.8
     },
     {
       "ten": "sân khấu lên (window.stage.san) — bridge + vite do extension tự bật",
-      "s": 45.8
+      "s": 61.6
     },
     {
       "ten": "chatroom mở ở cột phải",
-      "s": 61.4
+      "s": 75.7
     },
     {
       "ten": "gõ ở chatroom → sân khấu nhận user.text",
-      "s": 63.1
+      "s": 77.9
     },
     {
       "ten": "extension đọc repo từ ~/.config/gen-stage/root (không tự dò, không phải đặt setting)",
-      "s": 69.5
+      "s": 84.9
     },
     {
       "ten": "tắt dịch vụ do VS Code bật",
-      "s": 75.5
+      "s": 90.7
     }
   ],
   "loi": [],

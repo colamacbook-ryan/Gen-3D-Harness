@@ -2012,6 +2012,10 @@ Boss 27/10: *"nội thất nên thiết kế sát tường để chừa không g
 - **`ask` không trả lời từ web**: hook không bao giờ chặn Claude Code ⇒ trang chỉ nhắc "trả lời trong terminal".
 - **Sổ lưu localStorage** của tab sân khấu — giấy tờ không mất khi tải lại.
 - **Trang nối vai client, KHÔNG nhúng sân khấu**: tab sân khấu thứ hai sẽ thay chỗ tab thật (CNS-002).
+- **Cửa Origin của bridge** (`bridge/nguon.ts`, review bảo mật): WebSocket không có CORS ⇒ trước đây trang web lạ nào cũng
+  nối được bridge và gửi mọi lệnh (`team.sign`, `stage.hear`). Nay: không Origin (tiến trình Node) ⇒ cho; có Origin ⇒ chỉ
+  localhost/127.0.0.1/::1, `vscode-webview:`, hoặc (`--host` + token) cùng máy với Host. Tiến trình cùng user nằm trong
+  vùng tin cậy — không chặn được, ghi rõ trong `BAN-DUYET.md`.
 - **Lỗi lộ nhờ sổ**: `brief` chỉ xếp hàng sau màn chào ⇒ subagent tới sát bị ghi oan "nhận việc NGẦM" + pha lùi. Giấy
   tờ/pha của `brief` giờ ghi ngay lúc nhận, hàng việc chỉ diễn.
 

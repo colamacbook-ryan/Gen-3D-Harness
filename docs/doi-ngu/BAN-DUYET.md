@@ -45,6 +45,15 @@ Ký không chặn quy trình. Báo cáo chờ ký vẫn nằm trong hàng; Nhi v
 - Trang nối bridge bằng **vai client**, không bao giờ nối `?role=stage`: làm vậy sẽ đá tab sân khấu thật ra (CNS-002).
   Trang cũng **không nhúng sân khấu 3D**, vì một tab sân khấu thứ hai cũng sẽ thay chỗ tab đang mở.
 
+## Ai ký được: mô hình đe doạ (review bảo mật 28/10)
+
+| Ai | Ký được không | Rào |
+| --- | --- | --- |
+| Não qua MCP (agy, não local) | **Không** | `team.sign` nằm trong `LENH_CHI_CHO_BOSS` |
+| Trang web lạ trong trình duyệt của Sếp | **Không** | **Cửa Origin** của bridge (`bridge/nguon.ts`): WebSocket không có CORS, nên trước đây trang nào cũng nối được `ws://127.0.0.1:8787` và gửi **mọi** lệnh (cả `stage.hear` để giả giọng Sếp). Nay bridge chỉ nhận trang của chính máy, webview VS Code, hoặc (khi mở `--host`, bắt buộc token) trang cùng máy với địa chỉ bridge. Origin lạ bị từ chối ngay lúc bắt tay (401) |
+| Máy khác trong mạng | **Không** | Mặc định bridge chỉ nghe `127.0.0.1`. Muốn mở ra ngoài thì bắt buộc có token |
+| Tiến trình chạy dưới **cùng user** trên máy (kể cả agent có shell) | **Có, không chặn được** | Tiến trình đó đọc được mọi file, sửa được localStorage và lái được cả trình duyệt. Cổng phần mềm cùng user không ngăn nổi; muốn ngăn thì phải tách user / sandbox ở mức hệ điều hành. Bàn duyệt bảo đảm **đường chính thức** của não không ký được, không bảo đảm chống một agent cố tình phá |
+
 ## Sửa kèm: thứ tự "nhận việc"
 
 `brief` trước đây chỉ xếp hàng sau màn chào CEO (vài giây). Subagent tới trong khoảng đó thì máy ghi oan

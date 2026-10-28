@@ -18,7 +18,7 @@
         "kiem-nhan",
         "bao-cao"
       ],
-      "giay": 293
+      "giay": 295
     },
     {
       "ten": "Bàn duyệt hiện \"Ký báo cáo\" trong Cần anh quyết",
@@ -35,7 +35,7 @@
       "dau": {
         "so": 6,
         "loai": "ceo-duyet",
-        "t": 1793185013878,
+        "t": 1793186007125,
         "ky": "Nam",
         "tomTat": "CEO ĐÃ DUYỆT báo cáo số 5 (ký tay)",
         "chiTiet": {
@@ -52,13 +52,13 @@
       "ten": "Trả lại kèm góp ý ⇒ dấu CEO TRẢ LẠI mang góp ý",
       "dat": true,
       "dau2": {
-        "so": 13,
+        "so": 12,
         "loai": "ceo-tra-lai",
-        "t": 1793185283335,
+        "t": 1793186288438,
         "ky": "Nam",
-        "tomTat": "CEO TRẢ LẠI báo cáo số 12: Thiếu test cho ca token sai",
+        "tomTat": "CEO TRẢ LẠI báo cáo số 11: Thiếu test cho ca token sai",
         "chiTiet": {
-          "baoCao": 12,
+          "baoCao": 11,
           "kyTay": true,
           "gopY": "Thiếu test cho ca token sai"
         }
@@ -67,8 +67,8 @@
     {
       "ten": "tải lại sân khấu ⇒ sổ còn nguyên",
       "dat": true,
-      "truoc": 13,
-      "sau": 13
+      "truoc": 12,
+      "sau": 12
     },
     {
       "ten": "390 px: trang không cuộn ngang",

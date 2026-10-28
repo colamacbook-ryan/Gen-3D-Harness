@@ -15,6 +15,7 @@
  * Chưa có MCP (đó là việc của đợt B) — nhưng bộ lệnh đi qua đúng dispatcher
  * trong trình duyệt, nên thêm MCP về sau chỉ là bọc thêm một lớp.
  */
+import { nguonDuocPhep } from './nguon';
 import { WebSocketServer, WebSocket } from 'ws';
 // B2 (#20) — giọng tiếng Việt: `pnpm bridge` bật cả ws lẫn HTTP /tts.
 import { batTts } from './tts';
@@ -63,7 +64,16 @@ interface Cho {
   sanKhau: WebSocket;
 }
 
-const wss = new WebSocketServer({ port: CONG, host: HOST });
+const wss = new WebSocketServer({
+  port: CONG,
+  host: HOST,
+  // cửa Origin: trang web lạ trong trình duyệt của Sếp không được nối (bridge/nguon.ts)
+  verifyClient: ({ origin, req }: { origin?: string; req: { headers: { host?: string } } }) => {
+    const duoc = nguonDuocPhep(origin, req.headers.host, !RIENG_MAY_NAY);
+    if (!duoc) ghi(`từ chối kết nối từ origin lạ: ${String(origin).slice(0, 80)}`);
+    return duoc;
+  },
+});
 
 let sanKhau: WebSocket | null = null;
 const clients = new Set<WebSocket>();
