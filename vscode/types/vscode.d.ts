@@ -23,6 +23,7 @@ declare module 'vscode' {
 
   export class Uri {
     static joinPath(base: Uri, ...pathSegments: string[]): Uri;
+    static parse(value: string, strict?: boolean): Uri;
     readonly scheme: string;
     readonly fsPath: string;
     toString(skipEncoding?: boolean): string;
@@ -215,6 +216,10 @@ declare module 'vscode' {
 
   export namespace extensions {
     export function getExtension<T = any>(extensionId: string): Extension<T> | undefined;
+  }
+
+  export namespace env {
+    function openExternal(target: Uri): Thenable<boolean>;
   }
 
   export namespace window {

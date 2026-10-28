@@ -173,6 +173,11 @@ export function suKienThanhDong(
       const cmd = chu(data.cmd) || '?';
       return { t, loai: 'lenh', ai: '', text: `Hiểu lệnh: ${cmd}${ai ? ' → ' + ai : ''}` };
     }
+    case 'team.report': {
+      // Bàn duyệt — báo cáo chờ CEO ký tay: nhắc một dòng (dấu đã ký đi qua team.record)
+      if (data.choKy !== true || typeof data.baoCao !== 'number') return null;
+      return { t, loai: 'he-thong', ai: '', text: `✍️ Báo cáo #${data.baoCao} chờ anh ký — "Gen-Stage: Mở Bàn duyệt"` };
+    }
     case 'team.record': {
       // INT-07 — sổ quy trình: biên bản họp, dấu kiểm nhận, dấu CEO duyệt… (một dòng mỗi bản ghi)
       const tomTat = chu(data.tomTat);

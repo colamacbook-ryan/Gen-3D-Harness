@@ -68,6 +68,10 @@ Chưa kiểm được trên cloud:
 - **Giọng Edge TTS:** proxy của container chặn, sân khấu rơi về nhép miệng theo chữ.
 - Mic thật, GPU thật, Ollama, hook trong một phiên Claude Code thật.
 
+## Bàn duyệt
+
+`Ctrl+Shift+P` → **"Gen-Stage: Mở Bàn duyệt"**: trang web để ký báo cáo của đội agent. Chi tiết ở `docs/doi-ngu/BAN-DUYET.md`.
+
 ## Bật thêm
 
 - **Não local:**

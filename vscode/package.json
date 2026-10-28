@@ -34,6 +34,11 @@
         "category": "Gen-Stage"
       },
       {
+        "command": "genStage.moBanDuyet",
+        "title": "Mở Bàn duyệt (ký báo cáo của đội agent)",
+        "category": "Gen-Stage"
+      },
+      {
         "command": "genStage.chonRoot",
         "title": "Chọn thư mục repo",
         "category": "Gen-Stage"

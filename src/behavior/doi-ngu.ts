@@ -261,6 +261,11 @@ export const LOI = {
   ceoDuyetCoLoi: 'Được, xử lý tiếp nhé 👍',
   xinDuyet: 'Anh duyệt giúp em bước này ạ 🙏',
   ceoTraLoi: 'Ok, làm tiếp đi 👌',
+  ceoXemSau: 'Để anh xem rồi ký ở Bàn duyệt 🖋️',
+  ceoKyDuyet: (so: number) => `Đã ký duyệt báo cáo số ${so} ✅`,
+  ceoKyTraLai: (so: number) => `Báo cáo số ${so} chưa đạt, xem lại nhé ↩️`,
+  camOnCeo: 'Dạ em cảm ơn anh ạ 🙏',
+  xemLai: 'Dạ em xem lại ngay ạ 🙇‍♀️',
   daA: 'Dạ ạ 🙇‍♀️',
   gonHoSo: 'Sắp xếp lại hồ sơ… 🗃️',
   hetPhien: 'Hết phiên rồi, nghỉ chút ☕',
@@ -295,6 +300,7 @@ export type LoaiBanGhi =
   | 'xin-duyet'
   | 'bao-cao'
   | 'ceo-duyet'
+  | 'ceo-tra-lai'
   | 'vi-pham';
 
 export interface BanGhi {
@@ -363,7 +369,43 @@ export interface ThamSoDoiNgu {
   tranChoMs?: number;
   /** Cửa sổ gom giao việc (ms). */
   cuaSoGiaoMs?: number;
+  /**
+   * Bàn duyệt (phương án 1): CEO THẬT (Ryan) ký báo cáo bằng tay qua `team.sign`
+   * thay vì Nam tự đóng dấu. Báo cáo nằm trong `choKy` tới khi được ký.
+   * Mặc định `false` (Nam tự duyệt như INT-07 vòng 2).
+   */
+  ceoKyTay?: boolean;
+  /** Lưu sổ + hàng chờ ký qua lần tải lại trang (app dùng localStorage). */
+  luu?: KhoSoDoiNgu;
 }
+
+/** Báo cáo đang chờ CEO ký tay. */
+export interface BaoCaoChoKy {
+  /** Số của bản ghi `bao-cao` trong sổ. */
+  so: number;
+  t: number;
+  tomTat: string;
+  dat: number;
+  traLai: number;
+  /** Phiên không có lỗi lặp lại / bài trả lại. */
+  ok: boolean;
+}
+
+/** Dữ liệu lưu được của máy (sổ giấy tờ + hàng chờ ký). */
+export interface DuLieuSoDoiNgu {
+  so: BanGhi[];
+  choKy: BaoCaoChoKy[];
+}
+
+export interface KhoSoDoiNgu {
+  doc(): DuLieuSoDoiNgu | null;
+  ghi(d: DuLieuSoDoiNgu): void;
+}
+
+export type QuyetDinhCeo = 'approve' | 'reject';
+
+/** Trần chữ góp ý của CEO khi trả lại. */
+export const TOI_DA_GOP_Y = 200;
 
 export type PhaNhanVien = 'vao' | 'cho-giao' | 'lam' | 'nop' | 'cho-duyet' | 'lam-lai' | 've';
 
@@ -396,10 +438,22 @@ export interface TrangThaiDoiNgu {
   lichSuPha: PhaQuyTrinh[];
   /** Sổ quy trình: biên bản, phiếu giao, dấu kiểm nhận, dấu CEO, vi phạm. */
   soQuyTrinh: BanGhi[];
+  /** Bàn duyệt: CEO ký tay hay Nam tự duyệt. */
+  ceoKyTay: boolean;
+  /** Báo cáo chờ CEO ký tay (mới nhất cuối). */
+  choKy: BaoCaoChoKy[];
+  /** Lúc Giám đốc bắt đầu đứng chờ CEO trả lời (`ask`), null = không chờ. */
+  xinDuyetLuc: number | null;
 }
 
 export interface MayDoiNgu {
   trangThai(): TrangThaiDoiNgu;
+  /**
+   * CEO ký tay một báo cáo đang chờ (Bàn duyệt). Ghi dấu `ceo-duyet` /
+   * `ceo-tra-lai` vào sổ, bắn `team.signed`, rồi diễn trên sân khấu (không chờ).
+   * Ném lỗi khi số báo cáo không nằm trong hàng chờ ký.
+   */
+  kyBaoCao(so: number, quyet: QuyetDinhCeo, gopY?: string): BanGhi;
   /** Chờ mọi chuỗi đang chạy xong (test). */
   xong(): Promise<void>;
   dung(): void;
@@ -446,6 +500,9 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
   let pha: PhaQuyTrinh = 'nghi';
   const lichSuPha: PhaQuyTrinh[] = ['nghi'];
   let choCeoDuyet = false;
+  let xinDuyetLuc: number | null = null;
+  const kyTay = ts.ceoKyTay === true;
+  let choKy: BaoCaoChoKy[] = [];
   let baoCaoCho = false;
   let khongHien = 0;
   let daHien = 0;
@@ -457,6 +514,29 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
   let tat = false;
   const so: BanGhi[] = [];
   let soCuoi = 0;
+  // sổ là giấy tờ: tải lại trang không được mất (lưu hỏng thì bắt đầu sổ trắng)
+  try {
+    const cu = ts.luu?.doc();
+    if (cu && Array.isArray(cu.so)) {
+      for (const b of cu.so.slice(-TOI_DA_SO)) {
+        if (b && typeof b.so === 'number' && typeof b.loai === 'string' && typeof b.tomTat === 'string') so.push(b);
+      }
+      soCuoi = so.reduce((m, b) => Math.max(m, b.so), 0);
+      if (Array.isArray(cu.choKy)) {
+        const coTrongSo = new Set(so.filter((b) => b.loai === 'bao-cao').map((b) => b.so));
+        choKy = cu.choKy.filter((c) => c && typeof c.so === 'number' && coTrongSo.has(c.so));
+      }
+    }
+  } catch (e) {
+    console.warn('[đội ngũ] không đọc được sổ đã lưu', e);
+  }
+  const luuLai = (): void => {
+    try {
+      ts.luu?.ghi({ so: so.map((b) => ({ ...b })), choKy: choKy.map((c) => ({ ...c })) });
+    } catch (e) {
+      console.warn('[đội ngũ] không lưu được sổ', e);
+    }
+  };
   /** Dấu kiểm nhận từ lần báo cáo trước — báo cáo CEO mang theo. */
   let demKiemNhan = { dat: 0, traLai: 0 };
 
@@ -481,6 +561,7 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     const b: BanGhi = { so: ++soCuoi, loai, t: bayGio(), ky, tomTat, ...(chiTiet ? { chiTiet } : {}) };
     so.push(b);
     if (so.length > TOI_DA_SO) so.splice(0, so.length - TOI_DA_SO);
+    luuLai();
     bus.emit('team.record', { ...b });
     return b;
   }
@@ -693,9 +774,19 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     await veBan();
   }
 
-  async function nhanViec(): Promise<void> {
+  /**
+   * Giấy tờ + pha của lệnh giao việc ghi NGAY lúc nhận `brief`, không đợi tới lượt
+   * trong hàng việc của Giám đốc: hàng đó còn đang diễn màn chào CEO vài giây, và
+   * subagent (`spawn`) tới trong lúc ấy sẽ thấy pha "nghỉ" ⇒ ghi oan "nhận việc
+   * NGẦM" rồi pha bị kéo lùi về "nhận việc" (đo thật trên Bàn duyệt 28/10).
+   */
+  function ghiNhanViec(): void {
     sangPha('nhan-viec');
     ghiSo('nhan-viec', tenSep, `CEO ${tenSep} giao việc cho Giám đốc ${tenTruong}`);
+  }
+
+  /** Phần DIỄN của nhận việc (chạy theo lượt trong hàng việc của Giám đốc). */
+  async function nhanViec(): Promise<void> {
     await capNhatThe();
     if (await diToi(truong, CHO_BAO_CAO_CEO, sep)) {
       // tới KẾ BÊN CEO: cúi chào → CEO giao (Giám đốc nghe + gật) → nhận lời
@@ -710,6 +801,8 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     } else {
       await chay('actor.lookAt', { actor: truong, target: sep });
     }
+    // đội đã vào việc trong lúc diễn ⇒ không kéo pha lùi
+    if (pha !== 'nhan-viec') return;
     sangPha('lap-ke-hoach');
     await capNhatThe();
     await noiCau(truong, LOI.lapKeHoach);
@@ -840,17 +933,23 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
       await chay('actor.listen', { actor: sep, on: true });
       await nghi(600);
       await chay('actor.listen', { actor: sep, on: false });
-      await noiCauXong(sep, loiLienTiep || demKiemNhan.traLai ? LOI.ceoDuyetCoLoi : LOI.ceoDuyet);
+      // ký tay: CEO thật ký ở Bàn duyệt, Nam không tự đóng dấu thay
+      if (kyTay) await noiCauXong(sep, LOI.ceoXemSau);
+      else await noiCauXong(sep, loiLienTiep || demKiemNhan.traLai ? LOI.ceoDuyetCoLoi : LOI.ceoDuyet);
       await noiCauXong(truong, LOI.daA);
       await veBan();
     }
     const tot = loiLienTiep === 0;
-    const bc = ghiSo('bao-cao', tenTruong, `Báo cáo CEO: ${demKiemNhan.dat} bài kiểm nhận, ${demKiemNhan.traLai} bài trả lại`, {
-      ...demKiemNhan,
-      ok: tot,
-    });
-    const dauCeo = ghiSo('ceo-duyet', tenSep, `CEO ĐÃ DUYỆT báo cáo số ${bc.so}`, { baoCao: bc.so });
-    bus.emit('team.report', { truong, sep, ok: tot, baoCao: bc.so, dauCeo: dauCeo.so, ...demKiemNhan });
+    const tomTat = `Báo cáo CEO: ${demKiemNhan.dat} bài kiểm nhận, ${demKiemNhan.traLai} bài trả lại`;
+    const bc = ghiSo('bao-cao', tenTruong, tomTat, { ...demKiemNhan, ok: tot, ...(kyTay ? { choKy: true } : {}) });
+    if (kyTay) {
+      choKy.push({ so: bc.so, t: bc.t, tomTat, dat: demKiemNhan.dat, traLai: demKiemNhan.traLai, ok: tot });
+      luuLai();
+      bus.emit('team.report', { truong, sep, ok: tot, baoCao: bc.so, choKy: true, ...demKiemNhan });
+    } else {
+      const dauCeo = ghiSo('ceo-duyet', tenSep, `CEO ĐÃ DUYỆT báo cáo số ${bc.so}`, { baoCao: bc.so });
+      bus.emit('team.report', { truong, sep, ok: tot, baoCao: bc.so, dauCeo: dauCeo.so, ...demKiemNhan });
+    }
     demKiemNhan = { dat: 0, traLai: 0 };
     loiLienTiep = 0;
     sangPha('nghi');
@@ -859,6 +958,7 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
 
   async function xinDuyet(): Promise<void> {
     choCeoDuyet = true;
+    xinDuyetLuc = bayGio();
     ghiSo('xin-duyet', tenTruong, `Giám đốc ${tenTruong} xin CEO duyệt`);
     bus.emit('team.phase', { pha, ten: TEN_PHA[pha], truoc: pha, choCeoDuyet: true });
     await capNhatThe();
@@ -873,6 +973,7 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
   async function hetChoDuyet(): Promise<void> {
     if (!choCeoDuyet) return;
     choCeoDuyet = false;
+    xinDuyetLuc = null;
     bus.emit('team.phase', { pha, ten: TEN_PHA[pha], truoc: pha, choCeoDuyet: false });
     await ceoNghe(500);
     await noiCauXong(sep, LOI.ceoTraLoi);
@@ -900,6 +1001,7 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     choGiao = [];
     baoCaoCho = false;
     choCeoDuyet = false;
+    xinDuyetLuc = null;
     viecDangLam = null;
     sangPha('nghi');
     await capNhatThe();
@@ -1052,6 +1154,7 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     choGiao = [];
     baoCaoCho = false;
     choCeoDuyet = false;
+    xinDuyetLuc = null;
     pha = 'nghi';
     void ganTheCoDinh();
   });
@@ -1077,6 +1180,7 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
         void lamTruong('mo-phien', moPhien);
         break;
       case 'brief':
+        ghiNhanViec();
         void lamTruong('nhan-viec', nhanViec);
         break;
       case 'work':
@@ -1112,7 +1216,30 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
     }
   });
 
+  /** Diễn cảnh CEO ký (không chờ — Bàn duyệt cần câu trả lời ngay). */
+  async function dienKy(soBc: number, duyet: boolean): Promise<void> {
+    await noiCauXong(sep, duyet ? LOI.ceoKyDuyet(soBc) : LOI.ceoKyTraLai(soBc));
+    await choThan(truong);
+    await noiCauXong(truong, duyet ? LOI.camOnCeo : LOI.xemLai);
+    await capNhatThe();
+  }
+
+  function kyBaoCao(soBc: number, quyet: QuyetDinhCeo, gopY = ''): BanGhi {
+    const i = choKy.findIndex((c) => c.so === soBc);
+    if (i < 0) throw new Error(`Báo cáo số ${soBc} không nằm trong hàng chờ ký`);
+    const duyet = quyet === 'approve';
+    const y = gopY.replace(/\s+/g, ' ').trim().slice(0, TOI_DA_GOP_Y);
+    choKy.splice(i, 1);
+    const dau = duyet
+      ? ghiSo('ceo-duyet', tenSep, `CEO ĐÃ DUYỆT báo cáo số ${soBc} (ký tay)`, { baoCao: soBc, kyTay: true, ...(y ? { gopY: y } : {}) })
+      : ghiSo('ceo-tra-lai', tenSep, `CEO TRẢ LẠI báo cáo số ${soBc}${y ? `: ${y}` : ''}`, { baoCao: soBc, kyTay: true, gopY: y });
+    bus.emit('team.signed', { baoCao: soBc, quyet, dauCeo: dau.so, ...(y ? { gopY: y } : {}) });
+    void lamTruong(duyet ? 'ceo-ky' : 'ceo-tra-lai', () => dienKy(soBc, duyet));
+    return { ...dau };
+  }
+
   return {
+    kyBaoCao,
     trangThai: () => ({
       truong,
       sep,
@@ -1133,6 +1260,9 @@ export function batDoiNgu(ts: ThamSoDoiNgu): MayDoiNgu {
       daHien,
       lichSuPha: [...lichSuPha],
       soQuyTrinh: so.map((b) => ({ ...b })),
+      ceoKyTay: kyTay,
+      choKy: choKy.map((c) => ({ ...c })),
+      xinDuyetLuc,
     }),
     async xong() {
       // chuỗi + hàng Giám đốc + hẹn gom có thể nối thêm bước — chờ tới khi đứng yên

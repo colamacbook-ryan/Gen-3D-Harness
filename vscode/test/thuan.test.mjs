@@ -303,3 +303,10 @@ test('V1 — vỏ panel: nhớ tin nền cuối, gửi lại khi iframe nạp xo
   assert.doesNotMatch(h, /TODO\(V1\)/);
   assert.match(html.taoHtmlChatroom({ cspSource: 'c', nonce: 'n', scriptUri: 's', cssUri: 'c' }), /id="chu-nao"/);
 });
+
+test('suKienThanhDong: team.report chờ ký (Bàn duyệt) → nhắc mở Bàn duyệt; báo cáo Nam tự duyệt → im', () => {
+  const d = lg.suKienThanhDong('team.report', { baoCao: 12, choKy: true, dat: 2, traLai: 0 }, DS, 5);
+  assert.equal(d.loai, 'he-thong');
+  assert.match(d.text, /#12 chờ anh ký/);
+  assert.equal(lg.suKienThanhDong('team.report', { baoCao: 12, dauCeo: 13 }, DS, 5), null);
+});

@@ -129,3 +129,8 @@ Quy trình do **driver cầm lái**: model chỉ trả lời câu hỏi của b�
 Ngân sách thời gian: lượt có quy trình được thêm `MS_CHIA_VIEC` (90 s) ngoài hạn lượt 60 s.
 Test dùng Ollama giả: `scripts/__tests__/nao-local.test.mjs` (mục *INT-07 chia việc theo quy trình*).
 **Chưa đo với Ollama + model thật.**
+
+## Cập nhật 28/10 — CEO thật ký (Bàn duyệt)
+
+Dấu CEO cho báo cáo giờ do **Sếp ký tay** trên Bàn duyệt (`team.sign`), Nam không tự đóng dấu nữa. Trả lại thì ghi
+`ceo-tra-lai` kèm góp ý. Xem `BAN-DUYET.md`.

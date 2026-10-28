@@ -57,6 +57,8 @@ export const SU_KIEN_HE_THONG = [
   'team.review',
   'team.report',
   'team.record',
+  /** Bàn duyệt — CEO thật ký tay một báo cáo (`team.sign`). */
+  'team.signed',
 ] as const;
 
 export class Registry implements RegistryLike {

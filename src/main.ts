@@ -22,7 +22,30 @@ import { batHieuLenh } from './behavior/hieu-lenh';
 import { batPhanXa } from './behavior/phan-xa';
 // J2 (#79) — rảnh > 20 s thì Nhi tự sinh hoạt; Boss gõ/nói là cắt ngay.
 import { batTuSinhHoat } from './behavior/tu-sinh-hoat';
-import { batDoiNgu, type MayDoiNgu, type TrangThaiDoiNgu } from './behavior/doi-ngu';
+import { batDoiNgu, type DuLieuSoDoiNgu, type KhoSoDoiNgu, type MayDoiNgu, type TrangThaiDoiNgu } from './behavior/doi-ngu';
+import { datMayDoiNgu } from './behavior/so-doi-ngu';
+
+/** Bàn duyệt — sổ quy trình + báo cáo chờ ký sống qua lần tải lại trang (lỗi lưu thì thôi, không chặn sân khấu). */
+function khoSoTrinhDuyet(): KhoSoDoiNgu {
+  const KHOA = 'gen-stage.doi-ngu.v1';
+  return {
+    doc: () => {
+      try {
+        const tho = localStorage.getItem(KHOA);
+        return tho ? (JSON.parse(tho) as DuLieuSoDoiNgu) : null;
+      } catch {
+        return null;
+      }
+    },
+    ghi: (d) => {
+      try {
+        localStorage.setItem(KHOA, JSON.stringify(d));
+      } catch {
+        /* hết chỗ / chế độ riêng tư — sổ vẫn sống trong bộ nhớ */
+      }
+    },
+  };
+}
 import { BridgeClient, coBatBridge, urlTts } from './bridge-client';
 // B2 (#20) — giọng tiếng Việt thật + nút mở khoá autoplay.
 import { lopTieng } from './audio/tts-client';
@@ -270,7 +293,8 @@ async function khoiDong(): Promise<void> {
    * INT-07 — ĐỘI NGŨ AGENT: `team.event` (hook Claude Code / não local) → nhân
    * viên búp bê vào văn phòng, làm việc ở khu theo vai, nộp kết quả cho Nhi.
    */
-  mayDoiNgu = batDoiNgu({ dispatcher, bus });
+  mayDoiNgu = batDoiNgu({ dispatcher, bus, ceoKyTay: true, luu: khoSoTrinhDuyet() });
+  datMayDoiNgu(mayDoiNgu);
 
   /*
    * D1b vòng 2 — `?fps=1`: thước FPS trong app để Boss TỰ ĐO trên Firefox +

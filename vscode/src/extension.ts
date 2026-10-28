@@ -307,6 +307,15 @@ export function activate(ctx: vscode.ExtensionContext): void {
       sanKhau.mo();
     }),
     vscode.commands.registerCommand('genStage.chonRoot', () => chonRoot()),
+    // Bàn duyệt (phương án 1): trang web ký báo cáo của đội agent — mở ở trình duyệt ngoài (dùng được cả trên
+    // điện thoại cùng mạng khi bridge bật --host + token). Bật dịch vụ trước nếu chưa chạy.
+    vscode.commands.registerCommand('genStage.moBanDuyet', async () => {
+      if (!cfg.root) void nhacChonRoot();
+      await tienTrinh!.batNeuCan();
+      const url = `http://127.0.0.1:${cfg.devPort}/duyet.html?bridgePort=${cfg.bridgePort}`;
+      ghi(`[lệnh] mở Bàn duyệt: ${url}`);
+      void vscode.env.openExternal(vscode.Uri.parse(url));
+    }),
     vscode.commands.registerCommand('genStage.batDichVu', async () => {
       tuChoiPhien = null;
       if (!cfg.root) void nhacChonRoot();

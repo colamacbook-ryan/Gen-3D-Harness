@@ -290,6 +290,8 @@ describe('stage.bootstrap là sách hướng dẫn tự sinh', () => {
       'stage.reset',
       'script.run',
       'prop.spawn',
+      'team.state', // cần máy đội ngũ (main.ts bật) — ban-duyet.test.ts lo
+      'team.sign',
     ]);
     for (const c of boot.commands) {
       if (c.chuaLam || boQua.has(c.cmd)) continue;

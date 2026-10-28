@@ -76,6 +76,7 @@ node scripts/kiem-g1-vong3.mjs # bằng chứng G1 vòng 3 (review PR #70): đ�
 node scripts/kiem-e1.mjs      # bằng chứng E1: UI 390 px, não diễn thật, /tts retry, hiểu "Javis", cài 1 lệnh, vào docs/e1/ (CHẠY MỘT LẦN)
 node scripts/kiem-i1.mjs      # bằng chứng I1: phản ứng tức thì 3 tầng (mốc bus/nhật ký) trên FIREFOX thật, vào docs/i1/ (CHẠY MỘT LẦN)
 node scripts/kiem-j2.mjs      # bằng chứng J2: 12 hoạt động + tự sinh hoạt khi rảnh, trên FIREFOX thật, vào docs/j2/ (CHẠY MỘT LẦN)
+node scripts/kiem-ban-duyet.mjs  # bằng chứng BÀN DUYỆT: bridge thật + vite + Chromium, bơm team.event như hook, bấm Ký/Trả lại như người thật (cổng 8961–8964 + web 5481), vào docs/ban-duyet/
 node scripts/kiem-cai-vsix.mjs  # bằng chứng gói cài MVP: VS Code THẬT cài .vsix, mở thư mục KHÔNG phải repo, không genStage.root → sân khấu + chatroom (E2E_VSIX_VSC/E2E_VSIX_DIR), vào docs/e2e/cai-vsix.*
 ```
 
@@ -1999,6 +2000,20 @@ Boss 27/10: *"nội thất nên thiết kế sát tường để chừa không g
   hở tường, vì nó đo trên hộp `chan` còn mắt nhìn **mép MODEL** — model Kenney
   bị `rongToiDa`/`cao` chuẩn hoá nên thường NÔNG hơn `chan` tới 5 cm. Số `lech`
   phải chốt theo bảng đo hình học thật của `kiem-j1.mjs`, không theo `chan`.
+
+## Quyết định BÀN DUYỆT — CEO thật ký (28/10, Ryan "làm phương án 1")
+
+Đặc tả: **`docs/doi-ngu/BAN-DUYET.md`**. Trang `duyet.html` (trang thứ hai của vite, không kéo three), lệnh VS Code
+"Gen-Stage: Mở Bàn duyệt".
+- **Tổ chức theo câu hỏi, không theo phân hệ**: Hôm nay (cần anh quyết) · Sổ quy trình · Đội ngũ. Lấy từ clip Versarix +
+  bản rà GenOS; mẫu ERP nhiều phân hệ là phản mẫu cho việc duyệt.
+- **Nam không tự đóng dấu nữa** (`ceoKyTay` trong app): báo cáo vào `choKy`, Sếp ký `team.sign`. Lệnh này trong
+  `LENH_CHI_CHO_BOSS` ⇒ não không ký thay. Trả lại bắt buộc góp ý (`boKyTuLa`, ≤ 200).
+- **`ask` không trả lời từ web**: hook không bao giờ chặn Claude Code ⇒ trang chỉ nhắc "trả lời trong terminal".
+- **Sổ lưu localStorage** của tab sân khấu — giấy tờ không mất khi tải lại.
+- **Trang nối vai client, KHÔNG nhúng sân khấu**: tab sân khấu thứ hai sẽ thay chỗ tab thật (CNS-002).
+- **Lỗi lộ nhờ sổ**: `brief` chỉ xếp hàng sau màn chào ⇒ subagent tới sát bị ghi oan "nhận việc NGẦM" + pha lùi. Giấy
+  tờ/pha của `brief` giờ ghi ngay lúc nhận, hàng việc chỉ diễn.
 
 ## Quyết định VĂN PHÒNG BÚP BÊ — cảnh mặc định (27/10, Ryan)
 

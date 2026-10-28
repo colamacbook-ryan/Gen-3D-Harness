@@ -193,7 +193,7 @@ export const HUONG_DAN_AGENT =
  * `stage.hear` chạy `actor.say` lên owner → não giả Boss nói rồi tự nghe lại chính mình;
  * `stage.notice` (V3) bắn `ide.event` → não giả "giác quan IDE" (Sếp chưa hề lưu/test/commit) rồi tự phản ứng.
  */
-export const LENH_CHI_CHO_BOSS: ReadonlySet<string> = new Set(['stage.hear', 'stage.notice', 'team.event']);
+export const LENH_CHI_CHO_BOSS: ReadonlySet<string> = new Set(['stage.hear', 'stage.notice', 'team.event', 'team.sign']);
 
 /**
  * Lý do não KHÔNG được chạy lệnh này (hoặc `null` nếu được). Một chỗ duy nhất cho mọi rào của não:
