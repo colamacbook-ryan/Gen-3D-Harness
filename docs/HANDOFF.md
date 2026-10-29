@@ -5,6 +5,22 @@
 
 ## 1. Đang ở đâu
 
+| | Địa chỉ |
+| --- | --- |
+| Code (repo này) | https://github.com/colamacbook-ryan/Gen-3D-Harness — nhánh `claude/magical-thompson-oatx60` |
+| PR đang mở | https://github.com/colamacbook-ryan/Gen-3D-Harness/pull/1 (draft) |
+| Bộ não SSOT | https://github.com/colamacbook-ryan/Second-Brain — ghi thẳng `main` |
+| Gen-Stage gốc (remote `genstage`, chỉ đọc để đồng bộ) | https://github.com/Genesis-ryan-84-0567536339/gen-stage |
+
+Máy chưa có repo thì clone:
+
+```bash
+git clone https://github.com/colamacbook-ryan/Gen-3D-Harness.git && cd Gen-3D-Harness
+git checkout claude/magical-thompson-oatx60
+git remote add genstage https://github.com/Genesis-ryan-84-0567536339/gen-stage.git
+git clone https://github.com/colamacbook-ryan/Second-Brain.git ../Second-Brain   # để cập nhật STATUS/LOG cuối phiên
+```
+
 - Repo `colamacbook-ryan/Gen-3D-Harness`, nhánh **`claude/magical-thompson-oatx60`** (đỉnh `4af7fb4` lúc viết file
   này), PR draft **#1** (V0–V3 + E2E + Bàn duyệt). Chưa merge.
 - Bộ não (SSOT): repo `colamacbook-ryan/Second-Brain`, dự án `01-projects/gen-stage-vscode/` (`INTENT.md`,
