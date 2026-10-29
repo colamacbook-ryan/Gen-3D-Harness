@@ -1,0 +1,442 @@
+{
+  "batDau": "2026-10-26T12:28:33.457Z",
+  "ollama": "http://127.0.0.1:9010/",
+  "modelMuon": "qwen2.5:1.5b",
+  "cong": {
+    "ws": 9000,
+    "tts": 9001,
+    "mcp": 9002,
+    "stt": 9003,
+    "vite": 9004,
+    "ghiOllama": 9011
+  },
+  "cau": [
+    {
+      "text": "Gen ơi, chào em",
+      "ketQuaSay": true,
+      "msUserText": 4,
+      "msPhanXa": 8,
+      "msGenBatDauNoi": [
+        {
+          "ms": 14763,
+          "text": "chao, gen ơi, chào em | Sân khau {\"actors\":[{\"id\":\"owner\",\"at\":\"buc-trung-tam\",\"pos\":[-4.5,0,2.6],\"busy\":false},{\"id\":\"gen\",\"at\":\"ban-dieu-khien\",\"pos\":[4,0,-3],\"busy\":false}],\"screens\":[\"may-tinh\",\"tivi\"],\"modules\":[],\"suKien\":[\"bridge.brain\",\"bridge.hello\",\"actor.sayStart\",\"user.text\"]}"
+        }
+      ],
+      "ollama": [
+        {
+          "ms": 13939,
+          "model": "qwen2.5:1.5b",
+          "soTool": 10,
+          "content": "chao, gen ơi, chào em | Sân khau {\"actors\":[{\"id\":\"owner\",\"at\":\"buc-trung-tam\",\"pos\":[-4.5,0,2.6],\"busy\":false},{\"id\":\"gen\",\"at\":\"ban-dieu-khien\",\"pos\":[4,0,-3],\"busy\":false}],\"screens\":[\"may-tinh\",\"tivi\"],\"modules\":[],\"suKien\":[\"bridge.brain\",\"bridge.hello\",\"actor.sayStart\",\"user.text\"]}",
+          "tool_calls": [],
+          "usage": {
+            "prompt_tokens": 2763,
+            "prompt_tokens_details": {
+              "cached_tokens": 2660
+            },
+            "completion_tokens": 104,
+            "total_tokens": 2867
+          }
+        }
+      ],
+      "lenhToiSanKhau": [
+        {
+          "ms": 3,
+          "lenh": "actor.say {\"actor\":\"owner\",\"text\":\"Gen ơi, chào em\",\"interrupt\":true}"
+        },
+        {
+          "ms": 8,
+          "lenh": "actor.turnTo {\"actor\":\"gen\",\"target\":\"owner\",\"interrupt\":true}"
+        },
+        {
+          "ms": 8,
+          "lenh": "actor.emote {\"actor\":\"gen\",\"emote\":\"suy-nghi\"}"
+        },
+        {
+          "ms": 811,
+          "lenh": "stage.describe {}"
+        },
+        {
+          "ms": 14761,
+          "lenh": "actor.say {\"actor\":\"gen\",\"text\":\"chao, gen ơi, chào em | Sân khau {\\\"actors\\\":[{\\\"id\\\":\\\"owner\\\",\\\"at\\\":\\\"buc-trung-tam\\\",\\\"pos\\\":[-4.5,0,2.6],\\\"busy\\\":false},{\\\"id\\\":\\\"gen\\\",\\\"at\\\":\\\"ban-dieu-khien\\\",\\\"pos\\\":[4,0,-3],\\\"busy\\\":false}],\\\"screens\\\":[\\\"may-tinh\\\",\\\"tivi\\\"],\\\"modules\\\":[],\\\"suKien\\\":[\\\""
+        }
+      ],
+      "suKien": [
+        {
+          "ms": 4,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "Gen ơi, chào em"
+        },
+        {
+          "ms": 4,
+          "event": "user.text",
+          "actor": "owner",
+          "text": "Gen ơi, chào em"
+        },
+        {
+          "ms": 1205,
+          "event": "actor.sayDone",
+          "actor": "owner",
+          "text": "Gen ơi, chào em"
+        },
+        {
+          "ms": 14763,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "chao, gen ơi, chào em | Sân khau {\"actors\":[{\"id\":\"owner\",\"at\":\"buc-trung-tam\",\"pos\":[-4.5,0,2.6],\"busy\":false},{\"id\":\"gen\",\"at\":\"ban-dieu-khien\",\"pos\":[4,0,-3],\"busy\":false}],\"screens\":[\"may-tinh\",\"tivi\"],\"modules\":[],\"suKien\":[\"bridge.brain\",\"bridge.hello\",\"actor.sayStart\",\"user.text\"]}"
+        },
+        {
+          "ms": 15965,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "chao, gen ơi, chào em | Sân khau {\"actors\":[{\"id\":\"owner\",\"at\":\"buc-trung-tam\",\"pos\":[-4.5,0,2.6],\"busy\":false},{\"id\":\"gen\",\"at\":\"ban-dieu-khien\",\"pos\":[4,0,-3],\"busy\":false}],\"screens\":[\"may-tinh\",\"tivi\"],\"modules\":[],\"suKien\":[\"bridge.brain\",\"bridge.hello\",\"actor.sayStart\",\"user.text\"]}"
+        }
+      ],
+      "driverLog": [
+        {
+          "ms": 809,
+          "dong": "[nao-local] 12:28:38 SẾP → gen: «Gen ơi, chào em»"
+        },
+        {
+          "ms": 14764,
+          "dong": "[nao-local] 12:28:52 xong lượt sau 13956 ms · 1 vòng · 0 tool_call · driver nói hộ"
+        }
+      ]
+    },
+    {
+      "text": "Gen ơi, ra cửa sổ đi",
+      "ketQuaSay": true,
+      "msUserText": 4,
+      "msPhanXa": 7,
+      "msGenBatDauNoi": [
+        {
+          "ms": 4602,
+          "text": "Chao ơi, ra cửa sổ đi!"
+        }
+      ],
+      "ollama": [
+        {
+          "ms": 3783,
+          "model": "qwen2.5:1.5b",
+          "soTool": 10,
+          "content": "Chao ơi, ra cửa sổ đi!",
+          "tool_calls": [],
+          "usage": {
+            "prompt_tokens": 2769,
+            "prompt_tokens_details": {
+              "cached_tokens": 2660
+            },
+            "completion_tokens": 11,
+            "total_tokens": 2780
+          }
+        }
+      ],
+      "lenhToiSanKhau": [
+        {
+          "ms": 2,
+          "lenh": "actor.say {\"actor\":\"owner\",\"text\":\"Gen ơi, ra cửa sổ đi\",\"interrupt\":true}"
+        },
+        {
+          "ms": 7,
+          "lenh": "actor.turnTo {\"actor\":\"gen\",\"target\":\"owner\",\"interrupt\":true}"
+        },
+        {
+          "ms": 8,
+          "lenh": "actor.emote {\"actor\":\"gen\",\"emote\":\"suy-nghi\"}"
+        },
+        {
+          "ms": 809,
+          "lenh": "stage.describe {}"
+        },
+        {
+          "ms": 4601,
+          "lenh": "actor.say {\"actor\":\"gen\",\"text\":\"Chao ơi, ra cửa sổ đi!\",\"interrupt\":true}"
+        }
+      ],
+      "suKien": [
+        {
+          "ms": 4,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "Gen ơi, ra cửa sổ đi"
+        },
+        {
+          "ms": 4,
+          "event": "user.text",
+          "actor": "owner",
+          "text": "Gen ơi, ra cửa sổ đi"
+        },
+        {
+          "ms": 1203,
+          "event": "actor.sayDone",
+          "actor": "owner",
+          "text": "Gen ơi, ra cửa sổ đi"
+        },
+        {
+          "ms": 4602,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Chao ơi, ra cửa sổ đi!"
+        },
+        {
+          "ms": 5803,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "Chao ơi, ra cửa sổ đi!"
+        }
+      ],
+      "driverLog": [
+        {
+          "ms": 808,
+          "dong": "[nao-local] 12:29:00 SẾP → gen: «Gen ơi, ra cửa sổ đi»"
+        },
+        {
+          "ms": 4606,
+          "dong": "[nao-local] 12:29:04 xong lượt sau 3798 ms · 1 vòng · 0 tool_call · driver nói hộ"
+        }
+      ]
+    },
+    {
+      "text": "Gen ơi, mở màn hình cho anh",
+      "ketQuaSay": true,
+      "msUserText": 4,
+      "msPhanXa": 6,
+      "msGenBatDauNoi": [
+        {
+          "ms": 15035,
+          "text": "actor_say {\"actor\":\"gen\",\"text\":\"Xin lỗi, Sếp, màn hình chưa mở vào lúc này, nhưng tôi sẽ nói bạn ngay lập tức nè!\",\"command\":\"actor.show\"} actor.moveTo {\"actor\":\"gen\",\"to\":\"tivi\"} actor.emote {\"actor\":\"gen\",\"emote\":\"rat-vui\",\"say\":\"Sếp ơi, Sếp ơi thì mở nha!\"} actor.sayStart {\"actor\":\"gen\"} actor.s"
+        }
+      ],
+      "ollama": [
+        {
+          "ms": 14218,
+          "model": "qwen2.5:1.5b",
+          "soTool": 10,
+          "content": "actor_say {\"actor\":\"gen\",\"text\":\"Xin lỗi, Sếp, màn hình chưa mở vào lúc này, nhưng tôi sẽ nói bạn ngay lập tức nè!\",\"command\":\"actor.show\"}\nactor.moveTo {\"actor\":\"gen\",\"to\":\"tivi\"}\nactor.emote {\"actor\":\"gen\",\"emote\":\"rat-vui\",\"say\":\"Sếp ơi, Sếp ơi thì mở nha!\"}\nactor.sayStart {\"actor\":\"gen\"}\nactor.show {\"screen_id\":\"may-tinh\"}",
+          "tool_calls": [],
+          "usage": {
+            "prompt_tokens": 2771,
+            "prompt_tokens_details": {
+              "cached_tokens": 2660
+            },
+            "completion_tokens": 107,
+            "total_tokens": 2878
+          }
+        }
+      ],
+      "lenhToiSanKhau": [
+        {
+          "ms": 3,
+          "lenh": "actor.say {\"actor\":\"owner\",\"text\":\"Gen ơi, mở màn hình cho anh\",\"interrupt\":true}"
+        },
+        {
+          "ms": 6,
+          "lenh": "actor.turnTo {\"actor\":\"gen\",\"target\":\"owner\",\"interrupt\":true}"
+        },
+        {
+          "ms": 7,
+          "lenh": "actor.emote {\"actor\":\"gen\",\"emote\":\"suy-nghi\"}"
+        },
+        {
+          "ms": 809,
+          "lenh": "stage.describe {}"
+        },
+        {
+          "ms": 15033,
+          "lenh": "actor.say {\"actor\":\"gen\",\"text\":\"actor_say {\\\"actor\\\":\\\"gen\\\",\\\"text\\\":\\\"Xin lỗi, Sếp, màn hình chưa mở vào lúc này, nhưng tôi sẽ nói bạn ngay lập tức nè!\\\",\\\"command\\\":\\\"actor.show\\\"} actor.moveTo {\\\"actor\\\":\\\"gen\\\",\\\"to\\\":\\\"tivi\\\"} actor.emote {\\\"actor\\\":\\\"gen\\\",\\\"emote\\\":\\\"rat-vui\\\",\\\"say\\\":\\\"Sếp"
+        }
+      ],
+      "suKien": [
+        {
+          "ms": 3,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "Gen ơi, mở màn hình cho anh"
+        },
+        {
+          "ms": 4,
+          "event": "user.text",
+          "actor": "owner",
+          "text": "Gen ơi, mở màn hình cho anh"
+        },
+        {
+          "ms": 1204,
+          "event": "actor.sayDone",
+          "actor": "owner",
+          "text": "Gen ơi, mở màn hình cho anh"
+        },
+        {
+          "ms": 15035,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "actor_say {\"actor\":\"gen\",\"text\":\"Xin lỗi, Sếp, màn hình chưa mở vào lúc này, nhưng tôi sẽ nói bạn ngay lập tức nè!\",\"command\":\"actor.show\"} actor.moveTo {\"actor\":\"gen\",\"to\":\"tivi\"} actor.emote {\"actor\":\"gen\",\"emote\":\"rat-vui\",\"say\":\"Sếp ơi, Sếp ơi thì mở nha!\"} actor.sayStart {\"actor\":\"gen\"} actor.s"
+        },
+        {
+          "ms": 16235,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "actor_say {\"actor\":\"gen\",\"text\":\"Xin lỗi, Sếp, màn hình chưa mở vào lúc này, nhưng tôi sẽ nói bạn ngay lập tức nè!\",\"command\":\"actor.show\"} actor.moveTo {\"actor\":\"gen\",\"to\":\"tivi\"} actor.emote {\"actor\":\"gen\",\"emote\":\"rat-vui\",\"say\":\"Sếp ơi, Sếp ơi thì mở nha!\"} actor.sayStart {\"actor\":\"gen\"} actor.s"
+        }
+      ],
+      "driverLog": [
+        {
+          "ms": 808,
+          "dong": "[nao-local] 12:29:13 SẾP → gen: «Gen ơi, mở màn hình cho anh»"
+        },
+        {
+          "ms": 15035,
+          "dong": "[nao-local] 12:29:27 xong lượt sau 14227 ms · 1 vòng · 0 tool_call · driver nói hộ"
+        }
+      ]
+    },
+    {
+      "text": "Gen ơi, hôm nay mình nên làm gì trước?",
+      "ketQuaSay": true,
+      "msUserText": 3,
+      "msPhanXa": 5,
+      "msGenBatDauNoi": [
+        {
+          "ms": 5942,
+          "text": "/gen actor_say {\"actor\":\"gen\",\"text\":\"Em hôm nay muốn làm gì?\",\"voice\":\"nu\"}"
+        }
+      ],
+      "ollama": [
+        {
+          "ms": 5125,
+          "model": "qwen2.5:1.5b",
+          "soTool": 10,
+          "content": "/gen\nactor_say {\"actor\":\"gen\",\"text\":\"Em hôm nay muốn làm gì?\",\"voice\":\"nu\"}",
+          "tool_calls": [],
+          "usage": {
+            "prompt_tokens": 2774,
+            "prompt_tokens_details": {
+              "cached_tokens": 2660
+            },
+            "completion_tokens": 26,
+            "total_tokens": 2800
+          }
+        }
+      ],
+      "lenhToiSanKhau": [
+        {
+          "ms": 2,
+          "lenh": "actor.say {\"actor\":\"owner\",\"text\":\"Gen ơi, hôm nay mình nên làm gì trước?\",\"interrupt\":true}"
+        },
+        {
+          "ms": 5,
+          "lenh": "actor.turnTo {\"actor\":\"gen\",\"target\":\"owner\",\"interrupt\":true}"
+        },
+        {
+          "ms": 6,
+          "lenh": "actor.emote {\"actor\":\"gen\",\"emote\":\"suy-nghi\"}"
+        },
+        {
+          "ms": 807,
+          "lenh": "stage.describe {}"
+        },
+        {
+          "ms": 5940,
+          "lenh": "actor.say {\"actor\":\"gen\",\"text\":\"/gen actor_say {\\\"actor\\\":\\\"gen\\\",\\\"text\\\":\\\"Em hôm nay muốn làm gì?\\\",\\\"voice\\\":\\\"nu\\\"}\",\"interrupt\":true}"
+        }
+      ],
+      "suKien": [
+        {
+          "ms": 2,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "Gen ơi, hôm nay mình nên làm gì trước?"
+        },
+        {
+          "ms": 3,
+          "event": "user.text",
+          "actor": "owner",
+          "text": "Gen ơi, hôm nay mình nên làm gì trước?"
+        },
+        {
+          "ms": 1203,
+          "event": "actor.sayDone",
+          "actor": "owner",
+          "text": "Gen ơi, hôm nay mình nên làm gì trước?"
+        },
+        {
+          "ms": 5942,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "/gen actor_say {\"actor\":\"gen\",\"text\":\"Em hôm nay muốn làm gì?\",\"voice\":\"nu\"}"
+        },
+        {
+          "ms": 7140,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "/gen actor_say {\"actor\":\"gen\",\"text\":\"Em hôm nay muốn làm gì?\",\"voice\":\"nu\"}"
+        }
+      ],
+      "driverLog": [
+        {
+          "ms": 806,
+          "dong": "[nao-local] 12:29:36 SẾP → gen: «Gen ơi, hôm nay mình nên làm gì trước?»"
+        },
+        {
+          "ms": 5941,
+          "dong": "[nao-local] 12:29:41 xong lượt sau 5136 ms · 1 vòng · 0 tool_call · driver nói hộ"
+        }
+      ]
+    }
+  ],
+  "loi": [],
+  "ollamaVersion": "0.40.11",
+  "sanKhau": "GIẢ (ws ?role=stage) — không WebGL, không lớp hiểu lệnh C2, không validate",
+  "hanLuotMs": 300000,
+  "driverKhoiDong": [
+    "[nao-local] 12:28:35 driver não local · bridge 9000 · Ollama http://127.0.0.1:9011 · model qwen2.5:1.5b",
+    "[nao] 12:28:35 đã nối bridge ws://127.0.0.1:9000/?role=nao",
+    "[nao-local] 12:28:35 10 tool · đang nghe user.text/user.speech.",
+    "[nao-local] 12:28:35 não local sẵn sàng: http://127.0.0.1:9011 · model qwen2.5:1.5b"
+  ],
+  "cuoi": {
+    "gen": {
+      "at": "ban-dieu-khien",
+      "state": "idle"
+    },
+    "screens": [
+      {
+        "id": "may-tinh",
+        "showing": null
+      },
+      {
+        "id": "tivi",
+        "showing": null
+      }
+    ],
+    "brainConnected": true
+  },
+  "bridgeLogLoi": [
+    "[bridge 12:29:27] → actor.say {\"actor\":\"gen\",\"text\":\"actor_say {\\\"actor\\\":\\\"gen\\\",\\\"text\\\":\\\"Xin lỗi, Sếp, màn hình chưa mở vào lúc này, nhưng tôi sẽ nói bạn ngay lập tức nè!\\\",\\\"command\\\":\\\"actor.sho"
+  ],
+  "driverLogDayDu": [
+    "[nao-local] 12:28:35 driver não local · bridge 9000 · Ollama http://127.0.0.1:9011 · model qwen2.5:1.5b",
+    "[nao] 12:28:35 đã nối bridge ws://127.0.0.1:9000/?role=nao",
+    "[nao-local] 12:28:35 10 tool · đang nghe user.text/user.speech.",
+    "[nao-local] 12:28:35 não local sẵn sàng: http://127.0.0.1:9011 · model qwen2.5:1.5b",
+    "[nao-local] 12:28:38 SẾP → gen: «Gen ơi, chào em»",
+    "[nao-local] 12:28:52 xong lượt sau 13956 ms · 1 vòng · 0 tool_call · driver nói hộ",
+    "[nao-local] 12:29:00 SẾP → gen: «Gen ơi, ra cửa sổ đi»",
+    "[nao-local] 12:29:04 xong lượt sau 3798 ms · 1 vòng · 0 tool_call · driver nói hộ",
+    "[nao-local] 12:29:13 SẾP → gen: «Gen ơi, mở màn hình cho anh»",
+    "[nao-local] 12:29:27 xong lượt sau 14227 ms · 1 vòng · 0 tool_call · driver nói hộ",
+    "[nao-local] 12:29:36 SẾP → gen: «Gen ơi, hôm nay mình nên làm gì trước?»",
+    "[nao-local] 12:29:41 xong lượt sau 5136 ms · 1 vòng · 0 tool_call · driver nói hộ"
+  ],
+  "pgid": [
+    {
+      "ten": "bridge",
+      "pgid": 15332
+    },
+    {
+      "ten": "driver",
+      "pgid": 15361
+    }
+  ],
+  "ketThuc": "2026-10-26T12:29:49.649Z"
+}

@@ -1,0 +1,8 @@
+src/**
+test/**
+types/**
+.vscode/**
+tsconfig*.json
+**/*.map
+out-web/src/**
+web/**

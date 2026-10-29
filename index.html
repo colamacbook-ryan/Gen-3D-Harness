@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#fdf3e3" />
+    <title>Gen-Stage · Sân khấu 3D điều khiển bằng lệnh</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+    <div id="bong-bong-lop"></div>
+
+    <div id="loading">
+      <div class="spin"></div>
+      <p id="loading-text">Đang tải sân khấu…</p>
+    </div>
+
+    <header id="hud">
+      <h1>Gen-Stage</h1>
+      <p>Actor API v0.1 · mọi lệnh qua một dispatcher</p>
+    </header>
+
+    <div id="toast"></div>
+
+    <!--
+      Bảng lệnh tự sinh từ stage.bootstrap, dựng trong src/ui/index.ts.
+      `thu-gon` khai SẴN trong HTML (E1 #48): trên điện thoại bảng không
+      được loé ra che sân khấu trong lúc chờ JS chạy; `src/ui/index.ts`
+      mở nó ra khi màn đủ rộng.
+    -->
+    <aside id="bang" class="thu-gon"></aside>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

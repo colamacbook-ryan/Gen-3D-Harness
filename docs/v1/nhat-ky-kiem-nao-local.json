@@ -1,0 +1,396 @@
+{
+  "batDau": "2026-10-26T06:50:44.320Z",
+  "cong": {
+    "bridge": 8890,
+    "ollamaGia": 8894,
+    "ollamaTat": 8895
+  },
+  "ca": {
+    "a": {
+      "lenh": [
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        },
+        {
+          "cmd": "actor.turnTo",
+          "args": {
+            "actor": "gen",
+            "target": "owner",
+            "interrupt": true
+          }
+        },
+        {
+          "cmd": "actor.emote",
+          "args": {
+            "actor": "gen",
+            "emote": "suy-nghi"
+          }
+        },
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        },
+        {
+          "cmd": "actor.say",
+          "args": {
+            "actor": "gen",
+            "text": "Dạ em chào Sếp ạ",
+            "interrupt": true
+          }
+        },
+        {
+          "cmd": "actor.emote",
+          "args": {
+            "actor": "gen",
+            "emote": "chao"
+          }
+        }
+      ],
+      "msPhanXa": 6,
+      "msTiengDau": 816
+    },
+    "b": {
+      "say": [
+        {
+          "actor": "gen",
+          "text": "Dạ, hôm nay mình làm V1 não local ạ",
+          "interrupt": true
+        }
+      ]
+    },
+    "c": {
+      "lenhToiSanKhau": [
+        {
+          "cmd": "actor.turnTo",
+          "args": {
+            "actor": "gen",
+            "target": "owner",
+            "interrupt": true
+          }
+        },
+        {
+          "cmd": "actor.emote",
+          "args": {
+            "actor": "gen",
+            "emote": "suy-nghi"
+          }
+        },
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        },
+        {
+          "cmd": "actor.say",
+          "args": {
+            "actor": "gen",
+            "text": "Dạ em không làm thế được ạ",
+            "interrupt": true
+          }
+        }
+      ],
+      "ketQuaToolCuoiGuiModel": {
+        "role": "tool",
+        "tool_call_id": "c3",
+        "content": "{\"ok\":false,\"error\":\"Tool \\\"stage_reset\\\" không có trong danh sách được phép (actor_say, actor_emote, actor_moveTo, actor_faceTo, actor_play, actor_express, screen_show, fx_play, module_build, camera_preset).\"}"
+      }
+    },
+    "g": {
+      "soVongGoiModel": 3,
+      "lenh": [
+        {
+          "cmd": "actor.turnTo",
+          "args": {
+            "actor": "gen",
+            "target": "owner",
+            "interrupt": true
+          }
+        },
+        {
+          "cmd": "actor.emote",
+          "args": {
+            "actor": "gen",
+            "emote": "suy-nghi"
+          }
+        },
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        },
+        {
+          "cmd": "actor.emote",
+          "args": {
+            "actor": "gen",
+            "emote": "vui"
+          }
+        },
+        {
+          "cmd": "actor.emote",
+          "args": {
+            "actor": "gen",
+            "emote": "vui"
+          }
+        },
+        {
+          "cmd": "actor.emote",
+          "args": {
+            "actor": "gen",
+            "emote": "vui"
+          }
+        },
+        {
+          "cmd": "actor.say",
+          "args": {
+            "actor": "gen",
+            "text": "Em nghe rồi Sếp, nhưng em chưa nghĩ ra câu trả lời ạ",
+            "interrupt": true
+          }
+        }
+      ]
+    },
+    "f": {
+      "soCauBao": 1,
+      "soLanThu": 5,
+      "songSot": true,
+      "log": [
+        "[nao-local] 06:51:04 driver não local · bridge 8890 · Ollama http://127.0.0.1:8895 · model (tự chọn)",
+        "[nao] 06:51:04 đã nối bridge ws://127.0.0.1:8890/?role=nao",
+        "[nao-local] 06:51:04 10 tool · đang nghe user.text/user.speech.",
+        "[nao-local] 06:51:04 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 1 sau 1000 ms.",
+        "[nao-local] 06:51:05 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 2 sau 2000 ms.",
+        "[nao-local] 06:51:07 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 3 sau 4000 ms.",
+        "[nao-local] 06:51:11 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 4 sau 8000 ms.",
+        "[nao-local] 06:51:13 SẾP → gen: «có ai không»",
+        "[nao-local] 06:51:13 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 5 sau 10000 ms.",
+        "[nao-local] 06:51:13 bỏ lượt: chưa có não local (đã báo Sếp: rồi)."
+      ]
+    }
+  },
+  "khoa": {
+    "maThoat": 3,
+    "log": [
+      "[nao-local] 06:50:47 đang có driver não nao-local (pid 8011) — thoát (hai driver cùng chạy thì mỗi câu trả lời hai lần)."
+    ]
+  },
+  "ketQua": [
+    {
+      "ten": "driver dò được model qua /v1/models + /api/show",
+      "ok": true
+    },
+    {
+      "ten": "khoá: driver thứ hai thoát mã 3 + log \"đang có driver não\"",
+      "ok": true,
+      "maThoat": 3,
+      "log": [
+        "[nao-local] 06:50:47 đang có driver não nao-local (pid 8011) — thoát (hai driver cùng chạy thì mỗi câu trả lời hai lần)."
+      ]
+    },
+    {
+      "ten": "driver nối bridge bằng ?role=nao",
+      "ok": true
+    },
+    {
+      "ten": "(a) model gọi actor_say gen → sân khấu nhận đúng lệnh",
+      "ok": true,
+      "lenh": [
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        },
+        {
+          "cmd": "actor.turnTo",
+          "args": {
+            "actor": "gen",
+            "target": "owner",
+            "interrupt": true
+          }
+        },
+        {
+          "cmd": "actor.emote",
+          "args": {
+            "actor": "gen",
+            "emote": "suy-nghi"
+          }
+        },
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        },
+        {
+          "cmd": "actor.say",
+          "args": {
+            "actor": "gen",
+            "text": "Dạ em chào Sếp ạ",
+            "interrupt": true
+          }
+        },
+        {
+          "cmd": "actor.emote",
+          "args": {
+            "actor": "gen",
+            "emote": "chao"
+          }
+        }
+      ],
+      "msPhanXa": 6,
+      "msTiengDau": 816
+    },
+    {
+      "ten": "(a) phản xạ turnTo ≤ 300 ms",
+      "ok": true,
+      "ms": 6
+    },
+    {
+      "ten": "(b) content thuần → driver tự actor.say",
+      "ok": true,
+      "say": [
+        {
+          "actor": "gen",
+          "text": "Dạ, hôm nay mình làm V1 não local ạ",
+          "interrupt": true
+        }
+      ]
+    },
+    {
+      "ten": "(c) owner / stage_hear / ngoài danh sách bị chặn, không tới sân khấu",
+      "ok": true,
+      "lenhToiSanKhau": [
+        {
+          "cmd": "actor.turnTo",
+          "args": {
+            "actor": "gen",
+            "target": "owner",
+            "interrupt": true
+          }
+        },
+        {
+          "cmd": "actor.emote",
+          "args": {
+            "actor": "gen",
+            "emote": "suy-nghi"
+          }
+        },
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        },
+        {
+          "cmd": "actor.say",
+          "args": {
+            "actor": "gen",
+            "text": "Dạ em không làm thế được ạ",
+            "interrupt": true
+          }
+        }
+      ],
+      "ketQuaToolCuoiGuiModel": {
+        "role": "tool",
+        "tool_call_id": "c3",
+        "content": "{\"ok\":false,\"error\":\"Tool \\\"stage_reset\\\" không có trong danh sách được phép (actor_say, actor_emote, actor_moveTo, actor_faceTo, actor_play, actor_express, screen_show, fx_play, module_build, camera_preset).\"}"
+      }
+    },
+    {
+      "ten": "(c) lỗi chặn trả về model như kết quả tool",
+      "ok": true
+    },
+    {
+      "ten": "(d) handled:true → không gọi model, không lệnh nào",
+      "ok": true
+    },
+    {
+      "ten": "(e) to:\"owner\" câu tự do → không gọi model",
+      "ok": true
+    },
+    {
+      "ten": "(g) tối đa 3 vòng gọi model",
+      "ok": true,
+      "soVongGoiModel": 3,
+      "lenh": [
+        {
+          "cmd": "actor.turnTo",
+          "args": {
+            "actor": "gen",
+            "target": "owner",
+            "interrupt": true
+          }
+        },
+        {
+          "cmd": "actor.emote",
+          "args": {
+            "actor": "gen",
+            "emote": "suy-nghi"
+          }
+        },
+        {
+          "cmd": "stage.describe",
+          "args": {}
+        },
+        {
+          "cmd": "actor.emote",
+          "args": {
+            "actor": "gen",
+            "emote": "vui"
+          }
+        },
+        {
+          "cmd": "actor.emote",
+          "args": {
+            "actor": "gen",
+            "emote": "vui"
+          }
+        },
+        {
+          "cmd": "actor.emote",
+          "args": {
+            "actor": "gen",
+            "emote": "vui"
+          }
+        },
+        {
+          "cmd": "actor.say",
+          "args": {
+            "actor": "gen",
+            "text": "Em nghe rồi Sếp, nhưng em chưa nghĩ ra câu trả lời ạ",
+            "interrupt": true
+          }
+        }
+      ]
+    },
+    {
+      "ten": "(f) Ollama tắt → báo Sếp đúng MỘT lần",
+      "ok": true,
+      "soCauBao": 1,
+      "soLanThu": 5,
+      "songSot": true,
+      "log": [
+        "[nao-local] 06:51:04 driver não local · bridge 8890 · Ollama http://127.0.0.1:8895 · model (tự chọn)",
+        "[nao] 06:51:04 đã nối bridge ws://127.0.0.1:8890/?role=nao",
+        "[nao-local] 06:51:04 10 tool · đang nghe user.text/user.speech.",
+        "[nao-local] 06:51:04 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 1 sau 1000 ms.",
+        "[nao-local] 06:51:05 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 2 sau 2000 ms.",
+        "[nao-local] 06:51:07 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 3 sau 4000 ms.",
+        "[nao-local] 06:51:11 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 4 sau 8000 ms.",
+        "[nao-local] 06:51:13 SẾP → gen: «có ai không»",
+        "[nao-local] 06:51:13 CHƯA CÓ NÃO LOCAL (không tới được Ollama http://127.0.0.1:8895 (ECONNREFUSED)) — thử lại lần 5 sau 10000 ms.",
+        "[nao-local] 06:51:13 bỏ lượt: chưa có não local (đã báo Sếp: rồi)."
+      ]
+    },
+    {
+      "ten": "(f) thử lại theo backoff ≥ 3 lần, log lý do",
+      "ok": true
+    },
+    {
+      "ten": "(f) driver không chết",
+      "ok": true
+    }
+  ],
+  "loi": [],
+  "pgidDaDon": [
+    7966,
+    7995,
+    8025,
+    8068
+  ],
+  "xong": "2026-10-26T06:51:15.265Z",
+  "ghiChu": "Ollama GIẢ (kịch bản cố định) — chưa đo với model thật."
+}

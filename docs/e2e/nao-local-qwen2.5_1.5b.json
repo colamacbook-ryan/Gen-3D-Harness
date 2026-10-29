@@ -1,0 +1,493 @@
+{
+  "batDau": "2026-10-26T12:18:43.108Z",
+  "ollama": "http://127.0.0.1:9010/",
+  "modelMuon": "qwen2.5:1.5b",
+  "cong": {
+    "ws": 9000,
+    "tts": 9001,
+    "mcp": 9002,
+    "stt": 9003,
+    "vite": 9004,
+    "ghiOllama": 9011
+  },
+  "cau": [
+    {
+      "text": "Gen ơi, chào em",
+      "ketQuaSay": true,
+      "msUserText": 23,
+      "msGenBatDauNoi": [
+        {
+          "ms": 510,
+          "text": "Dạ, chào"
+        }
+      ],
+      "ollama": [],
+      "lenhToiSanKhau": [
+        {
+          "ms": 6,
+          "lenh": "actor.say {\"actor\":\"owner\",\"text\":\"Gen ơi, chào em\",\"interrupt\":true}"
+        }
+      ],
+      "suKien": [
+        {
+          "ms": 20,
+          "event": "user.command",
+          "text": "Gen ơi, chào em"
+        },
+        {
+          "ms": 23,
+          "event": "user.text",
+          "actor": "owner",
+          "text": "Gen ơi, chào em"
+        },
+        {
+          "ms": 507,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "Gen ơi, chào em"
+        },
+        {
+          "ms": 510,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Dạ, chào"
+        },
+        {
+          "ms": 524,
+          "event": "cmd.queued",
+          "actor": "gen"
+        },
+        {
+          "ms": 1723,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "Dạ, chào"
+        },
+        {
+          "ms": 2255,
+          "event": "actor.sayDone",
+          "actor": "owner",
+          "text": "Gen ơi, chào em"
+        },
+        {
+          "ms": 3730,
+          "event": "actor.emoteDone",
+          "actor": "gen"
+        }
+      ],
+      "driverLog": []
+    },
+    {
+      "text": "Gen ơi, ra cửa sổ đi",
+      "ketQuaSay": true,
+      "msUserText": 30,
+      "msGenBatDauNoi": [
+        {
+          "ms": 204,
+          "text": "Rõ Sếp, đi tới cua so"
+        }
+      ],
+      "ollama": [],
+      "lenhToiSanKhau": [
+        {
+          "ms": 2,
+          "lenh": "actor.say {\"actor\":\"owner\",\"text\":\"Gen ơi, ra cửa sổ đi\",\"interrupt\":true}"
+        }
+      ],
+      "suKien": [
+        {
+          "ms": 29,
+          "event": "user.command",
+          "text": "Gen ơi, ra cửa sổ đi"
+        },
+        {
+          "ms": 30,
+          "event": "user.text",
+          "actor": "owner",
+          "text": "Gen ơi, ra cửa sổ đi"
+        },
+        {
+          "ms": 204,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Rõ Sếp, đi tới cua so"
+        },
+        {
+          "ms": 204,
+          "event": "cmd.queued",
+          "actor": "gen"
+        },
+        {
+          "ms": 237,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "Gen ơi, ra cửa sổ đi"
+        },
+        {
+          "ms": 2373,
+          "event": "actor.sayDone",
+          "actor": "owner",
+          "text": "Gen ơi, ra cửa sổ đi"
+        },
+        {
+          "ms": 2409,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "Rõ Sếp, đi tới cua so"
+        }
+      ],
+      "driverLog": []
+    },
+    {
+      "text": "Gen ơi, mở màn hình cho anh",
+      "ketQuaSay": true,
+      "msUserText": 19,
+      "msPhanXa": 32,
+      "msGenBatDauNoi": [
+        {
+          "ms": 21178,
+          "text": "Em đang nghĩ, Sếp chờ chút ạ"
+        },
+        {
+          "ms": 301096,
+          "text": "Em nghĩ lâu quá, Sếp hỏi lại giúp em nhé"
+        }
+      ],
+      "ollama": [],
+      "lenhToiSanKhau": [
+        {
+          "ms": 2,
+          "lenh": "actor.say {\"actor\":\"owner\",\"text\":\"Gen ơi, mở màn hình cho anh\",\"interrupt\":true}"
+        },
+        {
+          "ms": 32,
+          "lenh": "actor.turnTo {\"actor\":\"gen\",\"target\":\"owner\",\"interrupt\":true}"
+        },
+        {
+          "ms": 33,
+          "lenh": "actor.emote {\"actor\":\"gen\",\"emote\":\"suy-nghi\"}"
+        },
+        {
+          "ms": 830,
+          "lenh": "stage.describe {}"
+        },
+        {
+          "ms": 20831,
+          "lenh": "actor.say {\"actor\":\"gen\",\"text\":\"Em đang nghĩ, Sếp chờ chút ạ\",\"emotion\":\"suy-nghi\",\"interrupt\":true}"
+        },
+        {
+          "ms": 300848,
+          "lenh": "actor.say {\"actor\":\"gen\",\"text\":\"Em nghĩ lâu quá, Sếp hỏi lại giúp em nhé\",\"emotion\":\"boi-roi\",\"interrupt\":true}"
+        }
+      ],
+      "suKien": [
+        {
+          "ms": 19,
+          "event": "user.text",
+          "actor": "owner",
+          "text": "Gen ơi, mở màn hình cho anh"
+        },
+        {
+          "ms": 35,
+          "event": "cmd.interrupted",
+          "actor": "gen"
+        },
+        {
+          "ms": 36,
+          "event": "actor.arrived",
+          "actor": "gen"
+        },
+        {
+          "ms": 40,
+          "event": "actor.turned",
+          "actor": "gen"
+        },
+        {
+          "ms": 142,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "Gen ơi, mở màn hình cho anh"
+        },
+        {
+          "ms": 2641,
+          "event": "actor.emoteDone",
+          "actor": "gen"
+        },
+        {
+          "ms": 2807,
+          "event": "actor.sayDone",
+          "actor": "owner",
+          "text": "Gen ơi, mở màn hình cho anh"
+        },
+        {
+          "ms": 21178,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Em đang nghĩ, Sếp chờ chút ạ"
+        },
+        {
+          "ms": 23941,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "Em đang nghĩ, Sếp chờ chút ạ"
+        },
+        {
+          "ms": 301096,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Em nghĩ lâu quá, Sếp hỏi lại giúp em nhé"
+        },
+        {
+          "ms": 304764,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "Em nghĩ lâu quá, Sếp hỏi lại giúp em nhé"
+        }
+      ],
+      "driverLog": [
+        {
+          "ms": 828,
+          "dong": "[nao-local] 12:19:29 SẾP → gen: «Gen ơi, mở màn hình cho anh»"
+        },
+        {
+          "ms": 300848,
+          "dong": "[nao-local] 12:24:29 lượt quá hạn 300000 ms."
+        },
+        {
+          "ms": 301097,
+          "dong": "[nao-local] 12:24:29 gen BẮT ĐẦU NÓI sau 301069 ms (từ lúc Sếp gõ)"
+        }
+      ]
+    },
+    {
+      "text": "Gen ơi, hôm nay mình nên làm gì trước?",
+      "ketQuaSay": true,
+      "msUserText": 29,
+      "msPhanXa": 34,
+      "msGenBatDauNoi": [
+        {
+          "ms": 20993,
+          "text": "Em đang nghĩ, Sếp chờ chút ạ"
+        },
+        {
+          "ms": 146840,
+          "text": "Chào Sếp, hôm nay sẽ là một chuyến đi khám phá thị trấn xanh. Có không có ai sẽ giúp mình đi?"
+        }
+      ],
+      "ollama": [
+        {
+          "ms": 145676,
+          "model": "qwen2.5:1.5b",
+          "soTool": 10,
+          "content": "Chào Sếp, hôm nay sẽ là một chuyến đi khám phá thị trấn xanh. Có không có ai sẽ giúp mình đi?",
+          "tool_calls": [],
+          "usage": {
+            "prompt_tokens": 2776,
+            "prompt_tokens_details": {
+              "cached_tokens": 2660
+            },
+            "completion_tokens": 31,
+            "total_tokens": 2807
+          }
+        }
+      ],
+      "lenhToiSanKhau": [
+        {
+          "ms": 3,
+          "lenh": "actor.say {\"actor\":\"owner\",\"text\":\"Gen ơi, hôm nay mình nên làm gì trước?\",\"interrupt\":true}"
+        },
+        {
+          "ms": 34,
+          "lenh": "actor.turnTo {\"actor\":\"gen\",\"target\":\"owner\",\"interrupt\":true}"
+        },
+        {
+          "ms": 35,
+          "lenh": "actor.emote {\"actor\":\"gen\",\"emote\":\"suy-nghi\"}"
+        },
+        {
+          "ms": 834,
+          "lenh": "stage.describe {}"
+        },
+        {
+          "ms": 20836,
+          "lenh": "actor.say {\"actor\":\"gen\",\"text\":\"Em đang nghĩ, Sếp chờ chút ạ\",\"emotion\":\"suy-nghi\",\"interrupt\":true}"
+        },
+        {
+          "ms": 146532,
+          "lenh": "actor.say {\"actor\":\"gen\",\"text\":\"Chào Sếp, hôm nay sẽ là một chuyến đi khám phá thị trấn xanh. Có không có ai sẽ giúp mình đi?\",\"interrupt\":true}"
+        }
+      ],
+      "suKien": [
+        {
+          "ms": 29,
+          "event": "user.text",
+          "actor": "owner",
+          "text": "Gen ơi, hôm nay mình nên làm gì trước?"
+        },
+        {
+          "ms": 45,
+          "event": "cmd.interrupted",
+          "actor": "gen"
+        },
+        {
+          "ms": 45,
+          "event": "actor.emoteCancelled",
+          "actor": "gen"
+        },
+        {
+          "ms": 47,
+          "event": "cmd.queued",
+          "actor": "gen"
+        },
+        {
+          "ms": 245,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "Gen ơi, hôm nay mình nên làm gì trước?"
+        },
+        {
+          "ms": 751,
+          "event": "actor.turned",
+          "actor": "gen"
+        },
+        {
+          "ms": 3355,
+          "event": "actor.emoteDone",
+          "actor": "gen"
+        },
+        {
+          "ms": 3782,
+          "event": "actor.sayDone",
+          "actor": "owner",
+          "text": "Gen ơi, hôm nay mình nên làm gì trước?"
+        },
+        {
+          "ms": 20993,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Em đang nghĩ, Sếp chờ chút ạ"
+        },
+        {
+          "ms": 23746,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "Em đang nghĩ, Sếp chờ chút ạ"
+        },
+        {
+          "ms": 146840,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Chào Sếp, hôm nay sẽ là một chuyến đi khám phá thị trấn xanh. Có không có ai sẽ giúp mình đi?"
+        }
+      ],
+      "driverLog": [
+        {
+          "ms": 833,
+          "dong": "[nao-local] 12:25:01 SẾP → gen: «Gen ơi, hôm nay mình nên làm gì trước?»"
+        },
+        {
+          "ms": 146841,
+          "dong": "[nao-local] 12:27:27 xong lượt sau 146008 ms · 1 vòng · 0 tool_call · driver nói hộ"
+        }
+      ]
+    }
+  ],
+  "loi": [],
+  "ollamaVersion": "0.40.11",
+  "sanKhau": {
+    "msLen": 14723,
+    "actors": [
+      {
+        "id": "owner",
+        "controlledBy": "owner",
+        "at": "buc-trung-tam"
+      },
+      {
+        "id": "gen",
+        "controlledBy": "agent",
+        "at": "ban-dieu-khien"
+      }
+    ]
+  },
+  "hanLuotMs": 300000,
+  "driverKhoiDong": [
+    "[nao-local] 12:19:06 driver não local · bridge 9000 · Ollama http://127.0.0.1:9011 · model qwen2.5:1.5b",
+    "[nao] 12:19:06 đã nối bridge ws://127.0.0.1:9000/?role=nao",
+    "[nao-local] 12:19:07 10 tool · đang nghe user.text/user.speech.",
+    "[nao-local] 12:19:07 não local sẵn sàng: http://127.0.0.1:9011 · model qwen2.5:1.5b"
+  ],
+  "cuoi": {
+    "gen": {
+      "at": null,
+      "state": "speaking",
+      "nearest": {
+        "place": "ban-2",
+        "distance": 1.07
+      }
+    },
+    "screens": [
+      {
+        "id": "may-tinh",
+        "pos": [
+          4,
+          1.1,
+          -4.25
+        ],
+        "showing": null,
+        "streaming": false,
+        "lines": 0
+      },
+      {
+        "id": "tivi",
+        "pos": [
+          -6.15,
+          0.95,
+          -0.5
+        ],
+        "showing": null,
+        "streaming": false,
+        "lines": 0
+      }
+    ],
+    "brainConnected": true
+  },
+  "loiConsole": [
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
+  ],
+  "bridgeLogLoi": [],
+  "driverLogDayDu": [
+    "[nao-local] 12:19:06 driver não local · bridge 9000 · Ollama http://127.0.0.1:9011 · model qwen2.5:1.5b",
+    "[nao] 12:19:06 đã nối bridge ws://127.0.0.1:9000/?role=nao",
+    "[nao-local] 12:19:07 10 tool · đang nghe user.text/user.speech.",
+    "[nao-local] 12:19:07 não local sẵn sàng: http://127.0.0.1:9011 · model qwen2.5:1.5b",
+    "[nao-local] 12:19:29 SẾP → gen: «Gen ơi, mở màn hình cho anh»",
+    "[nao-local] 12:24:29 lượt quá hạn 300000 ms.",
+    "[nao-local] 12:24:29 gen BẮT ĐẦU NÓI sau 301069 ms (từ lúc Sếp gõ)",
+    "[nao-local] 12:25:01 SẾP → gen: «Gen ơi, hôm nay mình nên làm gì trước?»",
+    "[nao-local] 12:27:27 xong lượt sau 146008 ms · 1 vòng · 0 tool_call · driver nói hộ"
+  ],
+  "pgid": [
+    {
+      "ten": "bridge",
+      "pgid": 14202
+    },
+    {
+      "ten": "vite",
+      "pgid": 14207
+    },
+    {
+      "ten": "driver",
+      "pgid": 14380
+    }
+  ],
+  "ketThuc": "2026-10-26T12:27:52.241Z"
+}

@@ -1,0 +1,96 @@
+{
+  "muc": [
+    {
+      "ten": "sân khấu lên và nối bridge",
+      "dat": true
+    },
+    {
+      "ten": "Bàn duyệt nối bridge, thấy sân khấu đang nối",
+      "dat": true
+    },
+    {
+      "ten": "báo cáo vào hàng chờ ký, Nam KHÔNG tự đóng dấu",
+      "dat": true,
+      "giayTo": [
+        "nhan-viec",
+        "bien-ban-hop",
+        "kiem-nhan",
+        "kiem-nhan",
+        "bao-cao"
+      ],
+      "giay": 273
+    },
+    {
+      "ten": "Bàn duyệt hiện \"Ký báo cáo\" trong Cần anh quyết",
+      "dat": true,
+      "tieuDe": "Ký báo cáo #5"
+    },
+    {
+      "ten": "token: báo cáo ghi token cả phiên, ô \"Token hôm nay\" khác 0",
+      "dat": true,
+      "moTa": "2 bài kiểm nhận · 0 bài trả lại · 19,3 nghìn token",
+      "oToken": "Token hôm nay19.300"
+    },
+    {
+      "ten": "Trả lại thiếu góp ý ⇒ không gửi, nhắc ghi góp ý",
+      "dat": true
+    },
+    {
+      "ten": "Ký duyệt ⇒ dấu CEO ký tay, hàng chờ rỗng",
+      "dat": true,
+      "dau": {
+        "so": 6,
+        "loai": "ceo-duyet",
+        "t": 1793207730893,
+        "ky": "Nam",
+        "tomTat": "CEO ĐÃ DUYỆT báo cáo số 5 (ký tay)",
+        "chiTiet": {
+          "baoCao": 5,
+          "kyTay": true
+        }
+      }
+    },
+    {
+      "ten": "sân khấu: Nam nói \"Đã ký duyệt…\" bằng bong bóng (sau khi Nhi diễn xong phần báo cáo)",
+      "dat": true
+    },
+    {
+      "ten": "Trả lại kèm góp ý ⇒ dấu CEO TRẢ LẠI mang góp ý",
+      "dat": true,
+      "dau2": {
+        "so": 12,
+        "loai": "ceo-tra-lai",
+        "t": 1793208023086,
+        "ky": "Nam",
+        "tomTat": "CEO TRẢ LẠI báo cáo số 11: Thiếu test cho ca token sai",
+        "chiTiet": {
+          "baoCao": 11,
+          "kyTay": true,
+          "gopY": "Thiếu test cho ca token sai"
+        }
+      }
+    },
+    {
+      "ten": "tải lại sân khấu ⇒ sổ còn nguyên",
+      "dat": true,
+      "truoc": 12,
+      "sau": 12
+    },
+    {
+      "ten": "390 px: trang không cuộn ngang",
+      "dat": true,
+      "rongTrang": 390
+    },
+    {
+      "ten": "Bàn duyệt: 0 lỗi console",
+      "dat": true,
+      "loi": []
+    }
+  ],
+  "loiConsole": [],
+  "loiSanKhau": [
+    "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  ],
+  "dat": true
+}

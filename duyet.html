@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bàn duyệt · Gen-Stage</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/src/duyet/duyet.css" />
+  </head>
+  <body>
+    <div id="app" class="app">
+      <nav class="sb" aria-label="Điều hướng">
+        <div class="sb-brand"><span class="sb-mark"></span><span>Bàn duyệt</span><span class="sb-ws">Gen Labs</span></div>
+        <a class="sb-item" href="#hom-nay" data-trang="hom-nay">Hôm nay <span class="dem" id="dem-hom-nay"></span></a>
+        <a class="sb-item" href="#so" data-trang="so">Sổ quy trình <span class="dem" id="dem-so"></span></a>
+        <a class="sb-item" href="#doi-ngu" data-trang="doi-ngu">Đội ngũ <span class="dem" id="dem-doi-ngu"></span></a>
+        <div class="sb-day">Ký ở đây · sân khấu diễn theo</div>
+      </nav>
+      <div class="noi-dung">
+        <header class="hd">
+          <div class="hd-duong" id="tieu-de">Hôm nay</div>
+          <div class="hd-phai">
+            <span class="trang-thai" id="tt-bridge"><i></i>Bridge</span>
+            <span class="trang-thai" id="tt-san-khau"><i></i>Sân khấu</span>
+            <span class="hd-gio mono" id="cap-nhat"></span>
+          </div>
+        </header>
+        <main id="trang" class="trang"></main>
+      </div>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/src/duyet/main.ts"></script>
+  </body>
+</html>

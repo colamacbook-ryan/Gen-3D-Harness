@@ -1,0 +1,839 @@
+{
+  "batDau": "2026-10-26T18:43:14.934Z",
+  "ollama": "http://127.0.0.1:9010/",
+  "modelMuon": "qwen2.5:3b",
+  "cong": {
+    "ws": 9000,
+    "tts": 9001,
+    "mcp": 9002,
+    "stt": 9003,
+    "vite": 9004,
+    "ghiOllama": 9011
+  },
+  "cau": [
+    {
+      "text": "Gen ơi, chào em",
+      "ketQuaSay": true,
+      "msUserText": 4,
+      "msPhanXa": 8,
+      "msGenBatDauNoi": [
+        {
+          "ms": 20815,
+          "text": "Em đang nghĩ, Sếp chờ chút ạ"
+        },
+        {
+          "ms": 86135,
+          "text": "chao em"
+        },
+        {
+          "ms": 91043
+        }
+      ],
+      "ollama": [
+        {
+          "ms": 85308,
+          "model": "qwen2.5:3b",
+          "soTool": 10,
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "actor_say",
+              "arguments": "{\"interrupt\":true,\"actor\":\"gen\",\"text\":\"chao em\"}"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 2763,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "completion_tokens": 34,
+            "total_tokens": 2797
+          }
+        },
+        {
+          "ms": 4847,
+          "model": "qwen2.5:3b",
+          "soTool": 10,
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "actor_say",
+              "arguments": "{}"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 2825,
+            "prompt_tokens_details": {
+              "cached_tokens": 2778
+            },
+            "completion_tokens": 18,
+            "total_tokens": 2843
+          }
+        },
+        {
+          "ms": 7193,
+          "model": "qwen2.5:3b",
+          "soTool": 10,
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "actor_moveTo",
+              "arguments": "{\"actor\":\"gen\",\"to\":\"ban-dieu-khien\"}"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 2874,
+            "prompt_tokens_details": {
+              "cached_tokens": 2834
+            },
+            "completion_tokens": 29,
+            "total_tokens": 2903
+          }
+        }
+      ],
+      "lenhToiSanKhau": [
+        {
+          "ms": 3,
+          "lenh": "actor.say {\"actor\":\"owner\",\"text\":\"Gen ơi, chào em\",\"interrupt\":true}"
+        },
+        {
+          "ms": 8,
+          "lenh": "actor.turnTo {\"actor\":\"gen\",\"target\":\"owner\"}"
+        },
+        {
+          "ms": 9,
+          "lenh": "actor.emote {\"actor\":\"gen\",\"emote\":\"suy-nghi\"}"
+        },
+        {
+          "ms": 815,
+          "lenh": "stage.describe {}"
+        },
+        {
+          "ms": 20814,
+          "lenh": "actor.say {\"actor\":\"gen\",\"text\":\"Em đang nghĩ, Sếp chờ chút ạ\",\"emotion\":\"suy-nghi\",\"interrupt\":true}"
+        },
+        {
+          "ms": 86134,
+          "lenh": "actor.say {\"interrupt\":true,\"actor\":\"gen\",\"text\":\"chao em\"}"
+        },
+        {
+          "ms": 90997,
+          "lenh": "actor.say {\"actor\":\"gen\"}"
+        },
+        {
+          "ms": 98197,
+          "lenh": "actor.moveTo {\"actor\":\"gen\",\"to\":\"ban-dieu-khien\"}"
+        }
+      ],
+      "suKien": [
+        {
+          "ms": 3,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "Gen ơi, chào em"
+        },
+        {
+          "ms": 4,
+          "event": "user.text",
+          "actor": "owner",
+          "text": "Gen ơi, chào em"
+        },
+        {
+          "ms": 1204,
+          "event": "actor.sayDone",
+          "actor": "owner",
+          "text": "Gen ơi, chào em"
+        },
+        {
+          "ms": 20815,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Em đang nghĩ, Sếp chờ chút ạ"
+        },
+        {
+          "ms": 22015,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "Em đang nghĩ, Sếp chờ chút ạ"
+        },
+        {
+          "ms": 86135,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "chao em"
+        },
+        {
+          "ms": 87335,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "chao em"
+        },
+        {
+          "ms": 91043,
+          "event": "actor.sayStart",
+          "actor": "gen"
+        },
+        {
+          "ms": 92201,
+          "event": "actor.sayDone",
+          "actor": "gen"
+        }
+      ],
+      "driverLog": [
+        {
+          "ms": 810,
+          "dong": "[nao-local] 18:43:19 SẾP → gen: «Gen ơi, chào em»"
+        },
+        {
+          "ms": 86139,
+          "dong": "[nao-local] 18:44:45 gen BẮT ĐẦU NÓI sau 86129 ms (từ lúc Sếp gõ)"
+        },
+        {
+          "ms": 86139,
+          "dong": "[nao-local] 18:44:45 → actor.say {\"interrupt\":true,\"actor\":\"gen\",\"text\":\"chao em\"} · ok"
+        },
+        {
+          "ms": 91001,
+          "dong": "[nao-local] 18:44:49 → actor.say {\"actor\":\"gen\"} · ok"
+        },
+        {
+          "ms": 98199,
+          "dong": "[nao-local] 18:44:57 → actor.moveTo {\"actor\":\"gen\",\"to\":\"ban-dieu-khien\"} · ok"
+        },
+        {
+          "ms": 98199,
+          "dong": "[nao-local] 18:44:57 xong lượt sau 97389 ms · 3 vòng · 3 tool_call · model tự nói"
+        }
+      ]
+    },
+    {
+      "text": "Gen ơi, ra cửa sổ đi",
+      "ketQuaSay": true,
+      "msUserText": 3,
+      "msPhanXa": 5,
+      "msGenBatDauNoi": [
+        {
+          "ms": 20810,
+          "text": "Em đang nghĩ, Sếp chờ chút ạ"
+        },
+        {
+          "ms": 23130,
+          "text": "Em nghe rồi Sếp, nhưng em chưa nghĩ ra câu trả lời ạ"
+        }
+      ],
+      "ollama": [
+        {
+          "ms": 10025,
+          "model": "qwen2.5:3b",
+          "soTool": 10,
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "actor_moveTo",
+              "arguments": "{\"actor\":\"gen\",\"to\":\"ban-cua\"}"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 2769,
+            "prompt_tokens_details": {
+              "cached_tokens": 2660
+            },
+            "completion_tokens": 29,
+            "total_tokens": 2798
+          }
+        },
+        {
+          "ms": 6441,
+          "model": "qwen2.5:3b",
+          "soTool": 10,
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "actor_faceTo",
+              "arguments": "{\"actor\":\"gen\",\"target\":\"camera\"}"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 2827,
+            "prompt_tokens_details": {
+              "cached_tokens": 2784
+            },
+            "completion_tokens": 24,
+            "total_tokens": 2851
+          }
+        },
+        {
+          "ms": 5834,
+          "model": "qwen2.5:3b",
+          "soTool": 10,
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "actor_moveTo",
+              "arguments": "{\"to\":\"ban-cua\",\"actor\":\"gen\"}"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 2883,
+            "prompt_tokens_details": {
+              "cached_tokens": 2850
+            },
+            "completion_tokens": 26,
+            "total_tokens": 2909
+          }
+        }
+      ],
+      "lenhToiSanKhau": [
+        {
+          "ms": 2,
+          "lenh": "actor.say {\"actor\":\"owner\",\"text\":\"Gen ơi, ra cửa sổ đi\",\"interrupt\":true}"
+        },
+        {
+          "ms": 5,
+          "lenh": "actor.turnTo {\"actor\":\"gen\",\"target\":\"owner\"}"
+        },
+        {
+          "ms": 5,
+          "lenh": "actor.emote {\"actor\":\"gen\",\"emote\":\"suy-nghi\"}"
+        },
+        {
+          "ms": 808,
+          "lenh": "stage.describe {}"
+        },
+        {
+          "ms": 10839,
+          "lenh": "actor.moveTo {\"actor\":\"gen\",\"to\":\"ban-cua\"}"
+        },
+        {
+          "ms": 17287,
+          "lenh": "actor.faceTo {\"actor\":\"gen\",\"target\":\"camera\"}"
+        },
+        {
+          "ms": 20808,
+          "lenh": "actor.say {\"actor\":\"gen\",\"text\":\"Em đang nghĩ, Sếp chờ chút ạ\",\"emotion\":\"suy-nghi\",\"interrupt\":true}"
+        },
+        {
+          "ms": 23126,
+          "lenh": "actor.moveTo {\"to\":\"ban-cua\",\"actor\":\"gen\"}"
+        },
+        {
+          "ms": 23128,
+          "lenh": "actor.say {\"actor\":\"gen\",\"text\":\"Em nghe rồi Sếp, nhưng em chưa nghĩ ra câu trả lời ạ\",\"interrupt\":true}"
+        }
+      ],
+      "suKien": [
+        {
+          "ms": 3,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "Gen ơi, ra cửa sổ đi"
+        },
+        {
+          "ms": 3,
+          "event": "user.text",
+          "actor": "owner",
+          "text": "Gen ơi, ra cửa sổ đi"
+        },
+        {
+          "ms": 1204,
+          "event": "actor.sayDone",
+          "actor": "owner",
+          "text": "Gen ơi, ra cửa sổ đi"
+        },
+        {
+          "ms": 20810,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Em đang nghĩ, Sếp chờ chút ạ"
+        },
+        {
+          "ms": 22012,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "Em đang nghĩ, Sếp chờ chút ạ"
+        },
+        {
+          "ms": 23130,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Em nghe rồi Sếp, nhưng em chưa nghĩ ra câu trả lời ạ"
+        },
+        {
+          "ms": 24331,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "Em nghe rồi Sếp, nhưng em chưa nghĩ ra câu trả lời ạ"
+        }
+      ],
+      "driverLog": [
+        {
+          "ms": 807,
+          "dong": "[nao-local] 18:45:04 SẾP → gen: «Gen ơi, ra cửa sổ đi»"
+        },
+        {
+          "ms": 10843,
+          "dong": "[nao-local] 18:45:14 → actor.moveTo {\"actor\":\"gen\",\"to\":\"ban-cua\"} · ok"
+        },
+        {
+          "ms": 17288,
+          "dong": "[nao-local] 18:45:21 → actor.faceTo {\"actor\":\"gen\",\"target\":\"camera\"} · ok"
+        },
+        {
+          "ms": 23127,
+          "dong": "[nao-local] 18:45:27 → actor.moveTo {\"to\":\"ban-cua\",\"actor\":\"gen\"} · ok"
+        },
+        {
+          "ms": 23130,
+          "dong": "[nao-local] 18:45:27 xong lượt sau 22323 ms · 3 vòng · 3 tool_call · driver nói hộ"
+        }
+      ]
+    },
+    {
+      "text": "Gen ơi, mở màn hình cho anh",
+      "ketQuaSay": true,
+      "msUserText": 3,
+      "msPhanXa": 6,
+      "msGenBatDauNoi": [
+        {
+          "ms": 13046,
+          "text": "Sếp à, em đang xem qua màn hình anh đây!"
+        },
+        {
+          "ms": 25562,
+          "text": "Rồi anh đi đến chỗ đặt nguồn bên trái!"
+        }
+      ],
+      "ollama": [
+        {
+          "ms": 12232,
+          "model": "qwen2.5:3b",
+          "soTool": 10,
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "actor_say",
+              "arguments": "{\"actor\":\"gen\",\"text\":\"Sếp à, em đang xem qua màn hình anh đây!\",\"emotion\":\"vui\",\"voice\":\"nu\"}"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 2771,
+            "prompt_tokens_details": {
+              "cached_tokens": 2660
+            },
+            "completion_tokens": 53,
+            "total_tokens": 2824
+          }
+        },
+        {
+          "ms": 12502,
+          "model": "qwen2.5:3b",
+          "soTool": 10,
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "actor_say",
+              "arguments": "{\"actor\":\"gen\",\"emotion\":\"vui\",\"text\":\"Rồi anh đi đến chỗ đặt nguồn bên trái!\",\"voice\":\"nu\"}"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 2850,
+            "prompt_tokens_details": {
+              "cached_tokens": 2786
+            },
+            "completion_tokens": 44,
+            "total_tokens": 2894
+          }
+        },
+        {
+          "ms": 9997,
+          "model": "qwen2.5:3b",
+          "soTool": 10,
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "actor_moveTo",
+              "arguments": "{\"actor\":\"gen\",\"to\":\"ban-1\"}"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 2926,
+            "prompt_tokens_details": {
+              "cached_tokens": 2886
+            },
+            "completion_tokens": 26,
+            "total_tokens": 2952
+          }
+        }
+      ],
+      "lenhToiSanKhau": [
+        {
+          "ms": 2,
+          "lenh": "actor.say {\"actor\":\"owner\",\"text\":\"Gen ơi, mở màn hình cho anh\",\"interrupt\":true}"
+        },
+        {
+          "ms": 6,
+          "lenh": "actor.turnTo {\"actor\":\"gen\",\"target\":\"owner\"}"
+        },
+        {
+          "ms": 6,
+          "lenh": "actor.emote {\"actor\":\"gen\",\"emote\":\"suy-nghi\"}"
+        },
+        {
+          "ms": 809,
+          "lenh": "stage.describe {}"
+        },
+        {
+          "ms": 13046,
+          "lenh": "actor.say {\"actor\":\"gen\",\"text\":\"Sếp à, em đang xem qua màn hình anh đây!\",\"emotion\":\"vui\",\"voice\":\"nu\"}"
+        },
+        {
+          "ms": 25557,
+          "lenh": "actor.say {\"actor\":\"gen\",\"emotion\":\"vui\",\"text\":\"Rồi anh đi đến chỗ đặt nguồn bên trái!\",\"voice\":\"nu\"}"
+        },
+        {
+          "ms": 35563,
+          "lenh": "actor.moveTo {\"actor\":\"gen\",\"to\":\"ban-1\"}"
+        }
+      ],
+      "suKien": [
+        {
+          "ms": 2,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "Gen ơi, mở màn hình cho anh"
+        },
+        {
+          "ms": 3,
+          "event": "user.text",
+          "actor": "owner",
+          "text": "Gen ơi, mở màn hình cho anh"
+        },
+        {
+          "ms": 1206,
+          "event": "actor.sayDone",
+          "actor": "owner",
+          "text": "Gen ơi, mở màn hình cho anh"
+        },
+        {
+          "ms": 13046,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Sếp à, em đang xem qua màn hình anh đây!"
+        },
+        {
+          "ms": 14248,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "Sếp à, em đang xem qua màn hình anh đây!"
+        },
+        {
+          "ms": 25562,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Rồi anh đi đến chỗ đặt nguồn bên trái!"
+        },
+        {
+          "ms": 26759,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "Rồi anh đi đến chỗ đặt nguồn bên trái!"
+        }
+      ],
+      "driverLog": [
+        {
+          "ms": 808,
+          "dong": "[nao-local] 18:45:35 SẾP → gen: «Gen ơi, mở màn hình cho anh»"
+        },
+        {
+          "ms": 13049,
+          "dong": "[nao-local] 18:45:48 gen BẮT ĐẦU NÓI sau 13042 ms (từ lúc Sếp gõ)"
+        },
+        {
+          "ms": 13049,
+          "dong": "[nao-local] 18:45:48 → actor.say {\"actor\":\"gen\",\"text\":\"Sếp à, em đang xem qua màn hình anh đây!\",\"emotion\":\"vui\",\"voice\":\"nu\"} · ok"
+        },
+        {
+          "ms": 25562,
+          "dong": "[nao-local] 18:46:00 → actor.say {\"actor\":\"gen\",\"emotion\":\"vui\",\"text\":\"Rồi anh đi đến chỗ đặt nguồn bên trái!\",\"voice\":\"nu\"} · ok"
+        },
+        {
+          "ms": 35564,
+          "dong": "[nao-local] 18:46:10 → actor.moveTo {\"actor\":\"gen\",\"to\":\"ban-1\"} · ok"
+        },
+        {
+          "ms": 35564,
+          "dong": "[nao-local] 18:46:10 xong lượt sau 34757 ms · 3 vòng · 3 tool_call · model tự nói"
+        }
+      ]
+    },
+    {
+      "text": "Gen ơi, hôm nay mình nên làm gì trước?",
+      "ketQuaSay": true,
+      "msUserText": 3,
+      "msPhanXa": 5,
+      "msGenBatDauNoi": [
+        {
+          "ms": 16807,
+          "text": "Em hãy test xanh sơ trước nhá, Sếp!"
+        }
+      ],
+      "ollama": [
+        {
+          "ms": 15994,
+          "model": "qwen2.5:3b",
+          "soTool": 10,
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "actor_say",
+              "arguments": "{\"voice\":\"nu\",\"actor\":\"gen\",\"text\":\"Em hãy test xanh sơ trước nhá, Sếp!\",\"emotion\":\"vui\"}"
+            },
+            {
+              "name": "actor_faceTo",
+              "arguments": "{\"target\":\"camera\",\"actor\":\"gen\"}"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 2774,
+            "prompt_tokens_details": {
+              "cached_tokens": 2660
+            },
+            "completion_tokens": 78,
+            "total_tokens": 2852
+          }
+        },
+        {
+          "ms": 9129,
+          "model": "qwen2.5:3b",
+          "soTool": 10,
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "actor_play",
+              "arguments": "{\"actor\":\"gen\",\"clip\":\"wave\"}"
+            },
+            {
+              "name": "actor_faceTo",
+              "arguments": "{\"actor\":\"gen\",\"target\":\"camera\"}"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 2899,
+            "prompt_tokens_details": {
+              "cached_tokens": 2789
+            },
+            "completion_tokens": 43,
+            "total_tokens": 2942
+          }
+        },
+        {
+          "ms": 11709,
+          "model": "qwen2.5:3b",
+          "soTool": 10,
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "module_build",
+              "arguments": "{\"id\":\"test-xanh\",\"shape\":\"tool\",\"label\":\"Test Xanh\",\"from\":\"main\"}"
+            },
+            {
+              "name": "actor_faceTo",
+              "arguments": "{\"actor\":\"gen\",\"target\":\"camera\"}"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 3002,
+            "prompt_tokens_details": {
+              "cached_tokens": 2941
+            },
+            "completion_tokens": 55,
+            "total_tokens": 3057
+          }
+        }
+      ],
+      "lenhToiSanKhau": [
+        {
+          "ms": 2,
+          "lenh": "actor.say {\"actor\":\"owner\",\"text\":\"Gen ơi, hôm nay mình nên làm gì trước?\",\"interrupt\":true}"
+        },
+        {
+          "ms": 5,
+          "lenh": "actor.turnTo {\"actor\":\"gen\",\"target\":\"owner\"}"
+        },
+        {
+          "ms": 6,
+          "lenh": "actor.emote {\"actor\":\"gen\",\"emote\":\"suy-nghi\"}"
+        },
+        {
+          "ms": 807,
+          "lenh": "stage.describe {}"
+        },
+        {
+          "ms": 16806,
+          "lenh": "actor.say {\"voice\":\"nu\",\"actor\":\"gen\",\"text\":\"Em hãy test xanh sơ trước nhá, Sếp!\",\"emotion\":\"vui\"}"
+        },
+        {
+          "ms": 16810,
+          "lenh": "actor.faceTo {\"target\":\"camera\",\"actor\":\"gen\"}"
+        },
+        {
+          "ms": 25942,
+          "lenh": "actor.play {\"actor\":\"gen\",\"clip\":\"wave\"}"
+        },
+        {
+          "ms": 25944,
+          "lenh": "actor.faceTo {\"actor\":\"gen\",\"target\":\"camera\"}"
+        },
+        {
+          "ms": 37657,
+          "lenh": "module.build {\"id\":\"test-xanh\",\"shape\":\"tool\",\"label\":\"Test Xanh\",\"from\":\"main\"}"
+        },
+        {
+          "ms": 37659,
+          "lenh": "actor.faceTo {\"actor\":\"gen\",\"target\":\"camera\"}"
+        }
+      ],
+      "suKien": [
+        {
+          "ms": 2,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "Gen ơi, hôm nay mình nên làm gì trước?"
+        },
+        {
+          "ms": 3,
+          "event": "user.text",
+          "actor": "owner",
+          "text": "Gen ơi, hôm nay mình nên làm gì trước?"
+        },
+        {
+          "ms": 1202,
+          "event": "actor.sayDone",
+          "actor": "owner",
+          "text": "Gen ơi, hôm nay mình nên làm gì trước?"
+        },
+        {
+          "ms": 16807,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Em hãy test xanh sơ trước nhá, Sếp!"
+        },
+        {
+          "ms": 18008,
+          "event": "actor.sayDone",
+          "actor": "gen",
+          "text": "Em hãy test xanh sơ trước nhá, Sếp!"
+        }
+      ],
+      "driverLog": [
+        {
+          "ms": 806,
+          "dong": "[nao-local] 18:46:18 SẾP → gen: «Gen ơi, hôm nay mình nên làm gì trước?»"
+        },
+        {
+          "ms": 16809,
+          "dong": "[nao-local] 18:46:34 gen BẮT ĐẦU NÓI sau 16804 ms (từ lúc Sếp gõ)"
+        },
+        {
+          "ms": 16809,
+          "dong": "[nao-local] 18:46:34 → actor.say {\"voice\":\"nu\",\"actor\":\"gen\",\"text\":\"Em hãy test xanh sơ trước nhá, Sếp!\",\"emotion\":\"vui\"} · ok"
+        },
+        {
+          "ms": 16811,
+          "dong": "[nao-local] 18:46:34 → actor.faceTo {\"target\":\"camera\",\"actor\":\"gen\"} · ok"
+        },
+        {
+          "ms": 25943,
+          "dong": "[nao-local] 18:46:43 → actor.play {\"actor\":\"gen\",\"clip\":\"wave\"} · ok"
+        },
+        {
+          "ms": 25946,
+          "dong": "[nao-local] 18:46:43 → actor.faceTo {\"actor\":\"gen\",\"target\":\"camera\"} · ok"
+        },
+        {
+          "ms": 37659,
+          "dong": "[nao-local] 18:46:54 → module.build {\"id\":\"test-xanh\",\"shape\":\"tool\",\"label\":\"Test Xanh\",\"from\":\"main\"} · ok"
+        },
+        {
+          "ms": 37660,
+          "dong": "[nao-local] 18:46:54 → actor.faceTo {\"actor\":\"gen\",\"target\":\"camera\"} · ok"
+        },
+        {
+          "ms": 37661,
+          "dong": "[nao-local] 18:46:54 xong lượt sau 36856 ms · 3 vòng · 6 tool_call · model tự nói"
+        }
+      ]
+    }
+  ],
+  "loi": [],
+  "ollamaVersion": "0.40.11",
+  "sanKhau": "GIẢ (ws ?role=stage) — không WebGL, không lớp hiểu lệnh C2, không validate",
+  "hanLuotMs": 600000,
+  "driverKhoiDong": [
+    "[nao-local] 18:43:17 driver não local · bridge 9000 · Ollama http://127.0.0.1:9011 · model qwen2.5:3b",
+    "[nao] 18:43:17 đã nối bridge ws://127.0.0.1:9000/?role=nao",
+    "[nao-local] 18:43:17 10 tool · đang nghe user.text/user.speech + ide.event (test/task/git).",
+    "[nao-local] 18:43:17 não local sẵn sàng: http://127.0.0.1:9011 · model qwen2.5:3b"
+  ],
+  "cuoi": {
+    "gen": {
+      "at": "ban-dieu-khien",
+      "state": "idle"
+    },
+    "screens": [
+      {
+        "id": "may-tinh",
+        "showing": null
+      },
+      {
+        "id": "tivi",
+        "showing": null
+      }
+    ],
+    "brainConnected": true
+  },
+  "bridgeLogLoi": [],
+  "driverLogDayDu": [
+    "[nao-local] 18:43:17 driver não local · bridge 9000 · Ollama http://127.0.0.1:9011 · model qwen2.5:3b",
+    "[nao] 18:43:17 đã nối bridge ws://127.0.0.1:9000/?role=nao",
+    "[nao-local] 18:43:17 10 tool · đang nghe user.text/user.speech + ide.event (test/task/git).",
+    "[nao-local] 18:43:17 não local sẵn sàng: http://127.0.0.1:9011 · model qwen2.5:3b",
+    "[nao-local] 18:43:19 SẾP → gen: «Gen ơi, chào em»",
+    "[nao-local] 18:44:45 gen BẮT ĐẦU NÓI sau 86129 ms (từ lúc Sếp gõ)",
+    "[nao-local] 18:44:45 → actor.say {\"interrupt\":true,\"actor\":\"gen\",\"text\":\"chao em\"} · ok",
+    "[nao-local] 18:44:49 → actor.say {\"actor\":\"gen\"} · ok",
+    "[nao-local] 18:44:57 → actor.moveTo {\"actor\":\"gen\",\"to\":\"ban-dieu-khien\"} · ok",
+    "[nao-local] 18:44:57 xong lượt sau 97389 ms · 3 vòng · 3 tool_call · model tự nói",
+    "[nao-local] 18:45:04 SẾP → gen: «Gen ơi, ra cửa sổ đi»",
+    "[nao-local] 18:45:14 → actor.moveTo {\"actor\":\"gen\",\"to\":\"ban-cua\"} · ok",
+    "[nao-local] 18:45:21 → actor.faceTo {\"actor\":\"gen\",\"target\":\"camera\"} · ok",
+    "[nao-local] 18:45:27 → actor.moveTo {\"to\":\"ban-cua\",\"actor\":\"gen\"} · ok",
+    "[nao-local] 18:45:27 xong lượt sau 22323 ms · 3 vòng · 3 tool_call · driver nói hộ",
+    "[nao-local] 18:45:35 SẾP → gen: «Gen ơi, mở màn hình cho anh»",
+    "[nao-local] 18:45:48 gen BẮT ĐẦU NÓI sau 13042 ms (từ lúc Sếp gõ)",
+    "[nao-local] 18:45:48 → actor.say {\"actor\":\"gen\",\"text\":\"Sếp à, em đang xem qua màn hình anh đây!\",\"emotion\":\"vui\",\"voice\":\"nu\"} · ok",
+    "[nao-local] 18:46:00 → actor.say {\"actor\":\"gen\",\"emotion\":\"vui\",\"text\":\"Rồi anh đi đến chỗ đặt nguồn bên trái!\",\"voice\":\"nu\"} · ok",
+    "[nao-local] 18:46:10 → actor.moveTo {\"actor\":\"gen\",\"to\":\"ban-1\"} · ok",
+    "[nao-local] 18:46:10 xong lượt sau 34757 ms · 3 vòng · 3 tool_call · model tự nói",
+    "[nao-local] 18:46:18 SẾP → gen: «Gen ơi, hôm nay mình nên làm gì trước?»",
+    "[nao-local] 18:46:34 gen BẮT ĐẦU NÓI sau 16804 ms (từ lúc Sếp gõ)",
+    "[nao-local] 18:46:34 → actor.say {\"voice\":\"nu\",\"actor\":\"gen\",\"text\":\"Em hãy test xanh sơ trước nhá, Sếp!\",\"emotion\":\"vui\"} · ok",
+    "[nao-local] 18:46:34 → actor.faceTo {\"target\":\"camera\",\"actor\":\"gen\"} · ok",
+    "[nao-local] 18:46:43 → actor.play {\"actor\":\"gen\",\"clip\":\"wave\"} · ok",
+    "[nao-local] 18:46:43 → actor.faceTo {\"actor\":\"gen\",\"target\":\"camera\"} · ok",
+    "[nao-local] 18:46:54 → module.build {\"id\":\"test-xanh\",\"shape\":\"tool\",\"label\":\"Test Xanh\",\"from\":\"main\"} · ok",
+    "[nao-local] 18:46:54 → actor.faceTo {\"actor\":\"gen\",\"target\":\"camera\"} · ok",
+    "[nao-local] 18:46:54 xong lượt sau 36856 ms · 3 vòng · 6 tool_call · model tự nói"
+  ],
+  "pgid": [
+    {
+      "ten": "bridge",
+      "pgid": 618
+    },
+    {
+      "ten": "driver",
+      "pgid": 647
+    }
+  ],
+  "ketThuc": "2026-10-26T18:47:01.854Z"
+}

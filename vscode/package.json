@@ -1,0 +1,199 @@
+{
+  "name": "gen-stage-vscode",
+  "displayName": "Gen-Stage",
+  "description": "Sân khấu Gen-Stage trong tab editor + chatroom cột phải: não LLM local, giọng nói, giác quan IDE, đội ngũ agent theo quy trình.",
+  "version": "0.1.0",
+  "publisher": "gen-labs",
+  "private": true,
+  "license": "SEE LICENSE IN LICENSE",
+  "engines": {
+    "vscode": "^1.106.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Restricted Mode: xem sân khấu + chatroom với bridge/vite có sẵn; KHÔNG tự bật tiến trình nào (kể cả driver não và tai-nghe/giọng nói). genStage.pnpm/genStage.root/genStage.nao/genStage.taiNghe.nguon không đọc từ workspace. Giác quan IDE (V3) không gửi gì khi workspace chưa tin cậy.",
+      "restrictedConfigurations": [
+        "genStage.pnpm",
+        "genStage.root",
+        "genStage.nao",
+        "genStage.taiNghe.nguon"
+      ]
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "genStage.moSanKhau",
+        "title": "Mở sân khấu",
+        "category": "Gen-Stage"
+      },
+      {
+        "command": "genStage.moBanDuyet",
+        "title": "Mở Bàn duyệt (ký báo cáo của đội agent)",
+        "category": "Gen-Stage"
+      },
+      {
+        "command": "genStage.chonRoot",
+        "title": "Chọn thư mục repo",
+        "category": "Gen-Stage"
+      },
+      {
+        "command": "genStage.batDichVu",
+        "title": "Bật bridge + sân khấu",
+        "category": "Gen-Stage"
+      },
+      {
+        "command": "genStage.tatDichVu",
+        "title": "Tắt dịch vụ do VS Code bật",
+        "category": "Gen-Stage"
+      },
+      {
+        "command": "genStage.xemLog",
+        "title": "Xem nhật ký",
+        "category": "Gen-Stage"
+      },
+      {
+        "command": "genStage.noi",
+        "title": "Nói (bật/tắt)",
+        "category": "Gen-Stage"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "genStage.noi",
+        "key": "ctrl+alt+space",
+        "mac": "ctrl+alt+space"
+      }
+    ],
+    "viewsContainers": {
+      "secondarySidebar": [
+        {
+          "id": "genStage",
+          "title": "Gen-Stage",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "genStage": [
+        {
+          "type": "webview",
+          "id": "genStage.chatroom",
+          "name": "Chatroom"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Gen-Stage",
+      "properties": {
+        "genStage.root": {
+          "type": "string",
+          "default": "",
+          "description": "Thư mục repo Gen-3D-Harness (có bridge/server.ts) — chỉ đặt được ở User settings (scope machine). Bỏ trống = đọc chỗ `scripts/cai-vscode.sh` đã ghi (~/.config/gen-stage/root), rồi tự tìm trong workspace, rồi thư mục cha của extension; root tự dò phải được Sếp xác nhận một lần (nhớ theo workspace) trước khi tự bật tiến trình. Lệnh \"Gen-Stage: Chọn thư mục repo\" đặt giúp.",
+          "scope": "machine"
+        },
+        "genStage.bridgePort": {
+          "type": "number",
+          "default": 8787,
+          "description": "Cổng ws của bridge."
+        },
+        "genStage.ttsPort": {
+          "type": "number",
+          "default": 8788,
+          "description": "Cổng HTTP giọng nói (TTS) của bridge."
+        },
+        "genStage.devPort": {
+          "type": "number",
+          "default": 5173,
+          "description": "Cổng vite (app sân khấu)."
+        },
+        "genStage.tuBat": {
+          "type": "boolean",
+          "default": true,
+          "description": "Cổng chưa có ai nghe thì tự bật `pnpm bridge` + vite (127.0.0.1) — chỉ trong workspace đã tin cậy. Tiến trình có sẵn thì luôn dùng lại, không bao giờ tắt."
+        },
+        "genStage.pnpm": {
+          "type": "string",
+          "default": "pnpm",
+          "description": "Lệnh pnpm: tên lệnh tìm trong PATH (chỉ các thư mục tuyệt đối) hoặc đường dẫn tuyệt đối — đường dẫn tương đối bị từ chối. Chỉ đặt được ở User settings (scope machine).",
+          "scope": "machine"
+        },
+        "genStage.nao": {
+          "type": "string",
+          "enum": [
+            "tat",
+            "local",
+            "agy"
+          ],
+          "enumDescriptions": [
+            "Không bật driver não nào (mặc định).",
+            "`pnpm nao-local` — não LLM local (Ollama), chạy offline.",
+            "`pnpm nao` — driver agy CLI (giữ agy ấm trong tmux)."
+          ],
+          "default": "tat",
+          "description": "Driver não extension tự bật (chỉ trong workspace đã tin cậy, cần genStage.root hoặc root đã được xác nhận). Chỉ MỘT driver cho một bridge: đã có driver khác nối cùng cổng thì không bật thêm; đổi setting thì tắt driver cũ do VS Code bật. Chỉ đặt được ở User settings (scope machine).",
+          "scope": "machine"
+        },
+        "genStage.sttPort": {
+          "type": "number",
+          "default": 8790,
+          "description": "V2 — cổng HTTP nhận dạng giọng (`POST /stt`) của bridge, truyền cho tai-nghe (`--stt-port`). Chỉ đặt được ở User settings (scope machine).",
+          "scope": "machine"
+        },
+        "genStage.mcpPort": {
+          "type": "number",
+          "default": 8789,
+          "description": "Cổng MCP HTTP của bridge do extension tự bật (GEN_STAGE_MCP_PORT). Đổi khi đã có bridge khác giữ 8789. Chỉ đặt được ở User settings (scope machine).",
+          "scope": "machine"
+        },
+        "genStage.taiNghe.nguon": {
+          "type": "string",
+          "default": "",
+          "description": "V2 — nguồn thu (micro) cho tai-nghe (`--nguon`), vd tên nguồn PipeWire/Pulse trong `pactl list short sources`. Bỏ trống = tai-nghe tự dò. Giá trị bắt đầu bằng \"-\" hoặc có ký tự điều khiển bị bỏ qua. Chỉ đặt được ở User settings (scope machine).",
+          "scope": "machine"
+        },
+        "genStage.giacQuan.batTat": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "description": "V3 — Giác quan IDE: báo sân khấu việc thật (lưu file, lỗi biên dịch, test/task, git commit) qua `stage.notice` để Gen phản ứng. Chỉ gửi tên file tương đối + số đếm, KHÔNG nội dung file/đường dẫn tuyệt đối/message lỗi. Chỉ khi workspace đã tin cậy."
+        },
+        "genStage.giacQuan.save": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "description": "V3 — báo lưu file (gộp 5 s, chỉ tên file tương đối trong workspace; bỏ .git/, node_modules/, file ngoài workspace)."
+        },
+        "genStage.giacQuan.diag": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "description": "V3 — báo khi số lỗi biên dịch (Error) toàn workspace chuyển 0 → >0 hoặc >0 → 0 (đứng yên 3 s). Chỉ gửi SỐ lỗi."
+        },
+        "genStage.giacQuan.test": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "description": "V3 — báo task/test kết thúc (exit code 0 = tốt, khác 0 = xấu), kèm tên task."
+        },
+        "genStage.giacQuan.git": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "description": "V3 — báo git commit mới (qua extension vscode.git): 7 ký tự hash + dòng đầu message (cắt 80)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node ../node_modules/typescript/bin/tsc -p tsconfig.json && node ../node_modules/typescript/bin/tsc -p tsconfig.web.json",
+    "check": "node ../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit && node ../node_modules/typescript/bin/tsc -p tsconfig.web.json --noEmit",
+    "test": "node ../node_modules/typescript/bin/tsc -p tsconfig.json && node ../node_modules/typescript/bin/tsc -p tsconfig.web.json && node --test test/*.test.mjs"
+  }
+}

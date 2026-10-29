@@ -1,0 +1,338 @@
+/**
+ * main.ts — nối dây: sân khấu ↔ dispatcher ↔ giao diện ↔ bridge.
+ *
+ * File này chỉ **lắp**, không chứa nghiệp vụ: cảnh ở `src/stage/`, bộ lệnh ở
+ * `src/api/commands/`, giao diện ở `src/ui/`. Cuối cùng phơi `window.stage` để
+ * Playwright, bridge và (sau này) MCP gọi vào đúng một cửa.
+ */
+import { EventBus } from './events';
+import { NhatKy } from './log';
+import { taoRegistry } from './api/commands/index';
+import { Dispatcher } from './api/dispatcher';
+import { World } from './stage/world';
+import { hopChanHienTai, timDuong } from './stage/bo-cuc';
+import { dungGiaoDien } from './ui/index';
+import { batPhim } from './ui/phim';
+import { batDoFps, coDoFps } from './ui/do-fps';
+// B3 (#21) — ô chat dưới màn hình: cùng đường với Space, bắn `user.text`.
+import { batOChat, type OChat } from './ui/o-chat';
+// C2 (#32) — lớp hiểu lệnh giọng: nghe `user.text`/`user.speech` trên bus.
+import { batHieuLenh } from './behavior/hieu-lenh';
+// C0 (#28) — phản xạ xã hội: Gen quay lại, nhìn, đáp ngay khi Sếp gọi, KHÔNG chờ não.
+import { batPhanXa } from './behavior/phan-xa';
+// J2 (#79) — rảnh > 20 s thì Nhi tự sinh hoạt; Boss gõ/nói là cắt ngay.
+import { batTuSinhHoat } from './behavior/tu-sinh-hoat';
+import { batDoiNgu, type DuLieuSoDoiNgu, type KhoSoDoiNgu, type MayDoiNgu, type TrangThaiDoiNgu } from './behavior/doi-ngu';
+import { datMayDoiNgu } from './behavior/so-doi-ngu';
+
+/** Bàn duyệt — sổ quy trình + báo cáo chờ ký sống qua lần tải lại trang (lỗi lưu thì thôi, không chặn sân khấu). */
+function khoSoTrinhDuyet(): KhoSoDoiNgu {
+  const KHOA = 'gen-stage.doi-ngu.v1';
+  return {
+    doc: () => {
+      try {
+        const tho = localStorage.getItem(KHOA);
+        return tho ? (JSON.parse(tho) as DuLieuSoDoiNgu) : null;
+      } catch {
+        return null;
+      }
+    },
+    ghi: (d) => {
+      try {
+        localStorage.setItem(KHOA, JSON.stringify(d));
+      } catch {
+        /* hết chỗ / chế độ riêng tư — sổ vẫn sống trong bộ nhớ */
+      }
+    },
+  };
+}
+import { BridgeClient, coBatBridge, urlTts } from './bridge-client';
+// B2 (#20) — giọng tiếng Việt thật + nút mở khoá autoplay.
+import { lopTieng } from './audio/tts-client';
+import { ganNutTieng } from './audio/nut-tieng';
+// C1 (#31) — giữ phím V (hoặc nút 🎤) để nói; chữ nhận được đổ vào ô chat.
+import { batMic, type Mic } from './audio/mic';
+import { urlStt } from './bridge-client';
+// V1 (INT-06) — chế độ nền: focus/ẩn của cửa sổ + tin vỏ panel VS Code.
+import { theoDoiCheDoNen, type RenderMode } from './stage/che-do-nen';
+import type { Command, Result, StageEvent } from './api/types';
+
+/** Cửa duy nhất cho test / bridge / agent. */
+export interface CuaStage {
+  run(cmd: string, args?: Record<string, unknown>): Promise<Result>;
+  runCommand(c: Command): Promise<Result>;
+  describe(): Promise<Result>;
+  bootstrap(): Promise<Result>;
+  on(event: string, fn: (e: StageEvent) => void): () => void;
+  /** Nhật ký JSON (bằng chứng kiểm thử). */
+  log(): string;
+  bridge(bat: boolean): void;
+  san: boolean;
+  /**
+   * A3 — agent đẩy từng mẩu nội dung khi `screen.stream` có `source: "agent"`
+   * (spec mục 3.4b). Gọi trực tiếp (không qua dispatcher): vẽ lên màn hình
+   * NGAY và bắn `screen.fed` để Action đang chờ của `screen.stream` biết còn
+   * sống, tự lùi hẹn giờ kết thúc.
+   */
+  feed(screen: string, chunk: string): void;
+  /** Số đo xương (bằng chứng số cho `scripts/kiem-a2.mjs`). */
+  doXuong(actor: string): Record<string, unknown>;
+  /**
+   * G1 vòng 3 (#56) — chỉ số đo TÓC, rẻ (không quét hộp bao chính xác như
+   * `doXuong`), để lấy mẫu dày 100 ms suốt một emote mà không làm hỏng FPS.
+   */
+  doToc(actor: string): Record<string, unknown>;
+  /**
+   * Sổ đo lúc dựng của từng khối nội thất, gộp hai bằng chứng: đáy / nóc / mặt ngồi
+   * (G1 vòng 3, review PR #70 — "không món nào lơ lửng") và hộp bao thật `min`/`max`
+   * (J1 #78 — sát tường, vùng giữa trống). `gopTinh()` dọn nhóm `khoi:<id>` nên đo
+   * lại trên cảnh ra rỗng — phải đọc sổ này.
+   */
+  doKhoi(): Record<string, { day: number; noc: number; matNgoi?: number; min?: number[]; max?: number[] }>;
+  /**
+   * D1b (#48) — số lượt vẽ / tam giác / số mesh của khung vừa render. Boss
+   * 26/10: "đừng đòi GPU lớn" → bằng chứng hiệu năng phải là SỐ, không phải
+   * cảm giác. Mốc tự đặt: `calls ≤ 150`, `triangles ≤ 300k`.
+   */
+  hieuNang(): Record<string, unknown>;
+  /** INT-07 — đội ngũ agent: ai đang làm gì, ở khu nào (bằng chứng/kiểm). */
+  doiNgu(): TrangThaiDoiNgu | null;
+  /** Văn phòng 27/10 — bộ hộp vật cản ĐANG có hiệu lực (căn nhà hoặc cảnh đã nạp), cho script bằng chứng. */
+  vatCan(): ReadonlyArray<{ id: string; x0: number; x1: number; z0: number; z1: number }>;
+  /** Đường A* mà `actor.moveTo` sẽ đi từ (x0,z0) tới (x1,z1) — cùng hàm sân khấu dùng. */
+  duongDi(x0: number, z0: number, x1: number, z1: number): Array<[number, number]>;
+  /** D1b — chiếu điểm thế giới ra toạ độ điểm ảnh (đo luma ĐÚNG vùng mặt). */
+  chieuDiem(p: [number, number, number]): { x: number; y: number };
+  /** Đặt góc máy thủ công, tức thì (ảnh bằng chứng — xem `World.datMayThu`). */
+  datMay(vt: [number, number, number], tam: [number, number, number]): void;
+  /**
+   * B2 — mở khoá autoplay (trình duyệt chặn tiếng tới khi có cú bấm thật).
+   * Trả `true` khi `AudioContext` đã chạy. Script bằng chứng gọi cái này.
+   */
+  batTieng(): Promise<boolean>;
+  /**
+   * B2 — số đo nhép miệng theo âm của một actor (bằng chứng):
+   * `{ soMau, soMauDuong, dinh }`. `soMauDuong > 0` = miệng đã chạy theo âm thật.
+   */
+  doTieng(actor: string): { soMau: number; soMauDuong: number; dinh: number };
+  /**
+   * B3 — gõ một câu vào ô chat như Boss (bằng chứng `scripts/kiem-b3.mjs`).
+   * Đi đúng đường của ô chat → `actor.say` owner → sự kiện `user.text`.
+   */
+  guiChat(chu: string): Promise<boolean>;
+  /**
+   * C1 — giữ/nhả mic như Boss giữ/nhả phím V (bằng chứng `scripts/kiem-c1.mjs`).
+   * `micKet()` chờ xong cả vòng POST /stt → chữ vào ô chat.
+   */
+  micBat(): Promise<void>;
+  micKet(): Promise<void>;
+  /** C1 — số đo lượt mic gần nhất: RMS, byte gửi, chữ, độ tin, trễ. */
+  micDo(): Record<string, unknown>;
+  /**
+   * V1 (INT-06) — số đo chế độ vẽ: `{ renderMode, soKhung, bloom, pixelRatio }`.
+   * `soKhung` đếm khung VẼ thật (bằng chứng fps của `scripts/kiem-nen.mjs`).
+   */
+  doVe(): { renderMode: RenderMode; soKhung: number; bloom: boolean; pixelRatio: number };
+}
+
+declare global {
+  interface Window {
+    stage: CuaStage;
+  }
+}
+
+const canvas = document.getElementById('stage') as HTMLCanvasElement;
+const loading = document.getElementById('loading')!;
+const loadingText = document.getElementById('loading-text')!;
+const toastEl = document.getElementById('toast')!;
+const bongBongLop = document.getElementById('bong-bong-lop')!;
+
+const bus = new EventBus();
+const nhatKy = new NhatKy();
+nhatKy.theoBus(bus);
+
+let world: World;
+try {
+  world = new World(canvas, bus, bongBongLop);
+} catch (e) {
+  console.error('[Gen-Stage] Không tạo được WebGL:', e);
+  loadingText.textContent =
+    'Trình duyệt này không bật được WebGL (3D). Hãy mở bằng Chrome/Firefox thật trên máy, ' +
+    'không dùng khung xem trong app. Kiểm tra: chrome://gpu → WebGL phải là "Hardware accelerated".';
+  document.querySelector('#loading .spin')?.remove();
+  throw e;
+}
+/**
+ * V1 (INT-06) — CHẾ ĐỘ NỀN, nối ngay sau khi có sân khấu (trước cả khi nạp
+ * cảnh) để tin `hienAn` đầu tiên của vỏ VS Code không bị rơi. Không qua
+ * dispatcher: không phải lệnh, não không chỉnh được fps (CNS-020).
+ */
+theoDoiCheDoNen(window, document, (mode, tin) => {
+  const lyDo = tin.an ? 'tab-an' : tin.vs ? (mode === 'nen' ? 'vscode-khong-active' : 'vscode-active') : tin.coFocus ? 'focus' : 'mat-focus';
+  world.datCheDoVe(mode, lyDo);
+});
+
+const registry = taoRegistry();
+const dispatcher = new Dispatcher({ registry, world, bus, nhatKy });
+/**
+ * C2 (#32) — BẬT TRƯỚC cầu nối: lớp hiểu lệnh phải là người nghe `user.text`
+ * ĐẦU TIÊN để kịp đánh dấu `handled: true` trước khi sự kiện đi ra bridge/MCP
+ * (xem `src/behavior/hieu-lenh.ts`).
+ */
+const hieuLenh = batHieuLenh(dispatcher, bus, (chu) => toast(chu));
+const bridge = new BridgeClient(dispatcher, bus);
+// B2 — lớp tiếng dùng chung; `null` nếu trình duyệt không có Web Audio.
+const tieng = lopTieng();
+tieng?.capHinh({ url: urlTts() });
+
+let hanToast = 0;
+function toast(chu: string): void {
+  toastEl.textContent = chu;
+  toastEl.classList.add('hien');
+  clearTimeout(hanToast);
+  hanToast = window.setTimeout(() => toastEl.classList.remove('hien'), 2600);
+}
+
+/* --------------------------------------------------------- cửa window.stage */
+
+let sanSang = false;
+/** B3 — ô chat (gán sau khi giao diện dựng xong). */
+let oChat: OChat | null = null;
+/** C1 — lớp mic (null khi chưa dựng giao diện xong). */
+let mic: Mic | null = null;
+/** INT-07 — máy đội ngũ (bật trong `khoiDong` sau khi dựng cảnh). */
+let mayDoiNgu: MayDoiNgu | null = null;
+
+window.stage = {
+  run: (cmd, args) => dispatcher.run(cmd, args, 'window.stage'),
+  runCommand: (c) => dispatcher.runCommand(c, 'window.stage'),
+  describe: () => dispatcher.run('stage.describe', {}, 'window.stage'),
+  bootstrap: () => dispatcher.run('stage.bootstrap', {}, 'window.stage'),
+  on: (event, fn) => bus.on(event, fn),
+  log: () => nhatKy.toJSON(),
+  bridge: (bat) => (bat ? bridge.bat() : bridge.tat()),
+  doXuong: (actor) => world.doXuongActor(actor),
+  doToc: (actor) => world.doTocActor(actor),
+  doKhoi: () => {
+    const hop = world.doKhoi();
+    const ra: ReturnType<CuaStage['doKhoi']> = world.doKhoiNha();
+    for (const [id, h] of Object.entries(hop)) ra[id] = { ...(ra[id] ?? { day: h.min[1]!, noc: h.max[1]! }), ...h };
+    return ra;
+  },
+  hieuNang: () => world.doHieuNang(),
+  doiNgu: () => mayDoiNgu?.trangThai() ?? null,
+  vatCan: () => hopChanHienTai(),
+  duongDi: (x0, z0, x1, z1) => timDuong(x0, z0, x1, z1, 0.34),
+  chieuDiem: (p) => world.chieuDiem(p),
+  datMay: (vt, tam) => world.datMayThu(vt, tam),
+  batTieng: () => tieng?.batTieng() ?? Promise.resolve(false),
+  doTieng: (actor) => tieng?.thongKe(actor) ?? { soMau: 0, soMauDuong: 0, dinh: 0 },
+  get san() {
+    return sanSang;
+  },
+  guiChat: (chu) => oChat?.gui(chu) ?? Promise.resolve(false),
+  micBat: () => mic?.batGhi() ?? Promise.resolve(),
+  micKet: () => mic?.ketGhi() ?? Promise.resolve(),
+  micDo: () => ({ ...(mic?.thongKe() ?? {}), dung: mic?.dung() ?? false }),
+  doVe: () => world.doVe(),
+  feed: (screen, chunk) => {
+    world.screenAppend(screen, chunk);
+    bus.emit('screen.fed', { screen, chunk });
+  },
+} as CuaStage;
+
+/* --------------------------------------------------------------- khởi động */
+
+async function khoiDong(): Promise<void> {
+  try {
+    await world.napCanh((chu) => {
+      loadingText.textContent = chu;
+    });
+  } catch (e) {
+    console.error('[Gen-Stage] Không nạp được cảnh:', e);
+    loadingText.textContent =
+      'Không nạp được nhân vật. Chạy: bash scripts/fetch-assets.sh';
+    setTimeout(() => loading.classList.add('xong'), 2600);
+    return;
+  }
+
+  world.batDauVe();
+  loadingText.textContent = 'Đang dựng bảng lệnh…';
+  await dungGiaoDien(dispatcher, bus, nhatKy);
+
+  // Issue #14 — bàn phím là mặt thứ ba của cùng bộ lệnh, vẫn qua dispatcher.
+  batPhim(dispatcher, toast);
+
+  // B3 (#21) — chỗ Boss gõ cho Gen: cùng `actor.say` lên nhân vật owner.
+  oChat = batOChat(dispatcher, toast);
+
+  // C1 (#31) — mic đi ĐÚNG cửa ô chat (`oChat.gui`), không có đường tắt vào
+  // dispatcher: Boss nói hay gõ đều ra một `actor.say` lên nhân vật owner.
+  // I1 (#74) — `bus` để mic bắn `user.listening` (Boss bắt đầu nói, chưa có chữ).
+  mic = batMic({ urlStt: urlStt(), oChat, toast, bus });
+
+  // B2 (#20) — nút "🔊 Bật tiếng" (ẩn nếu Boss đã đồng ý ở phiên trước).
+  if (tieng) {
+    tieng.capHinh({ toast });
+    ganNutTieng(tieng, toast);
+  }
+
+  // C0 (#28) — bật "tuỷ sống" của Gen. Đặt sau khi cảnh đã có đủ nhân vật, và
+  // trước `stage.ready` để câu đầu tiên của Sếp cũng được phản xạ bắt.
+  batPhanXa({ dispatcher, bus });
+
+  /*
+   * J2 (#79) — máy TỰ SINH HOẠT. Bật SAU phản xạ nhưng điều đó không quyết
+   * định gì về thứ tự ưu tiên: nó cắt hoạt động **đồng bộ** trong handler
+   * `user.text`/`user.listening`, nên dù chạy trước hay sau phản xạ trong
+   * cùng sự kiện thì tới lúc phản xạ cần chêm câu, Nhi đã rảnh.
+   */
+  batTuSinhHoat({ dispatcher, bus });
+
+  /*
+   * INT-07 — ĐỘI NGŨ AGENT: `team.event` (hook Claude Code / não local) → nhân
+   * viên búp bê vào văn phòng, làm việc ở khu theo vai, nộp kết quả cho Nhi.
+   */
+  mayDoiNgu = batDoiNgu({ dispatcher, bus, ceoKyTay: true, luu: khoSoTrinhDuyet() });
+  datMayDoiNgu(mayDoiNgu);
+
+  /*
+   * D1b vòng 2 — `?fps=1`: thước FPS trong app để Boss TỰ ĐO trên Firefox +
+   * GPU thật. Số FPS từ script bằng chứng (Chromium + swiftshader) chỉ dùng so
+   * tương đối, không phải thước hiệu năng thật.
+   */
+  if (coDoFps()) batDoFps({ hieuNang: () => world.doHieuNang() });
+
+  loading.classList.add('xong');
+  sanSang = true;
+  bus.emit('stage.ready', { actors: world.actorIds(), places: world.placeIds() });
+  toast('WASD để đi · 1–0 emote · Space nói · ? xem bảng phím');
+
+  bus.on('bridge.replaced', () =>
+    toast('Tab khác vừa nối sân khấu — tab này tạm nghỉ. Tải lại trang để dùng tab này.'),
+  );
+  /**
+   * E1 (#48) việc 8 — **nối bridge TRƯỚC `await hieuLenh.lamMoi()`.**
+   *
+   * Hai dòng này từng ngược thứ tự, và đó là chỗ sinh ra câu "chưa có não" vô
+   * cớ: `lamMoi()` gọi `stage.bootstrap` + `stage.describe`, mà hai lệnh đó
+   * chen vào vòng vẽ — đo thật trên renderer phần mềm là **7,5 s** từ lúc
+   * trang sẵn sàng tới lúc ws mới nối. Trong khoảng đó `brainConnected` còn
+   * `false` dù driver đã nối từ trước, nên Sếp gõ câu đầu là Gen nói "Em chưa
+   * có não". `bridge.bat()` không cần gì từ `lamMoi()`, nên nối trước; đo lại
+   * sau khi đổi: **≤100 ms**.
+   */
+  if (coBatBridge()) bridge.bat();
+
+  // C2 — nạp danh sách place/emote/màn hình cho lớp hiểu lệnh (sinh từ bootstrap)
+  await hieuLenh.lamMoi();
+}
+
+/* ------------------------------------------- Boss bấm vào nhân vật / đồ vật */
+
+canvas.addEventListener('pointerdown', (e) => {
+  if (!sanSang) return;
+  bus.emit('user.click', { x: e.clientX, y: e.clientY });
+});
+
+void khoiDong();

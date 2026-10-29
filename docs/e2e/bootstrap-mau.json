@@ -1,0 +1,1984 @@
+{
+ "commands": [
+  {
+   "cmd": "stage.bootstrap",
+   "group": "stage",
+   "desc": "Toàn bộ sách hướng dẫn: version, mọi lệnh + mô tả + ví dụ, danh sách actor/place/prop/clip/biểu cảm. Agent gọi đầu tiên.",
+   "params": [],
+   "example": {
+    "cmd": "stage.bootstrap"
+   }
+  },
+  {
+   "cmd": "stage.describe",
+   "group": "stage",
+   "desc": "Trạng thái sân khấu bằng số: actor ở đâu, làm gì, khoảng cách tới mọi place",
+   "params": [],
+   "example": {
+    "cmd": "stage.describe"
+   }
+  },
+  {
+   "cmd": "stage.hear",
+   "group": "stage",
+   "desc": "Đánh dấu một câu là Boss NÓI (không phải gõ) từ nguồn ngoài trình duyệt (extension, sidecar STT — qua ws bridge, MCP của não bị chặn): bắn đúng một user.text + một user.speech (confidence, goiGen). Chữ đi qua sổ từ nhà như đường mic (\"ghen ơi\" → \"Gen ơi\"). Chạy actor.say (interrupt) lên nhân vật controlledBy \"owner\" nên user.text vẫn chỉ có một nguồn. Chỉ dành cho Boss/ngoại vi (ws bridge): MCP của não bị chặn lệnh này",
+   "params": [
+    {
+     "name": "text",
+     "type": "text",
+     "desc": "Câu đã nhận dạng",
+     "required": true
+    },
+    {
+     "name": "to",
+     "type": "target",
+     "desc": "Nói VỚI AI (như actor.say): \"camera\" (mặc định) hoặc id một actor",
+     "required": false,
+     "values": [
+      "camera",
+      "cursor",
+      "owner",
+      "gen",
+      "ban-dieu-khien",
+      "ban-1",
+      "ban-2",
+      "ghe-1",
+      "ghe-2",
+      "buc-trung-tam",
+      "cua",
+      "ke-module",
+      "sofa",
+      "ban-an",
+      "bep",
+      "cua-so",
+      "may-tinh",
+      "tivi"
+     ],
+     "tuDo": true
+    },
+    {
+     "name": "confidence",
+     "type": "number",
+     "desc": "Độ tin cậy nhận dạng 0..1",
+     "required": false,
+     "default": 1
+    },
+    {
+     "name": "durationMs",
+     "type": "number",
+     "desc": "Thời gian nhận dạng (ms)",
+     "required": false,
+     "default": 0
+    }
+   ],
+   "events": [
+    "user.text",
+    "user.speech",
+    "actor.sayStart",
+    "actor.sayDone",
+    "cmd.queued"
+   ],
+   "example": {
+    "cmd": "stage.hear",
+    "args": {
+     "text": "Gen ơi, dựng connector Baserow",
+     "confidence": 0.9
+    }
+   }
+  },
+  {
+   "cmd": "stage.notice",
+   "group": "stage",
+   "desc": "V3 — GIÁC QUAN IDE: báo sân khấu một việc thật vừa xảy ra trong IDE của Sếp (lưu file, lỗi biên dịch, test/task pass/fail, git commit) → bắn sự kiện ide.event để phản xạ + não phản ứng. Không chiếm actor. Chỉ mang tóm tắt + số đếm/tên ngắn, KHÔNG nội dung file. Chỉ dành cho Boss/ngoại vi (extension VS Code qua ws bridge): MCP của não bị chặn lệnh này",
+   "params": [
+    {
+     "name": "kind",
+     "type": "enum",
+     "desc": "Loại việc",
+     "required": true,
+     "values": [
+      "save",
+      "diag",
+      "test",
+      "task",
+      "git"
+     ]
+    },
+    {
+     "name": "summary",
+     "type": "text",
+     "desc": "Tóm tắt một dòng (≤ 200 ký tự)",
+     "required": true
+    },
+    {
+     "name": "level",
+     "type": "enum",
+     "desc": "Tốt/xấu",
+     "required": false,
+     "values": [
+      "info",
+      "good",
+      "bad"
+     ],
+     "default": "info"
+    },
+    {
+     "name": "data",
+     "type": "json",
+     "desc": "Object phẳng chỉ số đếm/tên ngắn (vd {\"errors\":3}, {\"files\":[\"a.ts\"]}) — không nội dung",
+     "required": false
+    }
+   ],
+   "events": [
+    "ide.event"
+   ],
+   "example": {
+    "cmd": "stage.notice",
+    "args": {
+     "kind": "test",
+     "level": "bad",
+     "summary": "Test \"unit\" fail (mã 1)"
+    }
+   }
+  },
+  {
+   "cmd": "stage.reset",
+   "group": "stage",
+   "desc": "Về trạng thái ban đầu: xoá actor/prop thêm vào, dọn hàng đợi, đèn và camera mặc định",
+   "params": [],
+   "events": [
+    "stage.reset",
+    "stage.resetting"
+   ],
+   "example": {
+    "cmd": "stage.reset"
+   }
+  },
+  {
+   "cmd": "actor.spawn",
+   "group": "actor",
+   "desc": "Thêm một nhân vật VRM vào sân khấu",
+   "params": [
+    {
+     "name": "id",
+     "type": "string",
+     "desc": "Mã ngắn, vd \"gen\"",
+     "required": true
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "desc": "File VRM trong kho",
+     "required": false,
+     "default": "models/avatar.vrm"
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "desc": "Tên hiện trên bong bóng chữ",
+     "required": false
+    },
+    {
+     "name": "at",
+     "type": "target",
+     "desc": "Place hoặc toạ độ đặt nhân vật",
+     "required": false,
+     "values": [
+      "ban-dieu-khien",
+      "ban-1",
+      "ban-2",
+      "ghe-1",
+      "ghe-2",
+      "buc-trung-tam",
+      "cua",
+      "ke-module",
+      "sofa",
+      "ban-an",
+      "bep",
+      "cua-so"
+     ],
+     "tuDo": true,
+     "default": "buc-trung-tam"
+    },
+    {
+     "name": "controlledBy",
+     "type": "enum",
+     "desc": "Ai điều khiển: owner (phím của Boss) hay agent",
+     "required": false,
+     "values": [
+      "owner",
+      "agent"
+     ],
+     "default": "agent"
+    }
+   ],
+   "events": [
+    "actor.spawned"
+   ],
+   "example": {
+    "cmd": "actor.spawn",
+    "args": {
+     "id": "minh",
+     "model": "models/avatar.vrm",
+     "name": "Minh",
+     "at": "ban-2"
+    }
+   }
+  },
+  {
+   "cmd": "actor.remove",
+   "group": "actor",
+   "desc": "Bỏ nhân vật khỏi sân khấu",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    }
+   ],
+   "events": [
+    "actor.removed",
+    "cmd.interrupted"
+   ],
+   "example": {
+    "cmd": "actor.remove",
+    "args": {
+     "actor": "minh"
+    }
+   }
+  },
+  {
+   "cmd": "actor.list",
+   "group": "actor",
+   "desc": "Liệt kê nhân vật đang có kèm trạng thái",
+   "params": [],
+   "example": {
+    "cmd": "actor.list"
+   }
+  },
+  {
+   "cmd": "actor.moveTo",
+   "group": "actor",
+   "desc": "Đi tới một place hoặc toạ độ (tự chơi walk, tới nơi về idle)",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    },
+    {
+     "name": "to",
+     "type": "target",
+     "desc": "Place hoặc toạ độ \"x, y, z\"",
+     "required": true,
+     "values": [
+      "ban-dieu-khien",
+      "ban-1",
+      "ban-2",
+      "ghe-1",
+      "ghe-2",
+      "buc-trung-tam",
+      "cua",
+      "ke-module",
+      "sofa",
+      "ban-an",
+      "bep",
+      "cua-so"
+     ],
+     "tuDo": true
+    },
+    {
+     "name": "speed",
+     "type": "number",
+     "desc": "Tốc độ đi (m/s)",
+     "required": false
+    },
+    {
+     "name": "interrupt",
+     "type": "boolean",
+     "desc": "Cắt hành động đang chạy thay vì xếp hàng chờ",
+     "required": false,
+     "default": false
+    }
+   ],
+   "events": [
+    "actor.arrived",
+    "cmd.queued"
+   ],
+   "example": {
+    "cmd": "actor.moveTo",
+    "args": {
+     "actor": "gen",
+     "to": "ban-2"
+    }
+   }
+  },
+  {
+   "cmd": "actor.steer",
+   "group": "actor",
+   "desc": "Lái bằng vận tốc: đi theo (vx, vz) m/s trong ms rồi tự dừng êm. Gọi lại CÙNG (vx, vz) để gia hạn; đổi (vx, vz) thì lệnh mới THAY lệnh cũ, không xếp hàng",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    },
+    {
+     "name": "vx",
+     "type": "number",
+     "desc": "Vận tốc theo trục X (m/s, + là sang phải)",
+     "required": true
+    },
+    {
+     "name": "vz",
+     "type": "number",
+     "desc": "Vận tốc theo trục Z (m/s, + là về phía camera)",
+     "required": true
+    },
+    {
+     "name": "ms",
+     "type": "number",
+     "desc": "Giữ vận tốc này bao lâu (ms) rồi tự dừng êm",
+     "required": false,
+     "default": 700
+    }
+   ],
+   "events": [
+    "actor.steerDone"
+   ],
+   "example": {
+    "cmd": "actor.steer",
+    "args": {
+     "actor": "gen",
+     "vx": 0,
+     "vz": -1.6,
+     "ms": 700
+    }
+   }
+  },
+  {
+   "cmd": "actor.lookAt",
+   "group": "actor",
+   "desc": "Nhìn về actor / prop / place / camera / cursor (null = thả)",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    },
+    {
+     "name": "target",
+     "type": "target",
+     "desc": "Mục tiêu nhìn, \"null\" để thả",
+     "required": false,
+     "values": [
+      "camera",
+      "cursor",
+      "owner",
+      "gen",
+      "ban-dieu-khien",
+      "ban-1",
+      "ban-2",
+      "ghe-1",
+      "ghe-2",
+      "buc-trung-tam",
+      "cua",
+      "ke-module",
+      "sofa",
+      "ban-an",
+      "bep",
+      "cua-so",
+      "may-tinh",
+      "tivi"
+     ],
+     "tuDo": true,
+     "default": "camera"
+    }
+   ],
+   "example": {
+    "cmd": "actor.lookAt",
+    "args": {
+     "actor": "gen",
+     "target": "camera"
+    }
+   }
+  },
+  {
+   "cmd": "actor.turnTo",
+   "group": "actor",
+   "desc": "Xoay người về mục tiêu",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    },
+    {
+     "name": "target",
+     "type": "target",
+     "desc": "Mục tiêu xoay về",
+     "required": true,
+     "values": [
+      "camera",
+      "cursor",
+      "owner",
+      "gen",
+      "ban-dieu-khien",
+      "ban-1",
+      "ban-2",
+      "ghe-1",
+      "ghe-2",
+      "buc-trung-tam",
+      "cua",
+      "ke-module",
+      "sofa",
+      "ban-an",
+      "bep",
+      "cua-so",
+      "may-tinh",
+      "tivi"
+     ],
+     "tuDo": true
+    },
+    {
+     "name": "interrupt",
+     "type": "boolean",
+     "desc": "Cắt hành động đang chạy thay vì xếp hàng chờ",
+     "required": false,
+     "default": false
+    }
+   ],
+   "events": [
+    "actor.turned",
+    "cmd.queued"
+   ],
+   "example": {
+    "cmd": "actor.turnTo",
+    "args": {
+     "actor": "gen",
+     "target": "cua"
+    }
+   }
+  },
+  {
+   "cmd": "actor.faceTo",
+   "group": "actor",
+   "desc": "Quay người về mục tiêu NHƯNG không chiếm thân, không xếp hàng — gọi được trong lúc actor đang nói/diễn để giữ mặt hướng về người nghe (\"camera\" = phía Sếp đang xem)",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    },
+    {
+     "name": "target",
+     "type": "target",
+     "desc": "Mục tiêu quay về (\"camera\" = chỗ Sếp đang xem)",
+     "required": true,
+     "values": [
+      "camera",
+      "cursor",
+      "owner",
+      "gen",
+      "ban-dieu-khien",
+      "ban-1",
+      "ban-2",
+      "ghe-1",
+      "ghe-2",
+      "buc-trung-tam",
+      "cua",
+      "ke-module",
+      "sofa",
+      "ban-an",
+      "bep",
+      "cua-so",
+      "may-tinh",
+      "tivi"
+     ],
+     "tuDo": true,
+     "default": "camera"
+    }
+   ],
+   "example": {
+    "cmd": "actor.faceTo",
+    "args": {
+     "actor": "gen",
+     "target": "camera"
+    }
+   }
+  },
+  {
+   "cmd": "actor.sit",
+   "group": "actor",
+   "desc": "Ngồi xuống một ghế",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    },
+    {
+     "name": "seat",
+     "type": "enum",
+     "desc": "Place loại ghế",
+     "required": true,
+     "values": [
+      "ban-dieu-khien",
+      "ban-1",
+      "ban-2",
+      "ghe-1",
+      "ghe-2",
+      "buc-trung-tam",
+      "cua",
+      "ke-module",
+      "sofa",
+      "ban-an",
+      "bep",
+      "cua-so"
+     ]
+    },
+    {
+     "name": "interrupt",
+     "type": "boolean",
+     "desc": "Cắt hành động đang chạy thay vì xếp hàng chờ",
+     "required": false,
+     "default": false
+    }
+   ],
+   "events": [
+    "actor.sat",
+    "cmd.queued"
+   ],
+   "example": {
+    "cmd": "actor.sit",
+    "args": {
+     "actor": "gen",
+     "seat": "ghe-2"
+    }
+   }
+  },
+  {
+   "cmd": "actor.stand",
+   "group": "actor",
+   "desc": "Đứng lên",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    },
+    {
+     "name": "interrupt",
+     "type": "boolean",
+     "desc": "Cắt hành động đang chạy thay vì xếp hàng chờ",
+     "required": false,
+     "default": false
+    }
+   ],
+   "events": [
+    "actor.stood",
+    "cmd.queued"
+   ],
+   "example": {
+    "cmd": "actor.stand",
+    "args": {
+     "actor": "gen"
+    }
+   }
+  },
+  {
+   "cmd": "actor.play",
+   "group": "actor",
+   "desc": "Chơi một chuyển động có tên (hết thì bắn actor.clipDone)",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    },
+    {
+     "name": "clip",
+     "type": "enum",
+     "desc": "Tên chuyển động",
+     "required": true,
+     "values": [
+      "idle",
+      "walk",
+      "wave",
+      "sit",
+      "stand",
+      "nod",
+      "shake",
+      "think",
+      "clap",
+      "point",
+      "celebrate",
+      "type",
+      "sleep"
+     ]
+    },
+    {
+     "name": "loop",
+     "type": "boolean",
+     "desc": "Lặp mãi",
+     "required": false,
+     "default": false
+    },
+    {
+     "name": "speed",
+     "type": "number",
+     "desc": "Nhân tốc độ",
+     "required": false,
+     "default": 1
+    },
+    {
+     "name": "interrupt",
+     "type": "boolean",
+     "desc": "Cắt hành động đang chạy thay vì xếp hàng chờ",
+     "required": false,
+     "default": false
+    }
+   ],
+   "events": [
+    "actor.clipDone",
+    "cmd.queued"
+   ],
+   "example": {
+    "cmd": "actor.play",
+    "args": {
+     "actor": "gen",
+     "clip": "wave"
+    }
+   }
+  },
+  {
+   "cmd": "actor.stop",
+   "group": "actor",
+   "desc": "Dừng mọi thứ đang làm, bỏ hàng đợi, về idle",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    }
+   ],
+   "events": [
+    "actor.stopped",
+    "cmd.interrupted"
+   ],
+   "example": {
+    "cmd": "actor.stop",
+    "args": {
+     "actor": "gen"
+    }
+   }
+  },
+  {
+   "cmd": "actor.express",
+   "group": "actor",
+   "desc": "Đặt biểu cảm mặt (tinh chỉnh; cảm xúc trọn gói dùng actor.emote)",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    },
+    {
+     "name": "expression",
+     "type": "enum",
+     "desc": "Biểu cảm VRM",
+     "required": true,
+     "values": [
+      "neutral",
+      "happy",
+      "angry",
+      "sad",
+      "relaxed",
+      "surprised"
+     ]
+    },
+    {
+     "name": "weight",
+     "type": "number",
+     "desc": "Độ mạnh 0–1",
+     "required": false,
+     "default": 1
+    },
+    {
+     "name": "durationMs",
+     "type": "number",
+     "desc": "Tự về neutral sau bao lâu (ms)",
+     "required": false
+    }
+   ],
+   "example": {
+    "cmd": "actor.express",
+    "args": {
+     "actor": "gen",
+     "expression": "happy",
+     "weight": 1,
+     "durationMs": 3000
+    }
+   }
+  },
+  {
+   "cmd": "actor.say",
+   "group": "actor",
+   "desc": "Nói: bong bóng chữ + nhép miệng + giọng trình duyệt nếu có. Bắn actor.sayDone; nếu actor là người Boss lái (controlledBy \"owner\") thì bắn thêm user.text để não nghe, và user.speech khi câu đó đến từ mic (C1)",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    },
+    {
+     "name": "text",
+     "type": "text",
+     "desc": "Lời nói",
+     "required": true
+    },
+    {
+     "name": "emotion",
+     "type": "enum",
+     "desc": "Cảm xúc khi nói (A2 làm cử chỉ theo cảm xúc)",
+     "required": false,
+     "values": [
+      "vui",
+      "rat-vui",
+      "buon",
+      "ngac-nhien",
+      "gian",
+      "suy-nghi",
+      "dong-y",
+      "tu-choi",
+      "chao",
+      "ra-lenh",
+      "thanh-cong",
+      "that-bai",
+      "boi-roi",
+      "met",
+      "cham-chu",
+      "chu-y"
+     ],
+     "tuDo": true
+    },
+    {
+     "name": "voice",
+     "type": "string",
+     "desc": "Giọng: \"nu\" | \"nam\" | tên giọng đầy đủ (mặc định: owner → nam, còn lại → nữ)",
+     "required": false
+    },
+    {
+     "name": "to",
+     "type": "target",
+     "desc": "Nói VỚI AI: \"camera\" (mặc định — nói với Sếp đang xem qua màn hình) hoặc id một actor khác. Quyết định người nói quay mặt về đâu và ai lắng nghe",
+     "required": false,
+     "values": [
+      "camera",
+      "cursor",
+      "owner",
+      "gen",
+      "ban-dieu-khien",
+      "ban-1",
+      "ban-2",
+      "ghe-1",
+      "ghe-2",
+      "buc-trung-tam",
+      "cua",
+      "ke-module",
+      "sofa",
+      "ban-an",
+      "bep",
+      "cua-so",
+      "may-tinh",
+      "tivi"
+     ],
+     "tuDo": true,
+     "default": "camera"
+    },
+    {
+     "name": "interrupt",
+     "type": "boolean",
+     "desc": "Cắt hành động đang chạy thay vì xếp hàng chờ",
+     "required": false,
+     "default": false
+    }
+   ],
+   "events": [
+    "actor.sayStart",
+    "actor.sayDone",
+    "user.text",
+    "user.speech",
+    "cmd.queued"
+   ],
+   "example": {
+    "cmd": "actor.say",
+    "args": {
+     "actor": "gen",
+     "text": "Sếp ơi, test xanh rồi!",
+     "emotion": "vui",
+     "voice": "nu"
+    }
+   }
+  },
+  {
+   "cmd": "actor.bubble",
+   "group": "actor",
+   "desc": "Chỉ hiện bong bóng chữ, không tiếng",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    },
+    {
+     "name": "text",
+     "type": "text",
+     "desc": "Nội dung",
+     "required": true
+    },
+    {
+     "name": "durationMs",
+     "type": "number",
+     "desc": "Hiện bao lâu (ms)",
+     "required": false
+    },
+    {
+     "name": "interrupt",
+     "type": "boolean",
+     "desc": "Cắt hành động đang chạy thay vì xếp hàng chờ",
+     "required": false,
+     "default": false
+    }
+   ],
+   "events": [
+    "actor.bubbleDone",
+    "cmd.queued"
+   ],
+   "example": {
+    "cmd": "actor.bubble",
+    "args": {
+     "actor": "gen",
+     "text": "Đang nghĩ…",
+     "durationMs": 2000
+    }
+   }
+  },
+  {
+   "cmd": "actor.hold",
+   "group": "actor",
+   "desc": "Cầm một đồ vật lên tay",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    },
+    {
+     "name": "prop",
+     "type": "enum",
+     "desc": "Đồ vật",
+     "required": true
+    },
+    {
+     "name": "hand",
+     "type": "enum",
+     "desc": "Tay nào",
+     "required": false,
+     "values": [
+      "left",
+      "right"
+     ],
+     "default": "right"
+    }
+   ],
+   "events": [
+    "actor.held"
+   ],
+   "example": {
+    "cmd": "actor.hold",
+    "args": {
+     "actor": "gen",
+     "prop": "so-tay",
+     "hand": "right"
+    }
+   }
+  },
+  {
+   "cmd": "actor.emote",
+   "group": "actor",
+   "desc": "Cảm xúc trọn gói: mặt + chuỗi chuyển động cơ thể + âm ngắn + (tuỳ chọn) nói",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    },
+    {
+     "name": "emote",
+     "type": "enum",
+     "desc": "Tên emote",
+     "required": true,
+     "values": [
+      "vui",
+      "rat-vui",
+      "buon",
+      "ngac-nhien",
+      "gian",
+      "suy-nghi",
+      "dong-y",
+      "tu-choi",
+      "chao",
+      "ra-lenh",
+      "thanh-cong",
+      "that-bai",
+      "boi-roi",
+      "met",
+      "cham-chu",
+      "chu-y"
+     ]
+    },
+    {
+     "name": "intensity",
+     "type": "number",
+     "desc": "Độ mạnh 0–1",
+     "required": false,
+     "default": 1
+    },
+    {
+     "name": "say",
+     "type": "text",
+     "desc": "Nói kèm (tuỳ chọn)",
+     "required": false
+    },
+    {
+     "name": "interrupt",
+     "type": "boolean",
+     "desc": "Cắt hành động đang chạy thay vì xếp hàng chờ",
+     "required": false,
+     "default": false
+    }
+   ],
+   "events": [
+    "actor.emoteDone",
+    "actor.emoteCancelled",
+    "cmd.queued"
+   ],
+   "example": {
+    "cmd": "actor.emote",
+    "args": {
+     "actor": "gen",
+     "emote": "vui",
+     "intensity": 1
+    }
+   }
+  },
+  {
+   "cmd": "actor.idleStyle",
+   "group": "actor",
+   "desc": "Đổi dáng đứng chờ để nhân vật không bao giờ đứng im",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    },
+    {
+     "name": "style",
+     "type": "enum",
+     "desc": "Kiểu đứng chờ",
+     "required": true,
+     "values": [
+      "binh-thuong",
+      "hao-hung",
+      "met",
+      "cang-thang",
+      "cham-chu"
+     ]
+    }
+   ],
+   "example": {
+    "cmd": "actor.idleStyle",
+    "args": {
+     "actor": "gen",
+     "style": "hao-hung"
+    }
+   }
+  },
+  {
+   "cmd": "actor.drop",
+   "group": "actor",
+   "desc": "Thả đồ đang cầm xuống chân",
+   "params": [
+    {
+     "name": "actor",
+     "type": "enum",
+     "desc": "Nhân vật",
+     "required": true,
+     "values": [
+      "owner",
+      "gen"
+     ]
+    }
+   ],
+   "events": [
+    "actor.dropped"
+   ],
+   "example": {
+    "cmd": "actor.drop",
+    "args": {
+     "actor": "gen"
+    }
+   }
+  },
+  {
+   "cmd": "prop.spawn",
+   "group": "prop",
+   "desc": "Thêm một đồ vật vào sân khấu",
+   "params": [
+    {
+     "name": "id",
+     "type": "string",
+     "desc": "Mã đồ vật",
+     "required": true
+    },
+    {
+     "name": "shape",
+     "type": "enum",
+     "desc": "Hình dạng",
+     "required": false,
+     "values": [
+      "book",
+      "cube",
+      "tool",
+      "crystal",
+      "orb"
+     ],
+     "default": "cube"
+    },
+    {
+     "name": "kind",
+     "type": "string",
+     "desc": "Loại, vd \"module\"",
+     "required": false,
+     "default": "prop"
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "desc": "File model (A3 dùng)",
+     "required": false
+    },
+    {
+     "name": "at",
+     "type": "target",
+     "desc": "Place hoặc toạ độ",
+     "required": false,
+     "values": [
+      "ban-dieu-khien",
+      "ban-1",
+      "ban-2",
+      "ghe-1",
+      "ghe-2",
+      "buc-trung-tam",
+      "cua",
+      "ke-module",
+      "sofa",
+      "ban-an",
+      "bep",
+      "cua-so"
+     ],
+     "tuDo": true,
+     "default": "ban-1"
+    }
+   ],
+   "events": [
+    "prop.spawned"
+   ],
+   "example": {
+    "cmd": "prop.spawn",
+    "args": {
+     "id": "so-tay",
+     "shape": "book",
+     "kind": "module",
+     "at": "ban-1"
+    }
+   }
+  },
+  {
+   "cmd": "prop.remove",
+   "group": "prop",
+   "desc": "Bỏ đồ vật khỏi sân khấu",
+   "params": [
+    {
+     "name": "prop",
+     "type": "enum",
+     "desc": "Đồ vật",
+     "required": true
+    }
+   ],
+   "events": [
+    "prop.removed"
+   ],
+   "example": {
+    "cmd": "prop.remove",
+    "args": {
+     "prop": "so-tay"
+    }
+   }
+  },
+  {
+   "cmd": "prop.list",
+   "group": "prop",
+   "desc": "Liệt kê đồ vật đang có",
+   "params": [],
+   "example": {
+    "cmd": "prop.list"
+   }
+  },
+  {
+   "cmd": "prop.moveTo",
+   "group": "prop",
+   "desc": "Chuyển đồ vật sang place hoặc toạ độ khác",
+   "params": [
+    {
+     "name": "prop",
+     "type": "enum",
+     "desc": "Đồ vật",
+     "required": true
+    },
+    {
+     "name": "to",
+     "type": "target",
+     "desc": "Place hoặc toạ độ",
+     "required": true,
+     "values": [
+      "ban-dieu-khien",
+      "ban-1",
+      "ban-2",
+      "ghe-1",
+      "ghe-2",
+      "buc-trung-tam",
+      "cua",
+      "ke-module",
+      "sofa",
+      "ban-an",
+      "bep",
+      "cua-so"
+     ],
+     "tuDo": true
+    }
+   ],
+   "events": [
+    "prop.moved"
+   ],
+   "example": {
+    "cmd": "prop.moveTo",
+    "args": {
+     "prop": "so-tay",
+     "to": "ke-module"
+    }
+   }
+  },
+  {
+   "cmd": "prop.set",
+   "group": "prop",
+   "desc": "Đổi trạng thái đồ vật, vd {\"screen\":\"on\",\"text\":\"Đang chạy test…\"}",
+   "params": [
+    {
+     "name": "prop",
+     "type": "enum",
+     "desc": "Đồ vật",
+     "required": true
+    },
+    {
+     "name": "state",
+     "type": "json",
+     "desc": "JSON trạng thái",
+     "required": true,
+     "default": "{\"screen\":\"on\"}"
+    }
+   ],
+   "events": [
+    "prop.set"
+   ],
+   "example": {
+    "cmd": "prop.set",
+    "args": {
+     "prop": "so-tay",
+     "state": {
+      "screen": "on",
+      "text": "Đang chạy test…"
+     }
+    }
+   }
+  },
+  {
+   "cmd": "scene.light",
+   "group": "scene",
+   "desc": "Đổi ánh sáng cảnh theo preset",
+   "params": [
+    {
+     "name": "preset",
+     "type": "enum",
+     "desc": "Kiểu sáng",
+     "required": true,
+     "values": [
+      "sang",
+      "toi",
+      "am"
+     ],
+     "default": "sang"
+    }
+   ],
+   "events": [
+    "scene.lightChanged"
+   ],
+   "example": {
+    "cmd": "scene.light",
+    "args": {
+     "preset": "am"
+    }
+   }
+  },
+  {
+   "cmd": "camera.focus",
+   "group": "camera",
+   "desc": "Bay tới nhìn gần một actor / prop / place",
+   "params": [
+    {
+     "name": "target",
+     "type": "target",
+     "desc": "Mục tiêu",
+     "required": true,
+     "values": [
+      "camera",
+      "cursor",
+      "owner",
+      "gen",
+      "ban-dieu-khien",
+      "ban-1",
+      "ban-2",
+      "ghe-1",
+      "ghe-2",
+      "buc-trung-tam",
+      "cua",
+      "ke-module",
+      "sofa",
+      "ban-an",
+      "bep",
+      "cua-so",
+      "may-tinh",
+      "tivi"
+     ],
+     "tuDo": true
+    },
+    {
+     "name": "distance",
+     "type": "number",
+     "desc": "Khoảng cách mét",
+     "required": false,
+     "default": 2.6
+    }
+   ],
+   "events": [
+    "camera.moved"
+   ],
+   "example": {
+    "cmd": "camera.focus",
+    "args": {
+     "target": "gen",
+     "distance": 2.2
+    }
+   }
+  },
+  {
+   "cmd": "camera.preset",
+   "group": "camera",
+   "desc": "Về một góc máy đặt sẵn",
+   "params": [
+    {
+     "name": "name",
+     "type": "enum",
+     "desc": "Góc máy",
+     "required": true,
+     "values": [
+      "toan-canh",
+      "theo-owner",
+      "ban-dieu-khien",
+      "ban-1",
+      "ban-2",
+      "hop",
+      "truoc-mat",
+      "phong-khach",
+      "ban-lam-viec",
+      "bep",
+      "cua-so"
+     ],
+     "default": "toan-canh"
+    }
+   ],
+   "events": [
+    "camera.moved"
+   ],
+   "example": {
+    "cmd": "camera.preset",
+    "args": {
+     "name": "toan-canh"
+    }
+   }
+  },
+  {
+   "cmd": "script.run",
+   "group": "script",
+   "desc": "Chạy một chuỗi bước. Mỗi bước là một lệnh, hoặc {\"wait\":ms} / {\"waitFor\":\"tên sự kiện\"}. Ghi chú: \"parallel\" bắn cùng lúc, nhưng nhiều bước trên CÙNG một actor vẫn tuần tự vì xếp hàng theo actor.",
+   "params": [
+    {
+     "name": "steps",
+     "type": "json",
+     "desc": "Mảng JSON các bước",
+     "required": true,
+     "default": "[{\"cmd\":\"actor.moveTo\",\"args\":{\"actor\":\"gen\",\"to\":\"ban-2\"}},{\"waitFor\":\"actor.arrived\"},{\"cmd\":\"actor.say\",\"args\":{\"actor\":\"gen\",\"text\":\"Tới rồi Sếp!\"}}]"
+    },
+    {
+     "name": "mode",
+     "type": "enum",
+     "desc": "Chạy lần lượt hay cùng lúc",
+     "required": false,
+     "values": [
+      "sequential",
+      "parallel"
+     ],
+     "default": "sequential"
+    }
+   ],
+   "events": [
+    "script.step",
+    "script.stepError",
+    "script.done",
+    "script.stopped"
+   ],
+   "example": {
+    "cmd": "script.run",
+    "args": {
+     "steps": [
+      {
+       "cmd": "actor.moveTo",
+       "args": {
+        "actor": "gen",
+        "to": "ban-2"
+       }
+      },
+      {
+       "waitFor": "actor.arrived"
+      },
+      {
+       "cmd": "actor.express",
+       "args": {
+        "actor": "gen",
+        "expression": "happy"
+       }
+      },
+      {
+       "cmd": "actor.say",
+       "args": {
+        "actor": "gen",
+        "text": "Sếp ơi, test xanh rồi!"
+       }
+      }
+     ],
+     "mode": "sequential"
+    }
+   }
+  },
+  {
+   "cmd": "script.stop",
+   "group": "script",
+   "desc": "Dừng kịch bản đang chạy và cắt luôn hành động đang diễn của các nhân vật kịch bản đã chạm",
+   "params": [],
+   "events": [
+    "script.stopped"
+   ],
+   "example": {
+    "cmd": "script.stop"
+   }
+  },
+  {
+   "cmd": "screen.spawn",
+   "group": "screen",
+   "desc": "Thêm một tấm hologram trong suốt phát sáng, lơ lửng",
+   "params": [
+    {
+     "name": "id",
+     "type": "string",
+     "desc": "Mã màn hình",
+     "required": true
+    },
+    {
+     "name": "at",
+     "type": "target",
+     "desc": "Place hoặc toạ độ (bỏ trống thì dùng vị trí mặc định nếu id là main/left/right)",
+     "required": false,
+     "values": [
+      "ban-dieu-khien",
+      "ban-1",
+      "ban-2",
+      "ghe-1",
+      "ghe-2",
+      "buc-trung-tam",
+      "cua",
+      "ke-module",
+      "sofa",
+      "ban-an",
+      "bep",
+      "cua-so"
+     ],
+     "tuDo": true
+    },
+    {
+     "name": "size",
+     "type": "number",
+     "desc": "Chiều rộng mét",
+     "required": false,
+     "default": 2.2
+    },
+    {
+     "name": "tilt",
+     "type": "number",
+     "desc": "Nghiêng (độ)",
+     "required": false
+    }
+   ],
+   "events": [
+    "screen.spawned"
+   ],
+   "example": {
+    "cmd": "screen.spawn",
+    "args": {
+     "id": "bang-phu",
+     "at": "ban-dieu-khien",
+     "size": 0.8
+    }
+   }
+  },
+  {
+   "cmd": "screen.remove",
+   "group": "screen",
+   "desc": "Bỏ màn hình hologram",
+   "params": [
+    {
+     "name": "screen",
+     "type": "enum",
+     "desc": "Màn hình hologram",
+     "required": true,
+     "values": [
+      "may-tinh",
+      "tivi"
+     ],
+     "tuDo": true
+    }
+   ],
+   "events": [
+    "screen.removed"
+   ],
+   "example": {
+    "cmd": "screen.remove",
+    "args": {
+     "screen": "may-tinh"
+    }
+   }
+  },
+  {
+   "cmd": "screen.show",
+   "group": "screen",
+   "desc": "Hiện nội dung tĩnh trên màn hình",
+   "params": [
+    {
+     "name": "screen",
+     "type": "enum",
+     "desc": "Màn hình hologram",
+     "required": true,
+     "values": [
+      "may-tinh",
+      "tivi"
+     ],
+     "tuDo": true
+    },
+    {
+     "name": "kind",
+     "type": "enum",
+     "desc": "Loại nội dung",
+     "required": true,
+     "values": [
+      "text",
+      "code",
+      "log",
+      "chart",
+      "image"
+     ]
+    },
+    {
+     "name": "content",
+     "type": "text",
+     "desc": "Nội dung",
+     "required": true
+    }
+   ],
+   "events": [
+    "screen.shown"
+   ],
+   "example": {
+    "cmd": "screen.show",
+    "args": {
+     "screen": "may-tinh",
+     "kind": "code",
+     "content": "const a = 1;"
+    }
+   }
+  },
+  {
+   "cmd": "screen.stream",
+   "group": "screen",
+   "desc": "Chữ/code chạy dần như đang được gõ: cho sẵn \"chunks\" (mảng) hoặc \"source\" (vd \"agent\" — đẩy từng mẩu qua window.stage.feed(screen, chunk))",
+   "params": [
+    {
+     "name": "screen",
+     "type": "enum",
+     "desc": "Màn hình hologram",
+     "required": true,
+     "values": [
+      "may-tinh",
+      "tivi"
+     ],
+     "tuDo": true
+    },
+    {
+     "name": "kind",
+     "type": "enum",
+     "desc": "Loại nội dung",
+     "required": true,
+     "values": [
+      "text",
+      "code",
+      "log",
+      "chart",
+      "image"
+     ]
+    },
+    {
+     "name": "chunks",
+     "type": "json",
+     "desc": "Mảng mẩu nội dung biết trước",
+     "required": false
+    },
+    {
+     "name": "source",
+     "type": "string",
+     "desc": "Nguồn đẩy dần, vd \"agent\"",
+     "required": false
+    }
+   ],
+   "events": [
+    "screen.streamDone"
+   ],
+   "example": {
+    "cmd": "screen.stream",
+    "args": {
+     "screen": "may-tinh",
+     "kind": "code",
+     "source": "agent"
+    }
+   }
+  },
+  {
+   "cmd": "screen.clear",
+   "group": "screen",
+   "desc": "Xoá nội dung màn hình",
+   "params": [
+    {
+     "name": "screen",
+     "type": "enum",
+     "desc": "Màn hình hologram",
+     "required": true,
+     "values": [
+      "may-tinh",
+      "tivi"
+     ],
+     "tuDo": true
+    }
+   ],
+   "events": [
+    "screen.cleared"
+   ],
+   "example": {
+    "cmd": "screen.clear",
+    "args": {
+     "screen": "may-tinh"
+    }
+   }
+  },
+  {
+   "cmd": "screen.focus",
+   "group": "screen",
+   "desc": "Bay màn hình tới trước mặt nhân vật/camera",
+   "params": [
+    {
+     "name": "screen",
+     "type": "enum",
+     "desc": "Màn hình hologram",
+     "required": true,
+     "values": [
+      "may-tinh",
+      "tivi"
+     ],
+     "tuDo": true
+    }
+   ],
+   "events": [
+    "screen.focused"
+   ],
+   "example": {
+    "cmd": "screen.focus",
+    "args": {
+     "screen": "may-tinh"
+    }
+   }
+  },
+  {
+   "cmd": "module.build",
+   "group": "module",
+   "desc": "Hiệu ứng kết tinh: hạt sáng từ màn hình nguồn tụ thành vật thể rồi rơi vào tay nhân vật",
+   "params": [
+    {
+     "name": "id",
+     "type": "string",
+     "desc": "Mã module",
+     "required": true
+    },
+    {
+     "name": "shape",
+     "type": "enum",
+     "desc": "Hình kết tinh",
+     "required": true,
+     "values": [
+      "book",
+      "cube",
+      "tool",
+      "crystal",
+      "orb"
+     ]
+    },
+    {
+     "name": "label",
+     "type": "string",
+     "desc": "Nhãn hiện trên module",
+     "required": true
+    },
+    {
+     "name": "from",
+     "type": "enum",
+     "desc": "Kết tinh từ màn hình nào (bỏ trống thì từ giữa bục)",
+     "required": false,
+     "values": [
+      "may-tinh",
+      "tivi"
+     ],
+     "tuDo": true
+    },
+    {
+     "name": "durationMs",
+     "type": "number",
+     "desc": "Thời lượng hiệu ứng (ms)",
+     "required": false,
+     "default": 2600
+    }
+   ],
+   "events": [
+    "module.built"
+   ],
+   "example": {
+    "cmd": "module.build",
+    "args": {
+     "id": "connector-baserow",
+     "shape": "book",
+     "label": "Baserow",
+     "from": "may-tinh"
+    }
+   }
+  },
+  {
+   "cmd": "module.open",
+   "group": "module",
+   "desc": "Mở module ra thành một màn hình nhỏ hiện nội dung bên trong",
+   "params": [
+    {
+     "name": "module",
+     "type": "enum",
+     "desc": "Module (prop đã kết tinh)",
+     "required": true
+    }
+   ],
+   "events": [
+    "screen.spawned",
+    "screen.shown"
+   ],
+   "example": {
+    "cmd": "module.open",
+    "args": {
+     "module": "connector-baserow"
+    }
+   }
+  },
+  {
+   "cmd": "module.store",
+   "group": "module",
+   "desc": "Đặt module lên kệ/bàn lưu trữ",
+   "params": [
+    {
+     "name": "module",
+     "type": "enum",
+     "desc": "Module (prop đã kết tinh)",
+     "required": true
+    },
+    {
+     "name": "to",
+     "type": "enum",
+     "desc": "Place lưu trữ",
+     "required": true,
+     "values": [
+      "ban-dieu-khien",
+      "ban-1",
+      "ban-2",
+      "ghe-1",
+      "ghe-2",
+      "buc-trung-tam",
+      "cua",
+      "ke-module",
+      "sofa",
+      "ban-an",
+      "bep",
+      "cua-so"
+     ]
+    }
+   ],
+   "events": [
+    "prop.moved"
+   ],
+   "example": {
+    "cmd": "module.store",
+    "args": {
+     "module": "connector-baserow",
+     "to": "ke-module"
+    }
+   }
+  },
+  {
+   "cmd": "module.demo",
+   "group": "module",
+   "desc": "MỘT LỆNH = cả màn dựng module: bay màn hình tới trước mặt → code chạy lên màn hình → hạt kết tinh thành module vào tay nhân vật → emote thành công → nói một câu báo xong",
+   "params": [
+    {
+     "name": "id",
+     "type": "string",
+     "desc": "Mã module (vd \"connector-baserow\")",
+     "required": true
+    },
+    {
+     "name": "label",
+     "type": "string",
+     "desc": "Nhãn hiện trên module (vd \"Baserow\")",
+     "required": true
+    },
+    {
+     "name": "screen",
+     "type": "enum",
+     "desc": "Dựng trên màn hình nào (bỏ trống = màn hình đầu tiên)",
+     "required": false,
+     "values": [
+      "may-tinh",
+      "tivi"
+     ],
+     "tuDo": true
+    },
+    {
+     "name": "shape",
+     "type": "enum",
+     "desc": "Hình kết tinh",
+     "required": false,
+     "values": [
+      "book",
+      "cube",
+      "tool",
+      "crystal",
+      "orb"
+     ],
+     "default": "book"
+    },
+    {
+     "name": "say",
+     "type": "text",
+     "desc": "Câu báo xong (bỏ trống thì lệnh tự ghép một câu tiếng Việt)",
+     "required": false
+    },
+    {
+     "name": "buildMs",
+     "type": "number",
+     "desc": "Thời lượng hiệu ứng kết tinh (ms)",
+     "required": false,
+     "default": 2600
+    }
+   ],
+   "events": [
+    "module.demoDone"
+   ],
+   "example": {
+    "cmd": "module.demo",
+    "args": {
+     "id": "demo-baserow",
+     "label": "Baserow"
+    }
+   }
+  },
+  {
+   "cmd": "fx.play",
+   "group": "fx",
+   "desc": "Hiệu ứng ánh sáng/âm ngắn: quét (scan), nhấp sáng (pulse), cảnh báo (alert), thành công (success)",
+   "params": [
+    {
+     "name": "name",
+     "type": "enum",
+     "desc": "Tên hiệu ứng",
+     "required": true,
+     "values": [
+      "scan",
+      "pulse",
+      "alert",
+      "success"
+     ]
+    },
+    {
+     "name": "at",
+     "type": "target",
+     "desc": "Nơi phát (bỏ trống thì phát ở bục trung tâm)",
+     "required": false,
+     "values": [
+      "camera",
+      "cursor",
+      "owner",
+      "gen",
+      "ban-dieu-khien",
+      "ban-1",
+      "ban-2",
+      "ghe-1",
+      "ghe-2",
+      "buc-trung-tam",
+      "cua",
+      "ke-module",
+      "sofa",
+      "ban-an",
+      "bep",
+      "cua-so",
+      "may-tinh",
+      "tivi"
+     ],
+     "tuDo": true
+    },
+    {
+     "name": "durationMs",
+     "type": "number",
+     "desc": "Thời lượng (ms)",
+     "required": false
+    }
+   ],
+   "events": [
+    "fx.played"
+   ],
+   "example": {
+    "cmd": "fx.play",
+    "args": {
+     "name": "success"
+    }
+   }
+  }
+ ]
+}

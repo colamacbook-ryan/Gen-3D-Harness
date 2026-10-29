@@ -1,0 +1,139 @@
+{
+ "buoc": [
+  {
+   "spawn": "toolu_aa01",
+   "ok": true
+  },
+  {
+   "spawn": "toolu_bb02",
+   "ok": true
+  },
+  {
+   "spawn": "toolu_cc03",
+   "ok": true
+  },
+  {
+   "spawn": "toolu_dd04",
+   "ok": true
+  }
+ ],
+ "loi": [],
+ "dangLam": [
+  {
+   "actor": "nv-ooluaa01",
+   "role": "builder",
+   "khu": "ky-thuat",
+   "cho": {
+    "seat": "cho-kt-1"
+   },
+   "state": "sitting",
+   "at": "cho-kt-1",
+   "pos": [
+    -7.5,
+    -0.37,
+    -7.79
+   ],
+   "name": "Thợ xây"
+  },
+  {
+   "actor": "nv-oolubb02",
+   "role": "code-reviewer",
+   "khu": "phong-hop",
+   "cho": {
+    "seat": "ghe-1"
+   },
+   "state": "sitting",
+   "at": "ghe-1",
+   "pos": [
+    6.45,
+    -0.56,
+    -0.72
+   ],
+   "name": "Reviewer"
+  },
+  {
+   "actor": "nv-oolucc03",
+   "role": "researcher",
+   "khu": "kinh-doanh",
+   "cho": {
+    "seat": "cho-kd-1"
+   },
+   "state": "sitting",
+   "at": "cho-kd-1",
+   "pos": [
+    6,
+    -0.56,
+    -3.96
+   ],
+   "name": "Nghiên cứu"
+  },
+  {
+   "actor": "nv-ooludd04",
+   "role": "designer",
+   "khu": "thiet-ke",
+   "cho": {
+    "x": -8.6,
+    "z": 5.3,
+    "facing": 0
+   },
+   "state": "playing",
+   "at": null,
+   "pos": [
+    -8.6,
+    -0.55,
+    5.3
+   ],
+   "name": "Thiết kế"
+  }
+ ],
+ "the": [
+  [
+   "owner",
+   "Nam · Sếp",
+   "idle",
+   "buc-trung-tam"
+  ],
+  [
+   "gen",
+   "Nhi · Kỹ sư trưởng",
+   "sitting",
+   "ghe-2"
+  ],
+  [
+   "nv-ooluaa01",
+   "Thợ xây · Viết test A*",
+   "sitting",
+   "cho-kt-1"
+  ],
+  [
+   "nv-oolubb02",
+   "Reviewer · Review PR #1",
+   "sitting",
+   "ghe-1"
+  ],
+  [
+   "nv-oolucc03",
+   "Nghiên cứu · Tra license asset",
+   "sitting",
+   "cho-kd-1"
+  ],
+  [
+   "nv-ooludd04",
+   "Thiết kế · Phác giao diện chatroom",
+   "playing",
+   null
+  ]
+ ],
+ "sauKhiXong": {
+  "nhanVien": [
+   "nv-oolucc03",
+   "nv-ooludd04"
+  ],
+  "actors": [
+   "owner",
+   "gen",
+   "nv-oolucc03",
+   "nv-ooludd04"
+  ]
+ }
+}

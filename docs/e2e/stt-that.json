@@ -1,0 +1,398 @@
+{
+  "batDau": "2026-10-26T12:16:18.619Z",
+  "cong": {
+    "ws": 9000,
+    "tts": 9001,
+    "mcp": 9002,
+    "stt": 9003,
+    "vite": 9004
+  },
+  "cau": [
+    "Gen ơi, chào em",
+    "Gen ơi, ra cửa sổ đi",
+    "Gen ơi, mở màn hình cho anh",
+    "dừng lại",
+    "đi tới bàn làm việc",
+    "hôm nay mình làm gì trước"
+  ],
+  "phaA": [
+    {
+      "goc": "Gen ơi, chào em",
+      "http": 200,
+      "msTuongDoi": 21423,
+      "text": "trên ấy chào em",
+      "confidence": 0.866,
+      "durationMsServer": 3445,
+      "audioMs": 3075,
+      "goiGen": false
+    },
+    {
+      "goc": "Gen ơi, ra cửa sổ đi",
+      "http": 200,
+      "msTuongDoi": 3568,
+      "text": "trên ơi ra cửa sổ định",
+      "confidence": 0.969,
+      "durationMsServer": 3439,
+      "audioMs": 3342,
+      "goiGen": false
+    },
+    {
+      "goc": "Gen ơi, mở màn hình cho anh",
+      "http": 200,
+      "msTuongDoi": 3626,
+      "text": "trên ấy mở màn hình cho anh",
+      "confidence": 0.948,
+      "durationMsServer": 3495,
+      "audioMs": 3598,
+      "goiGen": false
+    },
+    {
+      "goc": "dừng lại",
+      "http": 200,
+      "msTuongDoi": 3048,
+      "text": "dừng lại",
+      "confidence": 0.851,
+      "durationMsServer": 2954,
+      "audioMs": 2530,
+      "goiGen": false
+    },
+    {
+      "goc": "đi tới bàn làm việc",
+      "http": 200,
+      "msTuongDoi": 3051,
+      "text": "đi tới bàn làm việc",
+      "confidence": 1,
+      "durationMsServer": 2937,
+      "audioMs": 3075,
+      "goiGen": false
+    },
+    {
+      "goc": "hôm nay mình làm gì trước",
+      "http": 200,
+      "msTuongDoi": 3276,
+      "text": "hôm nay mình làm gì chứ",
+      "confidence": 0.981,
+      "durationMsServer": 3172,
+      "audioMs": 3215,
+      "goiGen": false
+    }
+  ],
+  "phaB": [
+    {
+      "goc": "Gen ơi, mở màn hình cho anh",
+      "to": "gen",
+      "maThoat": 0,
+      "msTong": 14006,
+      "tomTat": {
+        "text": "trên ới mở màn hình cho anh",
+        "confidence": 0.955,
+        "daGui": true,
+        "durationMs": 4164
+      },
+      "suKienJson": [
+        {
+          "ms": 350,
+          "su": "bat-dau"
+        },
+        {
+          "ms": 3103,
+          "su": "dang-nhan-dang"
+        },
+        {
+          "ms": 7996,
+          "su": "ket-qua",
+          "text": "trên ới mở màn hình cho anh",
+          "confidence": 0.955,
+          "durationMs": 4164,
+          "goiGen": false,
+          "daGui": true
+        }
+      ],
+      "soVachMuc": 16,
+      "stderr": [
+        "[tai-nghe 12:17:11] mở nguồn file /tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/wav/cau3.wav",
+        "[tai-nghe 12:17:11] đang thu (file /tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/wav/cau3.wav) — nói đi",
+        "[tai-nghe 12:17:14] im lặng ≥ 1200 ms sau khi nói — tự dừng",
+        "[tai-nghe 12:17:14] dừng (im-lang) sau 3300 ms, giữ 500–2200 ms",
+        "[tai-nghe 12:17:19] nghe được: \"trên ới mở màn hình cho anh\" (tin cậy 0.955)"
+      ],
+      "suKienSanKhau": [
+        {
+          "ms": 7470,
+          "event": "user.text",
+          "actor": "owner",
+          "to": "gen",
+          "text": "trên ới mở màn hình cho anh"
+        },
+        {
+          "ms": 7472,
+          "event": "user.speech",
+          "actor": "owner",
+          "to": "gen",
+          "text": "trên ới mở màn hình cho anh"
+        },
+        {
+          "ms": 7996,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "trên ới mở màn hình cho anh"
+        },
+        {
+          "ms": 8270,
+          "event": "actor.emoteDone",
+          "actor": "gen"
+        },
+        {
+          "ms": 9239,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Sếp cần gì ạ?"
+        },
+        {
+          "ms": 9372,
+          "event": "cmd.queued",
+          "actor": "gen"
+        },
+        {
+          "ms": 10990,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Em chưa có não, Sếp bật agy nhé."
+        }
+      ]
+    },
+    {
+      "goc": "đi tới bàn làm việc",
+      "to": "owner",
+      "maThoat": 0,
+      "msTong": 13093,
+      "tomTat": {
+        "text": "đi tới bàn làm việc",
+        "confidence": 1,
+        "daGui": true,
+        "durationMs": 4152
+      },
+      "suKienJson": [
+        {
+          "ms": 373,
+          "su": "bat-dau"
+        },
+        {
+          "ms": 2565,
+          "su": "dang-nhan-dang"
+        },
+        {
+          "ms": 7074,
+          "su": "ket-qua",
+          "text": "đi tới bàn làm việc",
+          "confidence": 1,
+          "durationMs": 4152,
+          "goiGen": false,
+          "daGui": true
+        }
+      ],
+      "soVachMuc": 13,
+      "stderr": [
+        "[tai-nghe 12:17:26] mở nguồn file /tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/wav/cau5.wav",
+        "[tai-nghe 12:17:26] đang thu (file /tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/wav/cau5.wav) — nói đi",
+        "[tai-nghe 12:17:28] im lặng ≥ 1200 ms sau khi nói — tự dừng",
+        "[tai-nghe 12:17:28] dừng (im-lang) sau 2750 ms, giữ 550–1650 ms",
+        "[tai-nghe 12:17:33] nghe được: \"đi tới bàn làm việc\" (tin cậy 1)"
+      ],
+      "suKienSanKhau": [
+        {
+          "ms": 6931,
+          "event": "user.command",
+          "text": "đi tới bàn làm việc"
+        },
+        {
+          "ms": 6936,
+          "event": "user.text",
+          "actor": "owner",
+          "to": "owner",
+          "text": "đi tới bàn làm việc",
+          "handled": true
+        },
+        {
+          "ms": 6937,
+          "event": "user.speech",
+          "actor": "owner",
+          "to": "owner",
+          "text": "đi tới bàn làm việc",
+          "handled": true
+        },
+        {
+          "ms": 6943,
+          "event": "cmd.interrupted",
+          "actor": "owner"
+        },
+        {
+          "ms": 6948,
+          "event": "user.text",
+          "actor": "owner",
+          "to": "camera",
+          "text": "Dạ, đi tới bàn điều khiển",
+          "handled": true
+        },
+        {
+          "ms": 7070,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "đi tới bàn làm việc"
+        },
+        {
+          "ms": 7084,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "Dạ, đi tới bàn điều khiển"
+        },
+        {
+          "ms": 7101,
+          "event": "cmd.queued",
+          "actor": "owner"
+        }
+      ]
+    },
+    {
+      "goc": "hôm nay mình làm gì trước",
+      "to": "gen",
+      "maThoat": 0,
+      "msTong": 13137,
+      "tomTat": {
+        "text": "hôm nay mình làm gì chứ",
+        "confidence": 0.991,
+        "daGui": true,
+        "durationMs": 4036
+      },
+      "suKienJson": [
+        {
+          "ms": 427,
+          "su": "bat-dau"
+        },
+        {
+          "ms": 2712,
+          "su": "dang-nhan-dang"
+        },
+        {
+          "ms": 7127,
+          "su": "ket-qua",
+          "text": "hôm nay mình làm gì chứ",
+          "confidence": 0.991,
+          "durationMs": 4036,
+          "goiGen": false,
+          "daGui": true
+        }
+      ],
+      "soVachMuc": 13,
+      "stderr": [
+        "[tai-nghe 12:17:39] mở nguồn file /tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/wav/cau6.wav",
+        "[tai-nghe 12:17:39] đang thu (file /tmp/claude-0/-home-user/6cafca3a-7f0c-56e5-a904-03bc8da7eb9f/scratchpad/e2e/wav/cau6.wav) — nói đi",
+        "[tai-nghe 12:17:41] im lặng ≥ 1200 ms sau khi nói — tự dừng",
+        "[tai-nghe 12:17:41] dừng (im-lang) sau 2850 ms, giữ 500–1750 ms",
+        "[tai-nghe 12:17:46] nghe được: \"hôm nay mình làm gì chứ\" (tin cậy 0.991)"
+      ],
+      "suKienSanKhau": [
+        {
+          "ms": 6961,
+          "event": "cmd.interrupted",
+          "actor": "owner"
+        },
+        {
+          "ms": 6969,
+          "event": "user.text",
+          "actor": "owner",
+          "to": "gen",
+          "text": "hôm nay mình làm gì chứ"
+        },
+        {
+          "ms": 6970,
+          "event": "user.speech",
+          "actor": "owner",
+          "to": "gen",
+          "text": "hôm nay mình làm gì chứ"
+        },
+        {
+          "ms": 6971,
+          "event": "actor.arrived",
+          "actor": "owner",
+          "to": "ban-dieu-khien"
+        },
+        {
+          "ms": 7120,
+          "event": "actor.sayStart",
+          "actor": "owner",
+          "text": "hôm nay mình làm gì chứ"
+        },
+        {
+          "ms": 7769,
+          "event": "actor.emoteDone",
+          "actor": "gen"
+        },
+        {
+          "ms": 8708,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Sếp cần gì ạ?"
+        },
+        {
+          "ms": 8869,
+          "event": "cmd.queued",
+          "actor": "gen"
+        },
+        {
+          "ms": 10470,
+          "event": "actor.sayStart",
+          "actor": "gen",
+          "text": "Em chưa có não, Sếp bật agy nhé."
+        }
+      ]
+    }
+  ],
+  "loi": [],
+  "khoe": {
+    "ok": true,
+    "daCai": true,
+    "model": ".cache/stt/models/PhoWhisper-small-ct2"
+  },
+  "phaACache": {
+    "ms": 6,
+    "text": "trên ấy chào em"
+  },
+  "bridgeSttLog": [
+    "[stt ] đang nghe http://127.0.0.1:9003/stt  (POST audio)",
+    "[stt ] model .cache/stt/models/PhoWhisper-small-ct2 · giữ phím V trong trình duyệt để nói",
+    "[stt ] thợ sẵn sàng · model .cache/stt/models/PhoWhisper-small-ct2 · 2 luồng",
+    "[stt ] 3075 ms audio → 3445 ms · tin 0.866 · \"trên ấy chào em\"",
+    "[stt ] 3342 ms audio → 3439 ms · tin 0.969 · \"trên ơi ra cửa sổ định\"",
+    "[stt ] 3598 ms audio → 3495 ms · tin 0.948 · \"trên ấy mở màn hình cho anh\"",
+    "[stt ] 2530 ms audio → 2954 ms · tin 0.851 · \"dừng lại\"",
+    "[stt ] 3075 ms audio → 2937 ms · tin 1 · \"đi tới bàn làm việc\"",
+    "[stt ] 3215 ms audio → 3172 ms · tin 0.981 · \"hôm nay mình làm gì chứ\"",
+    "[stt ] 3075 ms audio → 3445 ms · tin 0.866 · \"trên ấy chào em\"",
+    "[stt ] 1700 ms audio → 4164 ms · tin 0.955 · \"trên ới mở màn hình cho anh\"",
+    "[stt ] 1100 ms audio → 4152 ms · tin 1 · \"đi tới bàn làm việc\"",
+    "[stt ] 1250 ms audio → 4036 ms · tin 0.991 · \"hôm nay mình làm gì chứ\""
+  ],
+  "pgid": [
+    {
+      "ten": "bridge",
+      "pgid": 13827
+    },
+    {
+      "ten": "vite",
+      "pgid": 13923
+    },
+    {
+      "ten": "tai-nghe-3",
+      "pgid": 14021
+    },
+    {
+      "ten": "tai-nghe-5",
+      "pgid": 14054
+    },
+    {
+      "ten": "tai-nghe-6",
+      "pgid": 14078
+    }
+  ]
+}

@@ -1,0 +1,2404 @@
+/**
+ * world.ts — sân khấu thật bằng Three.js: renderer, camera, ánh sáng, phòng,
+ * danh sách actor / place / prop, bong bóng chữ, vòng lặp vẽ.
+ *
+ * Đây là **bản thi công** của giao diện `StageWorld` (xem `src/api/types.ts`).
+ * Lệnh trong `src/api/commands/` không biết gì về Three.js — nhờ vậy A2/A3 đổi
+ * ruột cảnh mà không phải sửa dispatcher, UI hay bridge, và `pnpm test` chạy
+ * dispatcher bằng sân khấu giả không cần WebGL.
+ */
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { VRMUtils } from '@pixiv/three-vrm';
+import type {
+  Action,
+  ActorSnapshot,
+  PlaceSnapshot,
+  PropSnapshot,
+  ScreenSnapshot,
+  StageState,
+  StageWorld,
+  ThamSoModuleBuild,
+  ThamSoSpawnActor,
+  ThamSoSpawnProp,
+  ThamSoSpawnScreen,
+  Vec3,
+} from '../api/types';
+import type { EventBus } from '../events';
+import { denDiem, MAU_CAM, MAU_CYAN, type Canh } from './canh-chung';
+import { BupBe, KIEU_NHAN_VAT, NHAN_VIEN } from './bup-be';
+import { dungVanPhong } from './van-phong';
+import { datCanhChan, timDuong } from './bo-cuc';
+import { DoFps } from './do-fps';
+import { DT_TOI_DA_NEN, nenVeKhung, TY_LE_PIXEL_NEN, type RenderMode } from './che-do-nen';
+import { heSoBam, NhanVat, TOC_DO_DI, uocThoiLuongNoi } from './nhanvat';
+import {
+  dayTayMay,
+  dichCamera,
+  hopTamNgam,
+  kepTrongHop,
+  type HopNha,
+} from './may-quay';
+import {
+  BIEU_CAM,
+  CLIPS,
+  DAI_CLIP,
+  EMOTES,
+  layMatGhe,
+  dsPlaces,
+  PRESET_DEN,
+  PRESET_MAY,
+  TEN_HIEN_THI,
+  timPlace,
+  type DinhNghiaPlace,
+} from './noi-dung';
+import { noiTiep, hanhDongHenGio, hanhDongXongNgay } from './hanh-dong';
+import { ManHinh, MAC_DINH_MAN_HINH } from './man-hinh';
+import { KetTinh, maySurfacePoints } from '../fx/hat-ket-tinh';
+import { taoHieuUng, type HieuUng } from '../fx/hieu-ung';
+// C0 (#28) — sổ "có não nối hay chưa" do bridge ghi vào (xem `src/behavior/so-nao.ts`).
+import { coNao } from '../behavior/so-nao';
+
+/** Nền tối cho "mô hình" văn phòng nổi khối như ảnh diorama (Ryan 27/10). */
+const MAU_NEN = 0x2d3242;
+
+/** Một bộ số đèn của một preset — xem `PRESET_DEN_SO`. */
+export interface SoDen {
+  /** Cường độ `HemisphereLight` (trời/đất). */
+  troi: number;
+  /** Cường độ `DirectionalLight` chính ("nắng chiều"). */
+  nang: number;
+  /** Màu đèn nắng. */
+  nangMau: number;
+  /** Cường độ đèn viền phía bắc. */
+  vien: number;
+  /** `renderer.toneMappingExposure`. */
+  exposure: number;
+  /** Màu nền + màu fog. */
+  nen: number;
+}
+
+/**
+ * H1 (#69 mục 34) — **MỘT NGUỒN SỰ THẬT cho cường độ đèn.**
+ *
+ * Trước H1 có HAI bộ số: `dungAnhSang()` dựng cảnh bằng `troi 0.95 / nang 1.15
+ * / vien 0.22`, còn `sceneLight('sang')` ghi `troi 1.2 / nang 1.0 / vien 0.3`
+ * và đổi luôn màu đèn nắng. Nên chỉ cần gọi `scene.light sang` **một lần** —
+ * bấm `R` (`stage.reset` đi qua `sceneLight`), bảng lệnh, phím, hay một lệnh
+ * của não — là trời sáng thêm 26 % so với lúc mở trang, vượt mốc luma p95 đã
+ * chốt ở D1b. Đúng lỗi "chói" Boss báo.
+ *
+ * Giờ `dungAnhSang()` và `sceneLight()` cùng đọc bảng này, nên **không thể**
+ * lệch nữa: muốn đổi độ sáng thì sửa đúng một chỗ. Số của `sang` lấy theo bản
+ * `dungAnhSang()` — đó là bộ đã có số đo luma p95 chốt ở D1b/F1, còn bộ của
+ * `sceneLight` cũ chưa bao giờ được đo.
+ */
+export const PRESET_DEN_SO: Record<string, SoDen> = {
+  sang: { troi: 1.05, nang: 1.5, nangMau: 0xffd9ad, vien: 0.3, exposure: 0.95, nen: MAU_NEN },
+  toi: { troi: 0.34, nang: 0.22, nangMau: 0x6f9ec8, vien: 0.45, exposure: 0.8, nen: 0x060a0f },
+  am: { troi: 0.8, nang: 0.8, nangMau: MAU_CAM, vien: 0.25, exposure: 0.86, nen: 0x1c1208 },
+};
+/** Còn xa ghế hơn số này (m) sau cú đi thì `actorSit` tìm đường đi lại thay vì ngồi tại chỗ kẹt. */
+const CON_XA_GHE = 0.3;
+/** Bán kính coi là "đang ở" một place. */
+const BAN_KINH_AT = 0.9;
+/**
+ * Hai nhân vật mặc định của sân khấu (B1, Issue #18 mục 3).
+ *
+ * `owner` = Boss điều khiển bằng phím (VRM NAM, `public/models/owner.vrm`),
+ * spawn trên bục trung tâm. `gen` = nhân vật nữ cũ (`lan` đổi id thành `gen`
+ * theo đúng tên trong spec mục 3.4b), đứng ở bàn điều khiển, idle `cham-chu`,
+ * để đợt B3 gắn não agy.
+ *
+ * Thiếu `owner.vrm` (chưa chạy `pnpm assets`) thì `actorSpawn` tự rơi về
+ * `models/avatar.vrm` chứ không làm sập cảnh — xem `napCanh`.
+ */
+// C2 (#32): tên hiển thị lấy từ BẢNG `TEN_HIEN_THI` trong `noi-dung.ts`
+// (G2, 28/10: Gen → "Nhi", Javis → "Nam"); `id` vẫn là `owner`/`gen`.
+export const OWNER = { id: 'owner', ten: TEN_HIEN_THI.owner, model: 'models/owner.vrm' } as const;
+export const GEN = { id: 'gen', ten: TEN_HIEN_THI.gen, model: 'models/avatar.vrm' } as const;
+/** Giữ tên cũ cho mã/kịch bản A1–A3 còn tham chiếu: nay trỏ vào `gen`. */
+export const ACTOR_MAC_DINH = { id: GEN.id, ten: GEN.ten, model: GEN.model };
+
+/** Bóng đổ MẶC ĐỊNH — cố định, không gate theo `maxTextureSize` (PR #51 vòng 2). */
+const BONG_CO_BAN = 1024;
+/** Bóng đổ bản "máy khoẻ" — chỉ bật khi đo thật đạt mốc dưới đây. */
+const BONG_MANH = 2048;
+/** FPS phải đạt mức này LIÊN TỤC `BONG_CAN_MS` mới cho nâng bóng lên 2048. */
+const FPS_NANG_BONG = 50;
+const BONG_CAN_MS = 5000;
+
+interface DoVat {
+  id: string;
+  kind: string;
+  shape: string;
+  obj: THREE.Object3D;
+  state: Record<string, unknown>;
+  camBoi: string | null;
+}
+
+type GocMay = { vt: THREE.Vector3; tam: THREE.Vector3; fov: number };
+
+/**
+ * Góc máy "toàn cảnh" của VĂN PHÒNG: diorama nhìn chéo từ đông-nam, cao, fov hẹp
+ * (gần kiểu isometric của ảnh tham chiếu) — ôm trọn sàn 24 × 17 m.
+ */
+const MAY_NGANG: GocMay = {
+  vt: new THREE.Vector3(11.5, 15.5, 18.5),
+  tam: new THREE.Vector3(0.4, 0.2, 0.2),
+  fov: 36,
+};
+/** Khung DỌC (điện thoại / panel VS Code hẹp): lùi xa hơn, fov rộng hơn để vẫn ôm sàn. */
+const MAY_DOC: GocMay = {
+  vt: new THREE.Vector3(14, 22, 25),
+  tam: new THREE.Vector3(0.4, 0.2, 0.2),
+  fov: 46,
+};
+/**
+ * Góc máy 4 KHU (`camera.preset` phong-khach/ban-lam-viec/bep/cua-so): chéo từ
+ * trên xuống vào khu nghỉ (sofa) · bàn Nhi · Pantry · cửa sổ tường tây.
+ */
+const GOC_KHU: Record<string, { vt: THREE.Vector3; tam: THREE.Vector3 }> = {
+  'phong-khach': { vt: new THREE.Vector3(3.6, 4.0, 0.4), tam: new THREE.Vector3(0.6, 0.4, -3.6) },
+  // INT-07: Ban giám đốc dọc tường bắc — nhìn thẳng vào mặt Nhi + Nam (họ nhìn +Z)
+  'ban-lam-viec': { vt: new THREE.Vector3(-0.3, 3.0, -3.6), tam: new THREE.Vector3(-0.5, 0.6, -8.0) },
+  bep: { vt: new THREE.Vector3(6.4, 4.4, 1.2), tam: new THREE.Vector3(9.6, 0.6, 5.4) },
+  'cua-so': { vt: new THREE.Vector3(-7.4, 4.0, 3.6), tam: new THREE.Vector3(-11.2, 0.8, 0.4) },
+};
+/**
+ * Lệch camera so với chủ khi bám (`theo-owner`): chéo 3/4 sau-phải, cao 2 m
+ * — nhà trần thấp (2,8 m) nên lệch thấp hơn hẳn bản lab.
+ */
+const LECH_THEO_OWNER = /* @__PURE__ */ new THREE.Vector3(1.8, 2.0, 2.6);
+
+/* ======================= H1 (#69) — tay máy & bước cố định ================= */
+
+/** Camera không được thấp hơn mốc này (m) — không chui xuống dưới sàn. */
+const MAY_Y_MIN = 0.4;
+/**
+ * Hộp camera được phép ở (H1 mục 15). Căn nhà cũ có tường + trần nên hộp bó sát
+ * 13,2 × 9,2 × 2,5 m; văn phòng diorama KHÔNG có vách/trần, máy quay đứng cao
+ * ngoài mép sàn nhìn vào — hộp chỉ còn giữ camera khỏi chui xuống sàn và khỏi
+ * bay quá xa (mép sàn 24 × 17 m + khoảng lùi của góc `toan-canh`).
+ */
+const HOP_MAY: HopNha = {
+  hx: 30,
+  hz: 30,
+  yMin: MAY_Y_MIN,
+  yMax: 30,
+};
+/** H1 (#69 mục 14) — `maxDistance`: đủ lùi ra ôm trọn sàn văn phòng, không hơn. */
+const MAY_XA_TOI_DA = 45;
+/** Tay máy ngắn nhất (m) — khớp `controls.minDistance` để hai bên không giằng. */
+const MAY_GAN_TOI_DA = 0.6;
+/** Lề tay máy với mặt hộp nhà (m) — dùng chung cho `dayTayMay` và `dichCamera`. */
+const LE_TAY_MAY = 0.12;
+/**
+ * H1 vòng 2 (review PR #72 mục 1) — **hộp cho TÂM NGẮM**, thu vào
+ * `MAY_GAN_TOI_DA + LE_TAY_MAY` so với hộp camera.
+ *
+ * Nhờ bất biến hình học trong `hopTamNgam`, tâm ngắm nằm trong hộp này thì
+ * `dayTayMay` **không thể** trả về dưới 0,6 m theo bất kỳ hướng nào. Trước
+ * đây tâm ngắm là đúng cái đầu nhân vật, lái sát tường là tâm nằm trên mặt
+ * hộp ⇒ tay máy co còn 0,126 m ⇒ khung hình toàn áo.
+ */
+const HOP_TAM = /* @__PURE__ */ hopTamNgam(HOP_MAY, MAY_GAN_TOI_DA + LE_TAY_MAY);
+/**
+ * Khoảng cách camera→nhân vật mà khung hình còn "thấy căn nhà" (m).
+ *
+ * Sát tường thì kẹp ngang ăn mất khoảng cách; `dichCamera` bù lại bằng cách
+ * **nâng camera lên cao** tới mốc này thay vì tiến vào người.
+ */
+const MAY_XA_DE_CHIU = 2.6;
+/**
+ * **Trần tốc độ lò xo camera** (m/s) — lưới an toàn, không phải cách sửa.
+ *
+ * Cách sửa là `dichCamera` (đích luôn khả thi ⇒ sai số về 0 ⇒ vận tốc về 0).
+ * Trần này chỉ chặn hai trường hợp còn lại: lúc MỚI vào preset `theo-owner`
+ * camera đang ở tận góc nhà (sai số 6–8 m ⇒ lò xo tới hạn vọt tới ~0,37·ω·e),
+ * và mọi cú dời camera do Boss/`kepMayTrongNha` gây ra. 2,8 m/s ≈ 1,75 lần
+ * tốc độ đi bộ: đủ nhanh để bám, và nằm HẲN dưới mốc 3 m/s của thước đo nên
+ * con số đo được không phải là chính cái trần này.
+ */
+const MAY_VEL_TOI_DA = 2.8;
+/**
+ * H1 (#69 mục 6) — **hằng thời gian camera BAY** (s), thay `min(1, dt·3,2)`.
+ *
+ * F2 (#56) đã đổi camera *bám* sang lò xo độc lập FPS nhưng bỏ sót camera
+ * *bay* (`camera.preset`, `camera.focus`): `dt·3,2` ở 60 FPS cho 0,053/khung,
+ * ở 10 FPS cho 0,32/khung — tức cùng một đoạn code bay nhanh chậm khác nhau
+ * theo máy, và `CLAUDE.md` mục D1 tự ghi "1,5 s chỉ đi được ~30 % quãng".
+ * Dùng `heSoBam(dt, τ)` của F2: τ = 0,28 s ⇒ 95 % quãng trong ~0,85 s ở MỌI
+ * FPS.
+ */
+const TAU_MAY_BAY = 0.28;
+/**
+ * H1 (#69 mục 1–3) — **bước mô phỏng cố định** (s). 60 Hz: đúng nhịp mà lò xo
+ * camera (ω = 9) và hằng thời gian của F2 được chỉnh theo.
+ */
+const BUOC_CO_DINH = 1 / 60;
+/**
+ * Trần số bước mô phỏng một khung hình. Chạm trần thì **bỏ phần dư** thay vì
+ * dồn sang khung sau: dồn là "spiral of death" (khung sau phải chạy nhiều bước
+ * hơn ⇒ càng chậm ⇒ càng nhiều bước). 5 bước = bù được tới 83 ms giật.
+ */
+const BUOC_TOI_DA = 5;
+/**
+ * Trần `dt` của một khung hình (s). Khung dài hơn mốc này thì phần dư bị
+ * **bỏ** — và đó mới là tín hiệu "máy đang chậm thật" (`khungTranBuoc`).
+ */
+const DT_KHUNG_TOI_DA = 1 / 20;
+/**
+ * F2 (#56 mục 2) — **tần số riêng của lò xo camera bám** (rad/s).
+ *
+ * Bản B1 bám bằng `position.lerp(dich, min(1, dt*2,6))`. Hai tật:
+ *   1. `dt*k` không độc lập FPS (xem `heSoBam` trong `nhanvat.ts`), nên cùng
+ *      code cho cảm giác khác nhau giữa máy kiểm ~1 FPS và 60 FPS của Boss;
+ *   2. lọc bậc một thì **luôn trễ tỉ lệ với tốc độ**: đo trên Firefox GPU
+ *      thật, nhân vật đi 1,6 m/s thì camera tụt lại ~0,6 m so với vị trí lệch
+ *      mong muốn, và bám "đuổi theo" chứ không "đi cùng".
+ *
+ * Giờ dùng **lò xo giảm chấn tới hạn** (critically damped): tích phân nửa ẩn
+ * (semi-implicit) nên ổn định ở mọi `dt`, và vì damping = tới hạn nên KHÔNG
+ * bao giờ vọt quá rồi dội lại — tức không rung.
+ *
+ * Chọn ω = 9 rad/s bằng số, không bằng cảm giác: với lò xo tới hạn bám một
+ * mục tiêu chạy ĐỀU tốc độ `v`, độ trễ xác lập đúng bằng `2v/ω`. Nhân vật lái
+ * 1,6 m/s ⇒ trễ 0,36 m — camera đi *cùng* nhân vật (bản lerp cũ `dt·2,6` trễ
+ * `v/2,6` = 0,62 m, tức luôn *đuổi theo*). Tăng ω nữa thì camera bám cứng vào
+ * từng bước chân, lúc đó chính nhịp bước lại thành rung.
+ */
+export const OMEGA_MAY = 9;
+/** Trần `dt` cho lò xo camera (s) — tab bị ẩn quay lại thì bám chứ không nhảy. */
+const DT_MAY_TOI_DA = 1 / 15;
+
+/**
+ * Một bước lò xo giảm chấn tới hạn cho `v` tiến tới `muc`, có mang `vel`.
+ *
+ * Công thức semi-implicit (ổn định vô điều kiện):
+ *   `vel ← (vel + ω²·dt·(muc − v)) / (1 + 2ω·dt + ω²·dt²)`, rồi `v ← v + vel·dt`.
+ * Xuất ra ngoài để test đo được (`src/api/__tests__/f2-dieu-khien-muot.test.ts`).
+ */
+export function buocLoXo(
+  v: THREE.Vector3,
+  vel: THREE.Vector3,
+  muc: THREE.Vector3,
+  omega: number,
+  dt: number,
+): void {
+  if (!(dt > 0)) return;
+  const w2 = omega * omega;
+  const chia = 1 + 2 * omega * dt + w2 * dt * dt;
+  vel.x = (vel.x + w2 * dt * (muc.x - v.x)) / chia;
+  vel.y = (vel.y + w2 * dt * (muc.y - v.y)) / chia;
+  vel.z = (vel.z + w2 * dt * (muc.z - v.z)) / chia;
+  v.addScaledVector(vel, dt);
+}
+
+export class World implements StageWorld {
+  readonly scene = new THREE.Scene();
+  readonly camera: THREE.PerspectiveCamera;
+  readonly renderer: THREE.WebGLRenderer;
+  readonly controls: OrbitControls;
+
+  private bus: EventBus;
+  private actors = new Map<string, NhanVat>();
+  private props = new Map<string, DoVat>();
+  private bongBongLop: HTMLElement;
+  private bongBongEl = new Map<string, HTMLElement>();
+  /** INT-07 — thẻ tên nổi trên đầu từng actor (`actor.label`). */
+  private theTen = new Map<string, { text: string; tone: string; el: HTMLElement }>();
+
+  /* A3 — màn hình hologram, hiệu ứng kết tinh, fx ngắn */
+  private screens = new Map<string, ManHinh>();
+  /** E2 — khối đỡ + mặt trên ĐO ĐƯỢC của từng màn hình (xem `ScreenSnapshot.restsOn`). */
+  private doDungManHinh = new Map<string, { block: string; surfaceY: number }>();
+  /** Mặt trên của từng khối nội thất, đo lúc dựng phòng (xem `Phong.noc`). */
+  private nocKhoi = new Map<string, number>();
+  /** Đáy + mặt ngồi của từng khối, đo lúc dựng (xem `Phong.day` / `Phong.matNgoi`). */
+  private dayKhoi = new Map<string, number>();
+  private matNgoiKhoi = new Map<string, number>();
+  /** J1 (#78) — hộp bao thật của từng khối, đo lúc dựng (xem `Phong.hopKhoi`). */
+  private hopKhoi = new Map<
+    string,
+    { min: [number, number, number]; max: [number, number, number] }
+  >();
+  private ketTinhDangChay = new Map<string, KetTinh>();
+  private fxDangChay: HieuUng[] = [];
+
+  private troi!: THREE.HemisphereLight;
+  private nang!: THREE.DirectionalLight;
+  private vien!: THREE.DirectionalLight;
+  private denPreset = 'sang';
+  /** C0 (#28) — góc máy hiện tại, để `stage.describe().camera.preset` nói thật. */
+  private mayPreset = 'toan-canh';
+  /** Lớp hình búp bê của từng actor (VRM vẫn chạy ẩn bên dưới — xem `bup-be.ts`). */
+  private bupBe = new Map<string, BupBe>();
+
+  /*
+   * D1b (Issue #48) — **KHÔNG CÒN HẬU KỲ**. Boss 26/10: "tối ưu đồ hoạ, đừng
+   * đòi GPU lớn… đẹp đến từ ánh sáng + màu + chất liệu + bố cục, không từ hậu
+   * kỳ". Cả hai `EffectComposer` (bloom chọn lọc của C3 #40), `UnrealBloomPass`
+   * và lượt tô-đen-rồi-trả-lại vật liệu mỗi khung hình đã BỎ HẲN: giờ
+   * `renderer.render(scene, camera)` một lượt, không render target trung gian,
+   * không full-screen pass nào.
+   *
+   * Cái mất: viền sáng quanh chụp đèn. Cái được: 2 lượt render + 5 lượt blur
+   * mỗi khung hình biến mất, và `batSang()` trở thành vô hại (chỉ bật một bit
+   * layer, không ai đọc) nên `phong.ts`/`fx/*.ts` không phải sửa.
+   */
+  private daHaChatLuong = false;
+  /** ms FPS đã liên tục ≥ `FPS_NANG_BONG` (gate nâng bóng 1024 → 2048). */
+  private fpsCaoTu = 0;
+  /** Đã nâng bóng lên 2048 chưa — nâng MỘT LẦN, không nhảy qua nhảy lại. */
+  private daNangBong = false;
+  /** Đo FPS bằng đồng hồ thật (khoảng giữa hai khung VẼ), không bằng `dt` đã kẹp. */
+  private doFps = new DoFps();
+  /**
+   * V1 (INT-06) — chế độ vẽ. `nen`: ≤ FPS_NEN khung/giây, pixel ratio 1, tắt bóng đổ
+   * (D1b đã bỏ bloom nên bóng đổ là thứ đắt nhất còn lại). Ra nền trả đúng như cũ.
+   */
+  private cheDoVe: RenderMode = 'full';
+  /** Mốc rAF (ms) của khung VẼ gần nhất — để bỏ khung khi nền. */
+  private lanVeCuoi = -Infinity;
+  /** Số khung đã vẽ thật (bằng chứng đo fps — `scripts/kiem-nen.mjs`). */
+  private soKhungDaVe = 0;
+  /** Hai đèn điểm ấm (đèn sàn + đèn bàn) — D1b, không bóng đổ, tầm ngắn. */
+  private denAm: THREE.PointLight[] = [];
+
+  private dongHo = new THREE.Timer();
+  private chuotNDC = new THREE.Vector2(0, 0);
+  private diemChuot = new THREE.Vector3();
+  private tamTuBay: { vt: THREE.Vector3; tam: THREE.Vector3 } | null = null;
+  /**
+   * Preset `theo-owner`: id actor camera đang BÁM (null = không bám).
+   *
+   * Khác `tamTuBay` (bay một lần tới chỗ cố định rồi thôi): mỗi khung hình
+   * tính lại đích theo vị trí chủ rồi lerp — nên nhân vật đi tới đâu camera
+   * theo tới đó mà vẫn giữ đúng góc 3/4 nhìn xuống.
+   */
+  private theoOwner: string | null = null;
+  /* --- F2: trạng thái lò xo camera bám (xem `buocLoXo`) --- */
+  private readonly mayVel = new THREE.Vector3();
+  private readonly mayTamVel = new THREE.Vector3();
+  private readonly mayDich = new THREE.Vector3();
+  private readonly mayTam = new THREE.Vector3();
+  /**
+   * F2 — **sổ ghi từng khung của camera bám** (bằng chứng "không rung").
+   *
+   * `[t ms, dt s, cam.x, cam.z, |vel|, xaDau]`. Ghi tại chỗ, không cấp phát;
+   * script bằng chứng đọc một lần qua `doHieuNang().soMay` thay vì lấy mẫu mỗi
+   * khung (lấy mẫu từ ngoài kéo FPS 60 → 8,5, tức làm hỏng đúng cái đang đo).
+   *
+   * H1 vòng 2 (review PR #72 mục 1): thêm `xaDau` = **khoảng cách camera →
+   * đầu nhân vật** (m). Thước đo cũ chỉ hỏi "camera có trong hộp không" nên
+   * không bắt được lỗi tay máy co vào trong người — co vào thì vẫn trong hộp.
+   */
+  private soMay: Array<[number, number, number, number, number, number]> = [];
+  /** Đỉnh `|v|` của lượt bám hiện tại (m/s) — KHÔNG có trần như `soMay`. */
+  private mayVelMax = 0;
+  /** Vị trí camera do lò xo đặt, để `controls.update()` không giằng lại. */
+  private readonly mayVtGiu = new THREE.Vector3();
+  private giuMayVt = false;
+  /** H1 — phần `dt` chưa tiêu của accumulator bước cố định (s). */
+  private duDt = 0;
+  /**
+   * H1 — số khung **có thời gian bị bỏ** vì dài hơn `DT_KHUNG_TOI_DA`, tức máy
+   * đang chậm thật (review PR #72 mục 3 — mốc cũ theo `BUOC_TOI_DA` không bao
+   * giờ tăng được).
+   */
+  private khungTranBuoc = 0;
+  /** H1 — vector tạm cho tay máy: không cấp phát trong đường render. */
+  private readonly tayMay = new THREE.Vector3();
+  /**
+   * H1 — có kẹp camera trong nhà hay không.
+   *
+   * Luôn `true` cho camera THẬT của Boss. Chỉ `datMayThu()` (`window.stage
+   * .datMay`, dụng cụ chụp ảnh bằng chứng, không nằm trong Actor API) được tắt
+   * — vài ảnh bằng chứng cố tình đặt máy **ngoài nhà** nhìn vào (b1, d1b).
+   * Boss chạm chuột vào sân khấu là bật lại ngay (`controls` 'start').
+   */
+  private kepMay = true;
+  private bossDaXoay = false;
+  private lanCuoiBossHoatDong = Date.now();
+
+  constructor(canvas: HTMLCanvasElement, bus: EventBus, bongBongLop: HTMLElement) {
+    this.bus = bus;
+    this.bongBongLop = bongBongLop;
+
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    // D1b: pixel ratio ≤ 1,5 (bản cũ ≤ 2 — trên điện thoại 3x là gấp đôi số
+    // điểm ảnh phải tô mà mắt gần như không thấy khác).
+    this.renderer.setPixelRatio(this.tyLePixel());
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    // C3 (#40) hạ 1.1 → 1.0; D1b (#48) hạ tiếp 1.0 → 0.86: kiểm độc lập đo
+    // luma TOÀN CẢNH p95 246–250 (cháy mảng sáng), mốc đặt lại là 215–225.
+    // H1 (#69): số nằm trong `PRESET_DEN_SO.sang` — một nguồn sự thật.
+    this.renderer.toneMappingExposure = PRESET_DEN_SO.sang.exposure;
+
+    // nền tối, KHÔNG fog: "mô hình" văn phòng nổi khối như ảnh diorama
+    this.scene.background = new THREE.Color(MAU_NEN);
+
+    this.camera = new THREE.PerspectiveCamera(
+      MAY_NGANG.fov,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      120,
+    );
+    this.camera.position.copy(MAY_NGANG.vt);
+
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.target.copy(MAY_NGANG.tam);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.07;
+    // H1: khớp đúng trần/sàn của tay máy (`MAY_GAN_TOI_DA`) để OrbitControls
+    // và spring arm không giằng nhau quanh một khoảng cách khác nhau.
+    this.controls.minDistance = MAY_GAN_TOI_DA;
+    this.controls.maxDistance = MAY_XA_TOI_DA;
+    // không cho máy hạ ngang sàn (diorama nhìn từ trên xuống), cho kéo ngang (pan)
+    this.controls.maxPolarAngle = Math.PI * 0.42;
+    this.controls.minPolarAngle = Math.PI * 0.12;
+    this.controls.enablePan = true;
+    this.controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
+    this.controls.addEventListener('start', () => {
+      this.bossDaXoay = true;
+      this.tamTuBay = null;
+      this.kepMay = true;
+      this.lanCuoiBossHoatDong = Date.now();
+    });
+
+    this.dungAnhSang();
+    this.datGocMay();
+  }
+
+  /* ------------------------------------------------------------ dựng cảnh */
+
+  /** Render MỘT lượt thẳng ra màn hình — D1b bỏ hẳn hậu kỳ (xem ghi chú trên). */
+  private veMotKhung(): void {
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  /**
+   * Dàn đèn VĂN PHÒNG — chiều muộn ấm: hemisphere sáng đều, nắng ấm chéo từ
+   * đông-nam đổ bóng mềm, vài đèn sàn là điểm ấm (đặt trong `napCanh` theo vị
+   * trí đèn cảnh trả về). Số cường độ nằm trong `PRESET_DEN_SO.sang` (H1 #69 mục
+   * 34: một nguồn sự thật với `sceneLight`).
+   */
+  private dungAnhSang(): void {
+    const so = PRESET_DEN_SO.sang;
+    this.troi = new THREE.HemisphereLight(0xfff1dc, 0x8a7560, so.troi);
+    this.scene.add(this.troi);
+
+    this.nang = new THREE.DirectionalLight(so.nangMau, so.nang);
+    this.nang.position.set(9, 14, 10);
+    this.nang.castShadow = true;
+    /*
+     * BÓNG CỐ ĐỊNH 1024 (Boss 27/10: "đừng đòi GPU lớn"; PR #51 vòng 1). Chỉ
+     * nâng lên 2048 khi ĐO THẬT đạt ≥ 50 FPS liên tục 5 s (xem `theoDoiFps`).
+     */
+    this.nang.shadow.mapSize.set(BONG_CO_BAN, BONG_CO_BAN);
+    // khung bóng BÓ SÁT sàn 24 × 17 m (bài học 25/10: near/far rộng là depth loãng)
+    const c = this.nang.shadow.camera;
+    c.left = -16;
+    c.right = 16;
+    c.top = 14;
+    c.bottom = -14;
+    c.near = 2;
+    c.far = 45;
+    this.nang.shadow.bias = -0.0015;
+    this.nang.shadow.normalBias = 0.05;
+    this.nang.shadow.radius = 3;
+    this.scene.add(this.nang);
+
+    this.vien = new THREE.DirectionalLight(0xb8c8ff, so.vien);
+    this.vien.position.set(-8, 7, 6);
+    this.scene.add(this.vien);
+
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.3;
+
+    this.renderer.toneMappingExposure = so.exposure;
+    this.denPreset = 'sang';
+  }
+
+  /** Nạp phòng + nhân vật mặc định + 2 màn hình (máy tính + TV). Gọi một lần lúc khởi động. */
+  async napCanh(tienTrinh?: (chu: string) => void): Promise<void> {
+    tienTrinh?.('Đang dựng văn phòng…');
+    const phong: Canh = await dungVanPhong(this.scene);
+    // va chạm theo cảnh (một chỗ cho steer/moveTo/sit — xem `bo-cuc.datCanhChan`)
+    datCanhChan({ hop: phong.vatCan, ...phong.khungSan });
+    // đèn sàn ấm: tối đa 4 đèn điểm thật, không đổ bóng (L-42)
+    this.denAm = phong.denLong.slice(0, 4).map((p) => denDiem(0xffb36a, 3.5, 5, p.x, p.y, p.z));
+    for (const d of this.denAm) this.scene.add(d);
+    this.nocKhoi = phong.noc;
+    this.dayKhoi = phong.day;
+    this.matNgoiKhoi = phong.matNgoi;
+    this.hopKhoi = phong.hopKhoi;
+
+    tienTrinh?.('Đang nạp nhân vật…');
+    // 1) Boss (nam) trên bục trung tâm, quay mặt về camera — phím WASD lái người này
+    await this.actorSpawn({
+      id: OWNER.id,
+      name: OWNER.ten,
+      model: OWNER.model,
+      // INT-07: Nam là CEO — xuất hiện ở bàn CEO (máy đội ngũ cho ngồi vào ghế nếu đang rảnh)
+      at: 'ban-ceo',
+      controlledBy: 'owner',
+    });
+    // 2) Gen (nữ) đứng ở bàn điều khiển, dáng chờ `cham-chu` (Issue #18 mục 3)
+    await this.actorSpawn({
+      id: GEN.id,
+      name: GEN.ten,
+      model: GEN.model,
+      at: 'ban-dieu-khien',
+      controlledBy: 'agent',
+    });
+    this.actorIdleStyle(GEN.id, 'cham-chu');
+    this.actorLookAt(GEN.id, 'ban-dieu-khien');
+
+    tienTrinh?.('Đang dựng màn hình…');
+    for (const id of Object.keys(MAC_DINH_MAN_HINH)) await this.screenSpawn({ id });
+
+  }
+
+  /* ----------------------------------------------------------- vòng lặp */
+
+  batDauVe(): void {
+    this.renderer.setAnimationLoop((t: number) => {
+      // V1 (INT-06) — nền: bỏ khung theo ĐỒNG HỒ THẬT (mốc rAF). Không gọi
+      // `dongHo.update()` ở khung bỏ, nên `dt` của khung vẽ kế tiếp là thời
+      // gian thật đã trôi; hành động có thời lượng vốn nội suy theo đồng hồ +
+      // hẹn giờ huỷ được, nên `durationMs` không đổi.
+      if (!nenVeKhung(this.cheDoVe, t, this.lanVeCuoi)) return;
+      this.lanVeCuoi = t;
+      this.motKhung();
+    });
+    window.addEventListener('resize', () => {
+      this.datGocMay();
+      this.apKichThuoc();
+    });
+    window.addEventListener('pointermove', (e) => {
+      this.chuotNDC.set(
+        (e.clientX / window.innerWidth) * 2 - 1,
+        -(e.clientY / window.innerHeight) * 2 + 1,
+      );
+      this.lanCuoiBossHoatDong = Date.now();
+    });
+    window.addEventListener('keydown', () => {
+      this.lanCuoiBossHoatDong = Date.now();
+    });
+  }
+
+  /** Pixel ratio MỘT chỗ: nền = 1; thường ≤ 1,5 (D1b), hạ chất lượng = 1. */
+  private tyLePixel(): number {
+    if (this.cheDoVe === 'nen') return TY_LE_PIXEL_NEN;
+    return Math.min(window.devicePixelRatio, this.daHaChatLuong ? 1 : 1.5);
+  }
+
+  private apKichThuoc(): void {
+    this.renderer.setPixelRatio(this.tyLePixel());
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  /** Bóng đổ bật khi không hạ chất lượng VÀ không ở nền. */
+  private apBong(): void {
+    const bat = !this.daHaChatLuong && this.cheDoVe !== 'nen';
+    this.nang.castShadow = bat;
+    this.renderer.shadowMap.enabled = bat;
+  }
+
+  /**
+   * V1 (INT-06) — đổi chế độ vẽ. Gọi từ tầng lắp (`main.ts`) theo tín hiệu
+   * focus/ẩn/vỏ VS Code; KHÔNG có lệnh nào trong registry gọi tới đây, nên
+   * MCP/não không chỉnh được fps. `daHaChatLuong` (do FPS thấp) giữ nguyên qua
+   * nền nên ra nền trả đúng trạng thái cũ.
+   */
+  datCheDoVe(mode: RenderMode, lyDo = ''): void {
+    if (mode === this.cheDoVe) return;
+    this.cheDoVe = mode;
+    if (mode === 'full') {
+      // khung đầu tiên sau nền có khoảng dài — đừng tính vào FPS thấp
+      this.doFps.datLai();
+      this.dongHo.update();
+    }
+    this.apBong();
+    this.apKichThuoc();
+    this.bus.emit('stage.renderMode', {
+      mode,
+      bloom: false, // D1b đã bỏ hậu kỳ; giữ khoá cho hợp đồng sự kiện cũ
+      shadow: this.renderer.shadowMap.enabled,
+      pixelRatio: this.renderer.getPixelRatio(),
+      ...(lyDo ? { reason: lyDo } : {}),
+    });
+  }
+
+  /** Số đo chế độ vẽ (bằng chứng `scripts/kiem-nen.mjs`). */
+  doVe(): { renderMode: RenderMode; soKhung: number; bloom: boolean; shadow: boolean; pixelRatio: number } {
+    return {
+      renderMode: this.cheDoVe,
+      soKhung: this.soKhungDaVe,
+      bloom: false,
+      shadow: this.renderer.shadowMap.enabled,
+      pixelRatio: this.renderer.getPixelRatio(),
+    };
+  }
+
+  private motKhung(): void {
+    this.soKhungDaVe++;
+    this.dongHo.update();
+    /**
+     * H1 (#69 mục 1–3) — **`dt` KẸP ĐÚNG MỘT CHỖ, ở đây.**
+     *
+     * Trước H1 một khung hình có 4 đồng hồ khác nhau (xem kiểm toán mục 2).
+     * Giờ khung hình có đúng một `dt` thật, rồi mọi **mô phỏng** (lò xo camera
+     * bám, camera bay, kẹp tay máy) chạy ở `BUOC_CO_DINH` = 1/60 qua
+     * accumulator dưới đây; **render** vẫn mỗi `requestAnimationFrame`.
+     *
+     * Nhờ vậy số đo của một lượt bám camera ở 30, 60 hay 144 FPS là **cùng
+     * một quỹ đạo** — điều `heSoBam`/`buocLoXo` của F2 chỉ làm gần đúng.
+     */
+    const dtThat = this.dongHo.getDelta();
+    // V1 (INT-06): ở nền khung cách nhau ~1/15 s là CỐ Ý → trần riêng, và không tính là "tràn bước"
+    const nen = this.cheDoVe === 'nen';
+    const dt = Math.min(dtThat, nen ? DT_TOI_DA_NEN : DT_KHUNG_TOI_DA);
+    /*
+     * H1 vòng 2 (review PR #72 mục 3) — **`khungTranBuoc` giờ đếm được THẬT.**
+     *
+     * Bản đầu chỉ tăng khi accumulator chạm `BUOC_TOI_DA` = 5 bước; nhưng `dt`
+     * đã kẹp 1/20 s ⇒ nhiều nhất 3 bước + phần dư < 1/60 ⇒ nhánh đó **không
+     * bao giờ chạy** và log luôn ghi 0. Tín hiệu "máy đang chậm thật" đúng ra
+     * là: khung hình dài hơn trần `dt` nên có thời gian bị BỎ.
+     */
+    if (!nen && dtThat > DT_KHUNG_TOI_DA) this.khungTranBuoc += 1;
+
+    // điểm con trỏ chiếu ra không gian, cách camera 2,4 m
+    this.diemChuot
+      .set(this.chuotNDC.x, this.chuotNDC.y, 0.5)
+      .unproject(this.camera)
+      .sub(this.camera.position)
+      .normalize()
+      .multiplyScalar(2.4)
+      .add(this.camera.position);
+
+    for (const nv of this.actors.values()) {
+      if (nv.nhinTen === 'cursor') nv.diemNhin.position.copy(this.diemChuot);
+      else if (nv.nhinTen === 'camera') nv.diemNhin.position.copy(this.camera.position);
+      else if (nv.nhinTen) {
+        const v = this.viTriMucTieu(nv.nhinTen);
+        if (v) nv.diemNhin.position.set(v[0], v[1] + 1.25, v[2]);
+      }
+      nv.capNhat(dt);
+      const bb = this.bupBe.get(nv.id);
+      if (bb) {
+        // đế búp bê luôn ở mặt sàn (gốc VRM bị hạ/nâng để chân VRM chạm sàn — không áp cho búp bê)
+        const ngoi = nv.state === 'sitting';
+        bb.goc.position.set(nv.goc.position.x, ngoi ? nv.matGheHienTai + 0.04 : 0, nv.goc.position.z);
+        bb.goc.rotation.y = nv.goc.rotation.y;
+        // hướng nhìn → góc quay ĐẦU búp bê (tương đối thân); không nhìn gì thì đầu về giữa
+        let nhinYaw = 0;
+        if (nv.nhinTen) {
+          const p = nv.diemNhin.position;
+          let l = Math.atan2(p.x - bb.goc.position.x, p.z - bb.goc.position.z) - bb.goc.rotation.y;
+          while (l > Math.PI) l -= Math.PI * 2;
+          while (l < -Math.PI) l += Math.PI * 2;
+          nhinYaw = l;
+        }
+        bb.dien(dt, nv.state, nv.bongBong !== null, nv.objCam ? nv.tayCam : null, { clip: nv.clipDangChay(), nhinYaw });
+        // đồ đang cầm bám TAY BÚP BÊ (tay VRM ẩn nằm chỗ khác)
+        if (nv.objCam) {
+          bb.viTriTay(nv.tayCam, nv.objCam.position);
+          nv.objCam.position.y += 0.02;
+        }
+      }
+    }
+
+    /*
+     * H1 — ACCUMULATOR: tích luỹ `dt` rồi chạy mô phỏng camera theo bước cố
+     * định. Chạm trần bước thì **bỏ phần dư** (không dồn sang khung sau) và
+     * ghi sổ: dồn lại là "spiral of death", còn im lặng thì không ai biết máy
+     * đang chậm thật.
+     */
+    this.duDt += dt;
+    let soBuoc = 0;
+    while (this.duDt >= BUOC_CO_DINH && soBuoc < BUOC_TOI_DA) {
+      this.buocMoPhong(BUOC_CO_DINH);
+      this.duDt -= BUOC_CO_DINH;
+      soBuoc += 1;
+    }
+    // Lưới an toàn (`BUOC_TOI_DA`): với `dt` đã kẹp 1/20 thì không chạm được,
+    // nhưng vẫn giữ để ai nới trần `dt` sau này không rơi vào spiral of death.
+    if (this.duDt >= BUOC_CO_DINH) this.duDt = 0;
+
+    for (const mh of this.screens.values()) mh.capNhat(dt);
+
+    for (const [id, kt] of [...this.ketTinhDangChay]) {
+      if (kt.capNhat()) this.ketTinhDangChay.delete(id);
+    }
+    this.fxDangChay = this.fxDangChay.filter((hu) => !hu.capNhat());
+
+    this.capNhatBongBong();
+    this.controls.update();
+    /*
+     * H1 vòng 2 (review PR #72 mục 1) — **lò xo là NGƯỜI GHI CUỐI** khi đang
+     * bám chủ.
+     *
+     * `controls.update()` (OrbitControls, `enableDamping`) dựng lại
+     * `camera.position` từ toạ độ cầu quanh `target` **sau** vòng mô phỏng,
+     * nên nó kéo camera lệch khỏi chỗ lò xo vừa đặt; khung sau lò xo thấy sai
+     * số lớn hơn thật và đẩy `|vel|` lên (đo trên Firefox: 2,6–2,8 m/s trong
+     * khi mô phỏng cùng quỹ đạo không có ai giằng cho đúng 1,6 m/s). Trả lại
+     * vị trí của lò xo ở đây là chấm dứt vụ giằng — không ảnh hưởng preset
+     * khác (`giuMayVt` chỉ bật khi `theoOwner`).
+     */
+    if (this.giuMayVt) this.camera.position.copy(this.mayVtGiu);
+    // Boss xoay/zoom bằng chuột cũng phải nằm trong nhà: kẹp SAU
+    // `controls.update()` (nó mới là người ghi cuối cùng lên camera).
+    this.kepMayTrongNha();
+    this.veMotKhung();
+    this.theoDoiFps();
+  }
+
+  /**
+   * H1 — **một bước mô phỏng camera** ở `BUOC_CO_DINH`. Chỉ chứa thứ phụ
+   * thuộc thời gian; không render, không đọc input.
+   */
+  private buocMoPhong(dt: number): void {
+    /* --- camera bám owner (preset `theo-owner`) --- */
+    if (this.theoOwner) {
+      const nv = this.actors.get(this.theoOwner);
+      if (!nv) {
+        this.theoOwner = null;
+      } else {
+        const p = nv.goc.position;
+        /*
+         * H1 vòng 2 (review PR #72 mục 1) — **đích của lò xo phải KHẢ THI.**
+         *
+         * Tâm ngắm: đầu nhân vật, nhưng kẹp vào `HOP_TAM` (hộp nhà đã thu vào
+         * một tay máy) — nhờ vậy luôn còn chỗ cho tay máy 0,6 m.
+         * Đích camera: `dichCamera` kẹp `tâm + lệch` vào trong nhà, bù khoảng
+         * cách bị tường ăn bằng độ cao. Cả hai phép đều liên tục theo vị trí
+         * nhân vật nên không sinh cú nhảy đích ⇒ không sinh đỉnh vận tốc.
+         */
+        const [ctx_, cty, ctz] = kepTrongHop(p.x, 1.1, p.z, HOP_TAM);
+        this.mayTam.set(ctx_, cty, ctz);
+        const [dcx, dcy, dcz] = dichCamera(
+          [ctx_, cty, ctz],
+          // `LECH_THEO_OWNER.y` là độ cao TUYỆT ĐỐI (bản cũ cộng vào y = 0),
+          // nên quy về lệch so với tâm ngắm đã kẹp.
+          [LECH_THEO_OWNER.x, LECH_THEO_OWNER.y - cty, LECH_THEO_OWNER.z],
+          HOP_MAY,
+          MAY_XA_DE_CHIU,
+          LE_TAY_MAY,
+          MAY_GAN_TOI_DA,
+        );
+        this.mayDich.set(dcx, dcy, dcz);
+        /**
+         * F2 — lò xo giảm chấn tới hạn cho CẢ vị trí và tâm ngắm, dùng **cùng
+         * một** `dt` và `omega` nên hiệu (vị trí − tâm) không bị méo giữa hai
+         * khung: đó mới là điều mắt đọc ra thành "rung". Xem `buocLoXo`.
+         */
+        const dtMay = Math.min(dt, DT_MAY_TOI_DA);
+        buocLoXo(this.camera.position, this.mayVel, this.mayDich, OMEGA_MAY, dtMay);
+        buocLoXo(this.controls.target, this.mayTamVel, this.mayTam, OMEGA_MAY, dtMay);
+        if (this.mayVel.lengthSq() > MAY_VEL_TOI_DA * MAY_VEL_TOI_DA) {
+          this.mayVel.setLength(MAY_VEL_TOI_DA);
+        }
+        if (this.mayTamVel.lengthSq() > MAY_VEL_TOI_DA * MAY_VEL_TOI_DA) {
+          this.mayTamVel.setLength(MAY_VEL_TOI_DA);
+        }
+        // Đầy thì NGỪNG ghi (xem ghi chú cùng loại ở `NhanVat.soLai`).
+        /*
+         * `soMay` có TRẦN 900 khung, nên đỉnh `|v|` của một lượt lái dài (mục
+         * 10 của `kiem-h1.mjs` chạy ~45 s) có thể rơi ngoài sổ. Giữ thêm một
+         * con số **không trần**: đỉnh `|v|` của cả lượt bám.
+         */
+        this.mayVelMax = Math.max(this.mayVelMax, this.mayVel.length());
+        if (this.soMay.length < 900)
+        this.soMay.push([
+          +performance.now().toFixed(1),
+          +dtMay.toFixed(4),
+          +this.camera.position.x.toFixed(4),
+          +this.camera.position.z.toFixed(4),
+          +this.mayVel.length().toFixed(4),
+          +Math.hypot(
+            this.camera.position.x - p.x,
+            this.camera.position.y - (p.y + 1.1),
+            this.camera.position.z - p.z,
+          ).toFixed(4),
+        ]);
+      }
+    } else if (this.mayVel.lengthSq() > 0 || this.mayTamVel.lengthSq() > 0 || this.soMay.length) {
+      // rời preset `theo-owner` → bỏ quán tính, đừng để lò xo kéo thêm
+      this.mayVel.set(0, 0, 0);
+      this.mayTamVel.set(0, 0, 0);
+      this.mayVelMax = 0;
+      // …và **xoá sổ**: `doHieuNang()` luôn trả `soMay`, để sổ cũ lại thì
+      // người đọc sau có thể chấm điểm camera trên một lượt bám khác hẳn.
+      this.soMay = [];
+    }
+
+    if (this.tamTuBay) {
+      /*
+       * H1 (#69 mục 6) — camera BAY cũng dùng hệ số bám theo thời gian của F2
+       * (`heSoBam`), không còn `min(1, dt·3,2)`. Đây là chỗ duy nhất F2 bỏ
+       * sót: `camera.preset` và `camera.focus` của Boss bay nhanh chậm khác
+       * nhau giữa GPU thật và máy kiểm.
+       */
+      const k = heSoBam(dt, TAU_MAY_BAY);
+      this.camera.position.lerp(this.tamTuBay.vt, k);
+      this.controls.target.lerp(this.tamTuBay.tam, k);
+      if (this.camera.position.distanceTo(this.tamTuBay.vt) < 0.02) this.tamTuBay = null;
+    }
+
+    // Mọi bước mô phỏng kết thúc bằng một lần kẹp: đích của lò xo bám hay của
+    // camera bay đều có thể nằm ngoài tường (lệch cố định ở góc nhà).
+    this.kepMayTrongNha();
+    // …rồi giữ lại vị trí này để `controls.update()` không giằng (xem `motKhung`)
+    this.giuMayVt = this.theoOwner !== null;
+    if (this.giuMayVt) this.mayVtGiu.copy(this.camera.position);
+  }
+
+  /**
+   * H1 (#69 mục 14 + 15) — **SPRING ARM**: giữ camera trong nhà.
+   *
+   * Hai việc, đúng thứ tự:
+   *   1. kẹp **tâm ngắm** vào hộp nhà — tâm ở ngoài thì mọi phép dưới vô nghĩa;
+   *   2. **cắt tay máy** (`tâm → camera`) tại mặt hộp nhà trừ lề, tức rút
+   *      camera vào thay vì để nó xuyên tường/trần. Giữ nguyên **hướng** nhìn,
+   *      chỉ đổi khoảng cách — đúng `SpringArm3D` mà `camera-systems` tả.
+   *
+   * Hình học nằm trong `may-quay.ts` (dữ liệu thuần, test được). Xem ở đó lý
+   * do tính bằng phép slab thay vì `Raycaster`.
+   */
+  private kepMayTrongNha(): void {
+    if (!this.kepMay) return;
+    const tam = this.controls.target;
+    const [tx, ty, tz] = kepTrongHop(tam.x, tam.y, tam.z, HOP_MAY);
+    /*
+     * H1 vòng 2 (review PR #72 mục 1) — **kẹp thì phải TRỪ CẢ VẬN TỐC.**
+     *
+     * Dời vị trí mà để nguyên `vel` thì lò xo coi như sai số không giảm và
+     * tích vận tốc vào tường (đo được 13,23 m/s, bật ra 3,33 m/s khi rời góc).
+     * Trục nào bị kẹp thì bỏ thành phần vận tốc theo trục đó.
+     */
+    if (Math.abs(tx - tam.x) > 1e-9) this.mayTamVel.x = 0;
+    if (Math.abs(ty - tam.y) > 1e-9) this.mayTamVel.y = 0;
+    if (Math.abs(tz - tam.z) > 1e-9) this.mayTamVel.z = 0;
+    tam.set(tx, ty, tz);
+
+    this.tayMay.subVectors(this.camera.position, tam);
+    const xa = this.tayMay.length();
+    if (xa < 1e-5) {
+      // camera trùng tâm ngắm (chưa đặt góc nào): đẩy ra một tay máy mặc định
+      this.camera.position.set(tx, ty, tz + MAY_GAN_TOI_DA);
+      return;
+    }
+    this.tayMay.divideScalar(xa);
+    const dai = dayTayMay(
+      [tx, ty, tz],
+      [this.tayMay.x, this.tayMay.y, this.tayMay.z],
+      Math.min(xa, MAY_XA_TOI_DA),
+      HOP_MAY,
+      LE_TAY_MAY,
+      MAY_GAN_TOI_DA,
+    );
+    if (Math.abs(dai - xa) > 1e-6) {
+      this.camera.position.copy(tam).addScaledVector(this.tayMay, dai);
+      /*
+       * Tay máy bị cắt ⇒ bỏ thành phần vận tốc **theo trục tay máy** (hướng
+       * đâm vào mặt hộp). Giữ thành phần tiếp tuyến để camera vẫn trượt men
+       * tường mượt thay vì đứng chết.
+       */
+      const vr = this.mayVel.dot(this.tayMay);
+      if (vr * (dai - xa) < 0) this.mayVel.addScaledVector(this.tayMay, -vr);
+    }
+  }
+
+  /**
+   * H1 vòng 2 — khoảng cách camera → **đầu** nhân vật đang bám (m), `null`
+   * khi không ở preset `theo-owner`. Thước đo của review PR #72 mục 1.
+   */
+  private xaToiDauChu(): number | null {
+    if (!this.theoOwner) return null;
+    const nv = this.actors.get(this.theoOwner);
+    if (!nv) return null;
+    const p = nv.goc.position;
+    return Math.hypot(
+      this.camera.position.x - p.x,
+      this.camera.position.y - (p.y + 1.1),
+      this.camera.position.z - p.z,
+    );
+  }
+
+  /**
+   * Hiệu năng (spec mục 5, siết lại ở D1b): FPS tụt dưới ngưỡng quá 2 s thì
+   * **hạ chất lượng** — tắt bóng đổ của đèn nắng và hạ pixel ratio về 1. Lên
+   * lại quá ngưỡng + 8 thì trả về như cũ. Không còn bloom để mà tắt.
+   */
+  private theoDoiFps(): void {
+    // V1: đo bằng ĐỒNG HỒ THẬT (`do-fps.ts`) — `1/dt` với `dt` đã kẹp 1/20 s báo
+    // ≥ 20 fps mãi, máy 2–4 fps phải chờ 10–20 s mới hạ chất lượng. Nền: không đo.
+    const qd = this.doFps.capNhat(performance.now(), this.cheDoVe === 'nen');
+    if (qd === 'tat') this.haChatLuong(true);
+    else if (qd === 'bat') this.haChatLuong(false);
+    const fps = this.doFps.fpsCuoi;
+    if (this.cheDoVe === 'nen' || fps === null) return;
+    const dtThat = 1 / fps;
+
+    /*
+     * Cổng NÂNG BÓNG (PR #51 vòng 2): 1024 là mặc định cho mọi máy. Chỉ khi
+     * khung hình thật đạt ≥ 50 FPS liên tục 5 s mới đổi sang 2048 — đo thật,
+     * không đoán theo `maxTextureSize`. Tụt xuống dưới mốc thì đồng hồ reset,
+     * nên máy yếu không bao giờ chạm tới nhánh này.
+     */
+    if (!this.daNangBong && !this.daHaChatLuong) {
+      if (fps >= FPS_NANG_BONG) {
+        this.fpsCaoTu += dtThat * 1000;
+        if (this.fpsCaoTu >= BONG_CAN_MS) {
+          this.daNangBong = true;
+          this.nang.shadow.mapSize.set(BONG_MANH, BONG_MANH);
+          // phải huỷ render target cũ, three mới cấp lại đúng kích thước mới
+          this.nang.shadow.map?.dispose();
+          this.nang.shadow.map = null;
+        }
+      } else {
+        this.fpsCaoTu = 0;
+      }
+    }
+  }
+
+  /** Kích thước shadow map đang dùng (bằng chứng số cho PR, không đoán). */
+  coBong(): number {
+    return this.nang.shadow.mapSize.x;
+  }
+
+  /** Bật/tắt chế độ tiết kiệm (bóng đổ + pixel ratio) — D1b. */
+  private haChatLuong(ha: boolean): void {
+    if (this.daHaChatLuong === ha) return;
+    this.daHaChatLuong = ha;
+    this.apBong();
+    this.apKichThuoc();
+  }
+
+  /**
+   * Chiếu một điểm thế giới ra toạ độ ĐIỂM ẢNH trên khung hình.
+   *
+   * D1b (#48): bằng chứng luma mặt phải đo **đúng vùng mặt**, không phải một
+   * ô vuông giữa ảnh đoán mò như bản D1 — cho script biết mặt nhân vật rơi
+   * vào đâu trên ảnh vừa chụp.
+   */
+  chieuDiem(p: Vec3): { x: number; y: number } {
+    const v = new THREE.Vector3(p[0], p[1], p[2]).project(this.camera);
+    return {
+      x: (v.x * 0.5 + 0.5) * window.innerWidth,
+      y: (-v.y * 0.5 + 0.5) * window.innerHeight,
+    };
+  }
+
+  /**
+   * Số lượt vẽ / tam giác — bằng chứng hiệu năng cho PR.
+   *
+   * PR #51 vòng 2: TÁCH phần **nhà** và phần **VRM**. Không ước lượng bằng
+   * công thức: vẽ một khung với VRM ẩn rồi đọc `renderer.info` → `callsNha`
+   * là số thật; phần VRM là hiệu số. Mốc tự áp: **nhà ≤ 120 lượt vẽ** (VRM là
+   * model người thật, nhiều mesh, không thuộc phần mỹ thuật căn nhà).
+   */
+  doHieuNang(): Record<string, unknown> {
+    const gocActor: THREE.Object3D[] = [];
+    this.scene.traverse((o) => {
+      if (o.name.startsWith('actor:')) gocActor.push(o);
+    });
+    this.renderer.render(this.scene, this.camera);
+    const tongCalls = this.renderer.info.render.calls;
+    const tongTri = this.renderer.info.render.triangles;
+    const hien = gocActor.map((o) => o.visible);
+    for (const o of gocActor) o.visible = false;
+    this.renderer.render(this.scene, this.camera);
+    const callsNha = this.renderer.info.render.calls;
+    const triNha = this.renderer.info.render.triangles;
+    gocActor.forEach((o, i) => (o.visible = hien[i]));
+    this.renderer.render(this.scene, this.camera);
+
+    /*
+     * H1 (#69 mục 28) — ĐO xem `frustumCulled = false` trên mọi mesh VRM
+     * (`nhanvat.ts`) đang tốn bao nhiêu.
+     *
+     * Không đoán: bật lại cull cho đúng các mesh VRM, vẽ một khung, đọc
+     * `calls`, rồi trả về nguyên trạng. Nếu ở góc máy đang xét số không đổi
+     * thì cull không cứu được gì (nhân vật đang trong khung hình); nếu giảm
+     * mạnh ở các preset nhìn đi chỗ khác thì đó là lãi thật và đáng đổi — kèm
+     * rủi ro tóc/váy "nháy mất" vì `boundingSphere` của skinned mesh tính ở
+     * tư thế bind. Số đo nằm trong PR H1.
+     */
+    const meshVrm: THREE.Mesh[] = [];
+    for (const g of gocActor) {
+      g.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh && !m.frustumCulled) meshVrm.push(m);
+      });
+    }
+    for (const m of meshVrm) m.frustumCulled = true;
+    this.renderer.render(this.scene, this.camera);
+    const callsCull = this.renderer.info.render.calls;
+    const triCull = this.renderer.info.render.triangles;
+    for (const m of meshVrm) m.frustumCulled = false;
+    this.renderer.render(this.scene, this.camera);
+
+    const r = this.renderer.info.render;
+    let mesh = 0;
+    const theoGoc: Record<string, number> = {};
+    const vl = new Set<string>();
+    this.scene.traverse((o) => {
+      if (!(o as THREE.Mesh).isMesh) return;
+      mesh++;
+      const m = o as THREE.Mesh;
+      const ds = Array.isArray(m.material) ? m.material : [m.material];
+      for (const x of ds) {
+        if (!x) continue;
+        vl.add(x.uuid);
+      }
+      let p: THREE.Object3D | null = o;
+      let ten = o.name || '(không tên)';
+      while (p) {
+        if (p.name) ten = p.name;
+        p = p.parent;
+      }
+      theoGoc[ten] = (theoGoc[ten] ?? 0) + 1;
+    });
+    return {
+      calls: r.calls,
+      triangles: r.triangles,
+      callsNha,
+      callsVrm: Math.max(0, tongCalls - callsNha),
+      trianglesNha: triNha,
+      trianglesVrm: Math.max(0, tongTri - triNha),
+      coBong: this.coBong(),
+      pixelRatio: this.renderer.getPixelRatio(),
+      mesh,
+      vatLieu: vl.size,
+      theoGoc,
+      // F2 — sổ camera bám (xem `soMay`); rỗng khi không ở preset `theo-owner`
+      soMay: this.soMay,
+      /* --- H1 (#69): bằng chứng tay máy + bước cố định --- */
+      may: {
+        vt: [this.camera.position.x, this.camera.position.y, this.camera.position.z],
+        tam: [this.controls.target.x, this.controls.target.y, this.controls.target.z],
+        xa: this.camera.position.distanceTo(this.controls.target),
+        kep: this.kepMay,
+        // H1 vòng 2: khoảng cách tới ĐẦU nhân vật đang bám (null khi không bám)
+        xaDau: this.xaToiDauChu(),
+        // đỉnh |v| của CẢ lượt bám (sổ `soMay` chỉ giữ 900 khung đầu)
+        vMax: +this.mayVelMax.toFixed(4),
+      },
+      hopNha: HOP_MAY,
+      mocDen: PRESET_DEN_SO,
+      buocCoDinh: BUOC_CO_DINH,
+      khungTranBuoc: this.khungTranBuoc,
+      /* --- H1 (#69 mục 28): lãi nếu bật lại frustum culling cho mesh VRM --- */
+      cull: { meshVrm: meshVrm.length, calls: callsCull, triangles: triCull },
+    };
+  }
+
+  private datGocMay(): void {
+    const tyLe = window.innerWidth / window.innerHeight;
+    const t = THREE.MathUtils.clamp((1.3 - tyLe) / (1.3 - 0.6), 0, 1);
+    const [ngang, doc] = [MAY_NGANG, MAY_DOC];
+    this.camera.fov = THREE.MathUtils.lerp(ngang.fov, doc.fov, t);
+    this.camera.aspect = tyLe;
+    this.camera.updateProjectionMatrix();
+    if (!this.bossDaXoay && !this.tamTuBay) {
+      this.camera.position.lerpVectors(ngang.vt, doc.vt, t);
+      this.controls.target.lerpVectors(ngang.tam, doc.tam, t);
+    }
+    this.controls.update();
+  }
+
+  /* --------------------------------------------------------- bong bóng chữ */
+
+  private capNhatBongBong(): void {
+    const v = new THREE.Vector3();
+    for (const [id, nv] of this.actors) {
+      let el = this.bongBongEl.get(id);
+      if (!nv.bongBong) {
+        if (el) el.classList.remove('hien');
+        continue;
+      }
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'bong-bong';
+        this.bongBongLop.appendChild(el);
+        this.bongBongEl.set(id, el);
+      }
+      if (el.dataset.chu !== nv.bongBong) {
+        el.dataset.chu = nv.bongBong;
+        el.innerHTML = `<b></b><span></span>`;
+        el.querySelector('b')!.textContent = nv.ten;
+        el.querySelector('span')!.textContent = nv.bongBong;
+      }
+      nv.viTriDau(v);
+      v.y += 0.34;
+      v.project(this.camera);
+      const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+      el.style.transform = `translate(-50%, -100%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+      el.classList.toggle('hien', v.z < 1);
+    }
+    // INT-07 — thẻ tên: ngay trên đầu, nhường chỗ khi bong bóng chữ đang hiện
+    for (const [id, t] of this.theTen) {
+      const nv = this.actors.get(id);
+      if (!nv) continue;
+      nv.viTriDau(v);
+      v.y += 0.16;
+      v.project(this.camera);
+      const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+      t.el.style.transform = `translate(-50%, -100%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+      t.el.classList.toggle('hien', v.z < 1 && !nv.bongBong);
+    }
+  }
+
+  /* ------------------------------------------------------------- tra cứu */
+
+  private nv(id: string): NhanVat {
+    const a = this.actors.get(id);
+    if (!a) throw new Error(`Không có actor "${id}"`);
+    return a;
+  }
+
+  coActor(id: string): boolean {
+    return this.actors.has(id);
+  }
+
+  coProp(id: string): boolean {
+    return this.props.has(id);
+  }
+
+  actorIds(): string[] {
+    return [...this.actors.keys()];
+  }
+
+  placeIds(): string[] {
+    return dsPlaces().map((p) => p.id);
+  }
+
+  propIds(): string[] {
+    return [...this.props.keys()];
+  }
+
+  screenIds(): string[] {
+    return [...this.screens.keys()];
+  }
+
+  coScreen(id: string): boolean {
+    return this.screens.has(id);
+  }
+
+  clips(): string[] {
+    return [...CLIPS];
+  }
+
+  expressions(): string[] {
+    return [...BIEU_CAM];
+  }
+
+  emotes(): string[] {
+    return [...EMOTES];
+  }
+
+  /** Toạ độ của một mục tiêu bất kỳ (place / actor / prop / camera). */
+  private viTriMucTieu(ten: string | Vec3): Vec3 | null {
+    if (Array.isArray(ten)) return ten;
+    if (ten === 'camera') {
+      return [this.camera.position.x, this.camera.position.y, this.camera.position.z];
+    }
+    if (ten === 'cursor') return [this.diemChuot.x, this.diemChuot.y, this.diemChuot.z];
+    const p = timPlace(ten);
+    if (p) return p.pos;
+    const a = this.actors.get(ten);
+    if (a) return [a.goc.position.x, a.goc.position.y, a.goc.position.z];
+    const d = this.props.get(ten);
+    if (d) return [d.obj.position.x, d.obj.position.y, d.obj.position.z];
+    const mh = this.screens.get(ten);
+    if (mh) return [mh.group.position.x, mh.group.position.y, mh.group.position.z];
+    return null;
+  }
+
+  /** Nơi actor nên đứng khi được gọi tới mục tiêu này. */
+  private choDung(ten: string | Vec3): { v: THREE.Vector3; place: DinhNghiaPlace | null } {
+    if (Array.isArray(ten)) return { v: new THREE.Vector3(ten[0], 0, ten[2]), place: null };
+    const p = timPlace(ten);
+    if (p) {
+      const d = p.standAt ?? p.pos;
+      return { v: new THREE.Vector3(d[0], 0, d[2]), place: p };
+    }
+    const v = this.viTriMucTieu(ten);
+    if (!v) throw new Error(`Không biết "${ten}" ở đâu (place/actor/prop/toạ độ)`);
+    return { v: new THREE.Vector3(v[0], 0, v[2]), place: null };
+  }
+
+  /* --------------------------------------------------------------- actor */
+
+  async actorSpawn(p: ThamSoSpawnActor): Promise<ActorSnapshot> {
+    if (!p.id.trim()) throw new Error('"id" không được rỗng');
+    if (this.actors.has(p.id)) throw new Error(`Actor "${p.id}" đã có trên sân khấu`);
+
+    const duongDan = p.model ?? ACTOR_MAC_DINH.model;
+    let nv: NhanVat;
+    try {
+      nv = await NhanVat.nap(p.id, p.name ?? p.id, duongDan);
+    } catch (e) {
+      // Thiếu đúng file VRM đã yêu cầu (vd chưa tải `owner.vrm`) thì rơi về
+      // avatar mặc định và nói rõ ở console — cảnh vẫn dựng xong, Boss vẫn
+      // điều khiển được, chỉ là nhân vật chưa đúng model.
+      if (duongDan === ACTOR_MAC_DINH.model) throw e;
+      console.warn(
+        `[Gen-Stage] Không nạp được "${duongDan}" (${e instanceof Error ? e.message : e}) — ` +
+          `dùng tạm "${ACTOR_MAC_DINH.model}". Chạy: bash scripts/fetch-assets.sh`,
+      );
+      nv = await NhanVat.nap(p.id, p.name ?? p.id, ACTOR_MAC_DINH.model);
+    }
+    nv.dieuKhienBoi = p.controlledBy ?? 'agent';
+    this.scene.add(nv.goc);
+    this.scene.add(nv.diemNhin);
+
+    const { v, place } = this.choDung(p.at ?? 'buc-trung-tam');
+    nv.goc.position.copy(v);
+    nv.goc.rotation.y = ((place?.facing ?? 20) * Math.PI) / 180;
+    this.actors.set(p.id, nv);
+    {
+      // ẩn TỪNG mesh của VRM (không ẩn cả `vrm.scene`): xương vẫn chạy cho bộ não hành động
+      nv.vrm.scene.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) o.visible = false;
+      });
+      const bb = new BupBe(KIEU_NHAN_VAT[p.id] ?? NHAN_VIEN[this.bupBe.size % NHAN_VIEN.length]!);
+      this.scene.add(bb.goc);
+      this.bupBe.set(p.id, bb);
+    }
+
+    const snap = this.snapActor(nv);
+    return snap;
+  }
+
+  actorRemove(id: string): void {
+    const nv = this.nv(id);
+    nv.dung();
+    this.scene.remove(nv.goc);
+    this.scene.remove(nv.diemNhin);
+    const bb = this.bupBe.get(id);
+    if (bb) {
+      this.scene.remove(bb.goc);
+      this.bupBe.delete(id);
+    }
+    // rò rỉ nặng nhất nếu thiếu: mỗi actorRemove (và mỗi stage.reset gọi lại
+    // actorSpawn ngay sau) nạp một avatar VRM mới mà không dọn avatar cũ —
+    // skinned mesh + skeleton + toàn bộ texture rò vĩnh viễn theo phiên.
+    VRMUtils.deepDispose(nv.vrm.scene);
+    this.actors.delete(id);
+    const el = this.bongBongEl.get(id);
+    if (el) {
+      el.remove();
+      this.bongBongEl.delete(id);
+    }
+    this.theTen.get(id)?.el.remove();
+    this.theTen.delete(id);
+  }
+
+  actorMoveTo(id: string, to: string | Vec3, speed?: number): Action {
+    const nv = this.nv(id);
+    const { v, place } = this.choDung(to);
+    const hd = nv.diToi(v, speed, this.duongToi(nv, v));
+    if (place?.facing !== undefined) {
+      // chỉnh hướng sau khi tới nơi: KHÔNG chiếm thân, vì lệnh moveTo đã xong
+      void hd.done.then(() => {
+        if (this.actors.get(id) === nv) nv.xoayVe(place.facing!, false);
+      });
+    }
+    return hd;
+  }
+
+  /**
+   * `actor.steer` — lái bằng vận tốc (Issue #18 mục 2).
+   *
+   * Không kẹp toạ độ ở đây: việc kẹp trong phòng + trượt dọc bàn/kệ nằm trong
+   * `NhanVat.capNhat` (dùng `bo-cuc.ts`), vì nó phải xảy ra **mỗi khung hình**
+   * theo vận tốc thật, không phải một lần lúc nhận lệnh.
+   */
+  actorSteer(id: string, vx: number, vz: number, ms: number): Action {
+    return this.nv(id).lai(vx, vz, ms);
+  }
+
+  actorLookAt(id: string, target: string | null): void {
+    const nv = this.nv(id);
+    if (target === null) {
+      nv.nhinTen = null;
+      if (nv.vrm.lookAt) nv.vrm.lookAt.target = undefined;
+      return;
+    }
+    if (nv.vrm.lookAt) nv.vrm.lookAt.target = nv.diemNhin;
+    if (target !== 'camera' && target !== 'cursor' && !this.viTriMucTieu(target)) {
+      throw new Error(`Không biết "${target}" ở đâu`);
+    }
+    nv.nhinTen = target;
+  }
+
+  actorTurnTo(id: string, target: string | Vec3): Action {
+    const nv = this.nv(id);
+    const v = this.viTriMucTieu(target);
+    if (!v) throw new Error(`Không biết "${String(target)}" ở đâu`);
+    nv.huongVe = typeof target === 'string' ? target : null;
+    return nv.xoayVe(new THREE.Vector3(v[0], 0, v[2]));
+  }
+
+  /**
+   * C0 (#28) — quay người **không chiếm thân** (`xoayVe(..., false)`).
+   *
+   * Dùng để GIỮ hướng về người nghe trong suốt câu nói: `actor.say` đã chiếm
+   * thân nên một `actor.turnTo` lúc đó chỉ xếp hàng chờ nói xong — đúng lúc
+   * không còn cần nữa. Gọi lại mỗi nhịp thì mặt bám theo máy quay kể cả khi
+   * Boss đổi `camera.preset` giữa chừng.
+   */
+  actorFaceTo(id: string, target: string | Vec3): void {
+    const nv = this.nv(id);
+    const v = this.viTriMucTieu(target);
+    if (!v) throw new Error(`Không biết "${String(target)}" ở đâu`);
+    nv.huongVe = typeof target === 'string' ? target : null;
+    nv.xoayVe(new THREE.Vector3(v[0], 0, v[2]), false);
+  }
+
+  actorNgheNgong(id: string, bat: boolean, cauHoi = false): void {
+    this.nv(id).datNgheNgong(bat, cauHoi);
+  }
+
+  /** Đường tránh vật cản (A*) từ chỗ actor đang đứng tới `v`. */
+  private duongToi(nv: NhanVat, v: THREE.Vector3): Array<[number, number]> | undefined {
+    const d = timDuong(nv.goc.position.x, nv.goc.position.z, v.x, v.z, 0.34);
+    // A* chừa lề rộng hơn thân; chặng CUỐI ngắn thì đi thẳng vào đúng đích (vd ghế
+    // sát bàn họp) — va chạm thường của `buocDiToi` vẫn chặn nếu thật sự kẹt.
+    const cuoi = d[d.length - 1]!;
+    if (Math.hypot(cuoi[0] - v.x, cuoi[1] - v.z) > 0.05 && Math.hypot(cuoi[0] - v.x, cuoi[1] - v.z) < 0.7) d.push([v.x, v.z]);
+    return d.length > 1 ? d : undefined;
+  }
+
+  actorSit(id: string, seat: string): Action {
+    const nv = this.nv(id);
+    const p = timPlace(seat);
+    if (!p) throw new Error(`Không có place "${seat}"`);
+    if (p.kind !== 'seat') {
+      throw new Error(
+        `"${seat}" là loại "${p.kind}", không phải ghế. Ghế đang có: ${dsPlaces().filter(
+          (q) => q.kind === 'seat',
+        )
+          .map((q) => q.id)
+          .join(', ')}`,
+      );
+    }
+    const dich = new THREE.Vector3(p.pos[0], 0, p.pos[2]);
+    const kc = dich.distanceTo(
+      new THREE.Vector3(nv.goc.position.x, 0, nv.goc.position.z),
+    );
+    const uoc = (kc / TOC_DO_DI) * 1000 + DAI_CLIP.sit! + 400;
+    const matGhe = layMatGhe(seat);
+    /*
+     * INT-07 (27/10): đi CHƯA tới ghế (kẹt góc rồi `diToi` bỏ cuộc — đo thật khi
+     * 4 nhân viên cùng chạy làm khung hình tụt) thì KHÔNG ngồi tại chỗ kẹt: tìm
+     * đường lại từ chỗ đang đứng, tối đa 2 lần. Đã sát ghế thì bước này rỗng.
+     */
+    const diLai = () =>
+      Math.hypot(nv.goc.position.x - dich.x, nv.goc.position.z - dich.z) > CON_XA_GHE
+        ? nv.diToi(dich, undefined, this.duongToi(nv, dich))
+        : hanhDongXongNgay(0);
+    return noiTiep(
+      [
+        () => nv.diToi(dich, undefined, this.duongToi(nv, dich)),
+        diLai,
+        diLai,
+        () => nv.xoayVe(p.facing ?? 180),
+        () => nv.ngoi(matGhe),
+      ],
+      Math.round(uoc),
+    );
+  }
+
+  actorStand(id: string): Action {
+    return this.nv(id).dungLen();
+  }
+
+  actorPlay(id: string, clip: string, loop = false, speed = 1): Action {
+    if (!CLIPS.includes(clip as (typeof CLIPS)[number])) {
+      throw new Error(`Không có clip "${clip}". Đang có: ${CLIPS.join(', ')}`);
+    }
+    return this.nv(id).choiClip(clip, loop, speed);
+  }
+
+  actorStop(id: string): void {
+    this.nv(id).dung();
+  }
+
+  actorExpress(id: string, expression: string, weight = 1, durationMs?: number): void {
+    const nv = this.nv(id);
+    if (!(BIEU_CAM as readonly string[]).includes(expression)) {
+      throw new Error(`Không có biểu cảm "${expression}". Đang có: ${BIEU_CAM.join(', ')}`);
+    }
+    nv.datBieuCam(expression, weight, durationMs);
+  }
+
+  actorLabel(id: string, text: string | null, tone = 'thuong'): void {
+    this.nv(id);
+    const cu = this.theTen.get(id);
+    if (!text) {
+      cu?.el.remove();
+      this.theTen.delete(id);
+      return;
+    }
+    const el = cu?.el ?? document.createElement('div');
+    el.className = `the-ten the-ten--${tone}`;
+    el.textContent = text;
+    if (!cu) this.bongBongLop.appendChild(el);
+    this.theTen.set(id, { text, tone, el });
+  }
+
+  actorBubble(id: string, text: string, durationMs?: number): Action {
+    return this.nv(id).hienBongBong(text, durationMs);
+  }
+
+  actorSay(id: string, text: string, emotion?: string, voice?: string): Action {
+    const nv = this.nv(id);
+    // A1: cảm xúc chỉ ánh sang biểu cảm mặt; A2 làm trọn gói mặt + cơ thể + âm
+    if (emotion) nv.datBieuCam(bieuCamTuCamXuc(emotion), 0.8, uocThoiLuongNoi(text) + 600);
+    // A2 vòng 2: `emotion` đổi cả CỬ CHỈ (đầu + nhịp tay theo nhóm cảm xúc)
+    // và hướng mắt về người nghe, không chỉ đổi mặt — spec mục 3.2b.
+    return nv.noi(text, voice, emotion);
+  }
+
+  actorHold(id: string, prop: string, hand: 'left' | 'right'): void {
+    const nv = this.nv(id);
+    const d = this.props.get(prop);
+    if (!d) throw new Error(`Không có prop "${prop}"`);
+    if (d.camBoi && d.camBoi !== id) {
+      throw new Error(`Prop "${prop}" đang do "${d.camBoi}" cầm`);
+    }
+    if (nv.dangCam && nv.dangCam !== prop) {
+      throw new Error(`"${id}" đang cầm "${nv.dangCam}", gọi actor.drop trước`);
+    }
+    d.camBoi = id;
+    d.state = { ...d.state, at: null };
+    nv.dangCam = prop;
+    nv.tayCam = hand;
+    nv.objCam = d.obj;
+  }
+
+  actorDrop(id: string): string | null {
+    const nv = this.nv(id);
+    const prop = nv.dangCam;
+    if (!prop) return null;
+    const d = this.props.get(prop);
+    if (d) {
+      d.camBoi = null;
+      d.obj.position.set(nv.goc.position.x + 0.3, 0.1, nv.goc.position.z + 0.2);
+    }
+    nv.dangCam = null;
+    nv.objCam = null;
+    return prop;
+  }
+
+  actorEmote(id: string, emote: string, intensity = 1, say?: string): Action {
+    if (!(EMOTES as readonly string[]).includes(emote)) {
+      throw new Error(`Không có emote "${emote}". Đang có: ${EMOTES.join(', ')}`);
+    }
+    return this.nv(id).chayEmote(emote, intensity, say);
+  }
+
+  /**
+   * Số đo xương trong không gian + bộ clip thật đang dùng — **bằng chứng số**
+   * cho `scripts/kiem-a2.mjs` (kiểm `y` bàn tay > `y` vai khi giơ tay, đo tỉ
+   * lệ chibi). Không nằm trong Actor API, chỉ phơi qua `window.stage`.
+   */
+  doXuongActor(id: string): Record<string, unknown> {
+    const nv = this.nv(id);
+    return {
+      actor: id,
+      state: nv.state,
+      clipThat: nv.dungClipThat,
+      dangNen: nv.dangNen,
+      ...nv.doXuong(),
+    };
+  }
+
+  /**
+   * Số đo ĐÁY / NÓC / MẶT NGỒI của từng khối nội thất, đo lúc dựng phòng —
+   * review PR #70 đề nghị. `gopTinh()` dọn sạch nhóm `khoi:<id>` nên đo lại
+   * bằng `Box3` trên cảnh ra rỗng; không có bảng này thì "món nào lơ lửng"
+   * chỉ bắt được bằng mắt (đúng cách gối sofa treo 16 cm thoát hai lượt kiểm).
+   */
+  doKhoiNha(): Record<string, { day: number; noc: number; matNgoi?: number }> {
+    const ra: Record<string, { day: number; noc: number; matNgoi?: number }> = {};
+    for (const [id, noc] of this.nocKhoi) {
+      ra[id] = {
+        day: +(this.dayKhoi.get(id) ?? NaN).toFixed(4),
+        noc: +noc.toFixed(4),
+      };
+      const m = this.matNgoiKhoi.get(id);
+      if (m !== undefined) ra[id]!.matNgoi = +m.toFixed(4);
+    }
+    return ra;
+  }
+
+  /**
+   * G1 vòng 3 (#56) — CHỈ số đo tóc, RẺ. `doXuongActor` gọi `doTuThe(chính
+   * xác)` nên mỗi lượt là một `Box3.setFromObject(…, true)` (quét toàn bộ đỉnh
+   * có biến dạng xương): lấy mẫu "mỗi 100 ms" bằng nó thì thực ra 240 ms một
+   * mẫu, mà chính dụng cụ đo lại kéo FPS xuống — đúng cái bẫy F2. Hàm này chỉ
+   * đi qua các khớp spring, dùng cho bảng lệch tóc dày mẫu.
+   */
+  doTocActor(id: string): Record<string, unknown> {
+    return this.nv(id).doToc();
+  }
+
+  /**
+   * J1 (#78) — SỔ ĐO HỘP BAO của mọi khối nội thất, đo lúc dựng phòng.
+   *
+   * Bằng chứng J1 cần `min.y` và mép ngoài THẬT của từng khối (sát tường bao
+   * nhiêu, có lấn vùng giữa không). Không đo lại trên cảnh: `gopTinh()` đã gộp
+   * mesh tĩnh nên nhóm `khoi:<id>` rỗng — đúng bài học `matTrenKhoi()` của G1.
+   */
+  doKhoi(): Record<string, { min: number[]; max: number[] }> {
+    const ra: Record<string, { min: number[]; max: number[] }> = {};
+    for (const [id, h] of this.hopKhoi) {
+      ra[id] = {
+        min: h.min.map((v) => +v.toFixed(4)),
+        max: h.max.map((v) => +v.toFixed(4)),
+      };
+    }
+    return ra;
+  }
+
+  actorIdleStyle(id: string, style: string): void {
+    this.nv(id).datIdleStyle(style);
+  }
+
+  actorInterrupt(id: string): void {
+    this.actors.get(id)?.dung();
+  }
+
+  /* ---------------------------------------------------------------- prop */
+
+  async propSpawn(p: ThamSoSpawnProp): Promise<PropSnapshot> {
+    if (!p.id.trim()) throw new Error('"id" không được rỗng');
+    if (this.props.has(p.id)) throw new Error(`Prop "${p.id}" đã có trên sân khấu`);
+    const shape = p.shape ?? 'cube';
+    const obj = dungHinhProp(shape);
+    obj.name = `prop:${p.id}`;
+    this.scene.add(obj);
+
+    const d: DoVat = {
+      id: p.id,
+      kind: p.kind ?? 'prop',
+      shape,
+      obj,
+      state: {},
+      camBoi: null,
+    };
+    this.props.set(p.id, d);
+    this.propMoveTo(p.id, p.at ?? 'ban-1');
+    return this.snapProp(d);
+  }
+
+  propRemove(id: string): void {
+    const d = this.props.get(id);
+    if (!d) throw new Error(`Không có prop "${id}"`);
+    for (const nv of this.actors.values()) {
+      if (nv.dangCam === id) {
+        nv.dangCam = null;
+        nv.objCam = null;
+      }
+    }
+    this.scene.remove(d.obj);
+    // module (`moduleBuild`) gắn thêm 1 sprite nhãn (CanvasTexture riêng) vào
+    // obj — dispose đệ quy cả cây, không chỉ mesh gốc, để không rò texture/geo.
+    dispose3D(d.obj);
+    this.props.delete(id);
+  }
+
+  propMoveTo(id: string, to: string | Vec3): void {
+    const d = this.props.get(id);
+    if (!d) throw new Error(`Không có prop "${id}"`);
+    if (d.camBoi) {
+      const nv = this.actors.get(d.camBoi);
+      if (nv) {
+        nv.dangCam = null;
+        nv.objCam = null;
+      }
+      d.camBoi = null;
+    }
+    if (Array.isArray(to)) {
+      d.obj.position.set(to[0], to[1], to[2]);
+      d.state = { ...d.state, at: null };
+      return;
+    }
+    const p = timPlace(to);
+    if (p) {
+      // đặt lên mặt bàn/kệ nếu là bàn, không thì đặt trên sàn
+      const caoDat = p.kind === 'desk' ? 0.8 : p.kind === 'shelf' ? 0.95 : 0.1;
+      d.obj.position.set(p.pos[0], caoDat, p.pos[2]);
+      d.state = { ...d.state, at: p.id };
+      return;
+    }
+    const v = this.viTriMucTieu(to);
+    if (!v) throw new Error(`Không biết "${to}" ở đâu`);
+    d.obj.position.set(v[0], Math.max(0.1, v[1]), v[2]);
+    d.state = { ...d.state, at: null };
+  }
+
+  propSet(id: string, state: Record<string, unknown>): PropSnapshot {
+    const d = this.props.get(id);
+    if (!d) throw new Error(`Không có prop "${id}"`);
+    d.state = { ...d.state, ...state };
+
+    // trạng thái hiểu được thì thể hiện luôn ra hình
+    const mat = (d.obj as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+    if (mat) {
+      if (state.screen === 'on') mat.emissiveIntensity = 1.4;
+      else if (state.screen === 'off') mat.emissiveIntensity = 0.1;
+      if (typeof state.color === 'string') {
+        try {
+          mat.color.set(state.color);
+        } catch {
+          throw new Error(`"color" không hợp lệ: ${state.color}`);
+        }
+      }
+    }
+    if (state.visible === false) d.obj.visible = false;
+    if (state.visible === true) d.obj.visible = true;
+
+    return this.snapProp(d);
+  }
+
+  /* ------------------------------------------------------- cảnh + camera */
+
+  /** 3 preset đèn lab (spec 3.3): `sang` làm việc · `toi` nghỉ/ban đêm · `am` cảnh báo/ấm cúng. */
+  sceneLight(preset: string): void {
+    if (!(PRESET_DEN as readonly string[]).includes(preset)) {
+      throw new Error(`Không có preset đèn "${preset}". Có: ${PRESET_DEN.join(', ')}`);
+    }
+    this.denPreset = preset;
+    const bg = this.scene.background as THREE.Color;
+    /*
+     * H1 (#69 mục 34) — KHÔNG viết số ở đây nữa. `switch` cũ là nơi hai bộ số
+     * tách đôi: `dungAnhSang()` một bộ, nhánh `'sang'` một bộ khác, nên bấm
+     * `R` là cảnh chói hơn lúc mở trang. Mọi số nằm trong `PRESET_DEN_SO`.
+     */
+    const so = PRESET_DEN_SO[preset];
+    if (!so) throw new Error(`Thiếu số đèn cho preset "${preset}" trong PRESET_DEN_SO`);
+    this.troi.intensity = so.troi;
+    this.nang.intensity = so.nang;
+    this.nang.color.setHex(so.nangMau);
+    this.vien.intensity = so.vien;
+    bg.setHex(so.nen);
+    this.renderer.toneMappingExposure = so.exposure;
+    if (this.scene.fog instanceof THREE.FogExp2) this.scene.fog.color.copy(bg);
+  }
+
+  cameraFocus(target: string, distance = 3.0): void {
+    this.theoOwner = null;
+    this.kepMay = true;
+    const v = this.viTriMucTieu(target);
+    if (!v) throw new Error(`Không biết "${target}" ở đâu`);
+    const tam = new THREE.Vector3(v[0], v[1] + 1.1, v[2]);
+    // đứng chéo 35° trước mặt mục tiêu, cao hơn một chút
+    const huong = new THREE.Vector3(0.55, 0.42, 1).normalize().multiplyScalar(distance);
+    this.bossDaXoay = true;
+    this.tamTuBay = { vt: tam.clone().add(huong), tam };
+  }
+
+  /**
+   * Đặt góc máy **thủ công, tức thì** (không bay lerp) — dùng cho ảnh bằng
+   * chứng trong `scripts/kiem-a2.mjs`. `camera.focus` không dùng được cho
+   * việc này: nó bay dần (lerp `dt·3,2`) và `distance` thực tế không tới đúng
+   * khoảng cách yêu cầu, nên mọi ảnh bằng chứng trước đây hoặc chụp giữa lúc
+   * camera còn bay, hoặc actor lọt ra ngoài khung (review PR #10 vòng 4).
+   * Không nằm trong Actor/Scene API, chỉ phơi qua `window.stage.datMay`.
+   */
+  datMayThu(vt: Vec3, tam: Vec3): void {
+    this.theoOwner = null;
+    this.tamTuBay = null;
+    this.bossDaXoay = true;
+    // H1: dụng cụ chụp ảnh được đặt máy NGOÀI nhà (ảnh toàn cảnh b1/d1b) —
+    // tắt kẹp cho tới khi Boss chạm chuột hoặc gọi một `camera.*` thật.
+    this.kepMay = false;
+    this.camera.position.set(vt[0], vt[1], vt[2]);
+    this.controls.target.set(tam[0], tam[1], tam[2]);
+    this.camera.lookAt(this.controls.target);
+    this.controls.update();
+  }
+
+  cameraPreset(name: string): void {
+    if (!(PRESET_MAY as readonly string[]).includes(name)) {
+      throw new Error(`Không có góc máy "${name}". Có: ${PRESET_MAY.join(', ')}`);
+    }
+    this.mayPreset = name;
+    this.theoOwner = null;
+    this.kepMay = true;
+    if (name === 'theo-owner') {
+      // bám nhân vật có controlledBy = 'owner' (không có thì actor đầu tiên)
+      const chu =
+        [...this.actors.values()].find((nv) => nv.dieuKhienBoi === 'owner') ??
+        [...this.actors.values()][0];
+      if (!chu) throw new Error('Chưa có nhân vật nào để camera bám theo');
+      this.theoOwner = chu.id;
+      this.bossDaXoay = true;
+      this.tamTuBay = null;
+      return;
+    }
+    if (name === 'toan-canh') {
+      this.bossDaXoay = false;
+      this.tamTuBay = { vt: MAY_NGANG.vt.clone(), tam: MAY_NGANG.tam.clone() };
+      return;
+    }
+    if (name === 'truoc-mat') {
+      // chính diện, thấy trọn người: lấy hộp bao của actor đầu tiên rồi lùi
+      // camera đủ xa theo đúng hướng mặt nhân vật đang nhìn tới.
+      const nv = [...this.actors.values()][0];
+      this.bossDaXoay = true;
+      if (!nv) {
+        this.tamTuBay = {
+          vt: new THREE.Vector3(0, 1.1, 3.2),
+          tam: new THREE.Vector3(0, 0.9, 0),
+        };
+        return;
+      }
+      nv.goc.updateMatrixWorld(true);
+      const hop = new THREE.Box3().setFromObject(nv.goc);
+      const giua = (hop.min.y + hop.max.y) / 2;
+      const cao = Math.max(0.6, hop.max.y - hop.min.y);
+      const xa = cao * 1.45 + 0.35;
+      // hướng mặt THẬT: clip nền xoay hông nên chỉ lấy `goc.rotation.y` là
+      // lệch — lấy quay thế giới của xương hips rồi bỏ phần ngẩng/nghiêng.
+      const hips = nv.vrm.humanoid?.getNormalizedBoneNode('hips');
+      const q = (hips ?? nv.goc).getWorldQuaternion(new THREE.Quaternion());
+      const truoc = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+      truoc.y = 0;
+      if (truoc.lengthSq() < 1e-4) truoc.set(Math.sin(nv.goc.rotation.y), 0, Math.cos(nv.goc.rotation.y));
+      const huong = truoc.normalize().multiplyScalar(xa);
+      this.tamTuBay = {
+        vt: new THREE.Vector3(nv.goc.position.x, giua + cao * 0.1, nv.goc.position.z).add(huong),
+        tam: new THREE.Vector3(nv.goc.position.x, giua, nv.goc.position.z),
+      };
+      return;
+    }
+    if (name === 'hop') {
+      this.bossDaXoay = true;
+      this.tamTuBay = {
+        vt: new THREE.Vector3(0, 2.3, 4.2),
+        tam: new THREE.Vector3(0, 1.1, 0.4),
+      };
+      return;
+    }
+    /*
+     * 4 góc máy KHU (tên giữ từ căn nhà cũ — `PRESET_MAY` là hợp đồng với
+     * agent): nhìn chéo từ trên xuống vào đúng khu văn phòng tương ứng.
+     */
+    const khu = GOC_KHU[name];
+    if (khu) {
+      this.bossDaXoay = true;
+      this.tamTuBay = { vt: khu.vt.clone(), tam: khu.tam.clone() };
+      return;
+    }
+    this.cameraFocus(name, 3.4);
+  }
+
+  /* ------------------------------------------------- A3: màn hình hologram */
+
+
+  async screenSpawn(p: ThamSoSpawnScreen): Promise<ScreenSnapshot> {
+    if (!p.id.trim()) throw new Error('"id" không được rỗng');
+    if (this.screens.has(p.id)) throw new Error(`Màn hình "${p.id}" đã có`);
+
+    const mac = MAC_DINH_MAN_HINH[p.id];
+    let pos: THREE.Vector3;
+    let rotY: number;
+    if (p.at !== undefined) {
+      const v = this.viTriMucTieu(p.at);
+      if (!v) throw new Error(`Không biết "${String(p.at)}" ở đâu`);
+      pos = new THREE.Vector3(v[0], Math.max(1.2, v[1] + 1.35), v[2]);
+      rotY = Math.PI; // mặt hướng về phía bục trung tâm / phòng
+    } else if (mac) {
+      pos = mac.pos;
+      rotY = mac.rotY;
+    } else {
+      pos = new THREE.Vector3(0, 1.75, -1.0 - this.screens.size * 0.6);
+      rotY = 0;
+    }
+
+    const mh = new ManHinh(p.id, p.size ?? mac?.size ?? 0.6, pos, rotY, p.tilt ?? 0);
+    /**
+     * E2 (#48 mục 3) — **đặt đúng lên mặt bàn**, không nổi không chìm.
+     *
+     * Toạ độ ngang vẫn lấy từ bảng bố cục (`bo-cuc.ts`), nhưng chiều cao mặt
+     * bàn thì KHÔNG đoán được từ bảng: model Kenney được chuẩn hoá theo
+     * `rong`/`cao` lúc dựng phòng, nên mặt trên thật chỉ biết sau khi đo khối
+     * trong cảnh. Đo xong thì hạ chân màn hình đúng lên mặt đó.
+     */
+    if (p.at === undefined && mac?.doTren) {
+      const mat = this.matTrenKhoi(mac.doTren);
+      if (mat !== null) {
+        mh.group.position.y = mat + mh.beDuoi();
+        this.doDungManHinh.set(p.id, { block: mac.doTren, surfaceY: tronMm(mat) });
+        // chỗ "đậu" cũng phải là chỗ ĐÃ hạ, không thì `screen.focus` bay về
+        // lại đúng cái độ cao lơ lửng cũ.
+        mh.docked.pos.y = mh.group.position.y;
+      }
+    }
+    this.scene.add(mh.group);
+    this.screens.set(p.id, mh);
+    return this.snapScreen(mh);
+  }
+
+  screenRemove(id: string): void {
+    const mh = this.screens.get(id);
+    if (!mh) throw new Error(`Không có màn hình "${id}"`);
+    this.scene.remove(mh.group);
+    mh.dispose();
+    this.screens.delete(id);
+    this.doDungManHinh.delete(id);
+  }
+
+  /**
+   * Mặt TRÊN (y lớn nhất) của một khối nội thất đã dựng, tính bằng mét —
+   * `null` khi chưa dựng phòng (test chạy sân khấu giả) hoặc không có khối.
+   * `phong.ts` đặt tên nhóm mỗi khối là `khoi:<id>` (nguồn sự thật duy nhất).
+   */
+  private matTrenKhoi(id: string): number | null {
+    // Sổ đo lúc dựng trước đã: sau `gopTinh()` nhóm `khoi:<id>` rỗng nên đo
+    // lại trên cảnh ra `null` (G1 #56 — màn hình vì thế lơ lửng trên bàn mới).
+    const daDo = this.nocKhoi.get(id);
+    if (daDo !== undefined && Number.isFinite(daDo)) return daDo;
+    const g = this.scene.getObjectByName(`khoi:${id}`);
+    if (!g) return null;
+    const hop = new THREE.Box3().setFromObject(g);
+    if (hop.isEmpty()) return null;
+    return hop.max.y;
+  }
+
+  private manHinh(id: string): ManHinh {
+    const mh = this.screens.get(id);
+    if (!mh) throw new Error(`Không có màn hình "${id}"`);
+    return mh;
+  }
+
+  screenShow(id: string, kind: string, content: string): void {
+    this.manHinh(id).hien(kind, content);
+  }
+
+  screenStartStream(id: string, kind: string): void {
+    this.manHinh(id).batDauStream(kind);
+  }
+
+  screenAppend(id: string, chunk: string): void {
+    this.manHinh(id).noi(chunk);
+  }
+
+  screenEndStream(id: string): void {
+    this.manHinh(id).ketThucStream();
+  }
+
+  screenClear(id: string): void {
+    this.manHinh(id).xoa();
+  }
+
+  screenContent(id: string): string {
+    return this.manHinh(id).noiDung;
+  }
+
+  /**
+   * Kéo một màn hình ra trước mặt máy quay.
+   *
+   * Bản cũ đặt cứng tại (0, 1.72, 0.55) — đúng với phòng 7,2 m nhưng sang
+   * phòng 16 m (máy lùi xa hơn) thì panel bé xíu, còn ở khung dọc 390 px thì
+   * dễ tràn mép. Giờ tính vị trí TỪ máy quay: lấy hfov thật của khung hình
+   * hiện tại rồi đặt panel ở khoảng cách sao cho bề ngang panel chiếm ~74 %
+   * bề ngang khung — luôn vừa khít, cả 1440×900 lẫn 390×844.
+   */
+  screenFocus(id: string): Action {
+    const mh = this.manHinh(id);
+    mh.anChan(true);
+    const dich = this.choPanelTruocMay(mh.beRong());
+    const huongMay = new THREE.Vector3()
+      .subVectors(this.camera.position, dich)
+      .setY(0);
+    const rotDich = Math.atan2(huongMay.x, huongMay.z);
+    const tu = { pos: mh.group.position.clone(), rot: mh.group.rotation.y };
+    const dai = 650;
+    let huy = false;
+    const batDau = Date.now();
+    const hd = hanhDongHenGio(dai, () => {
+      if (!huy) {
+        mh.group.position.copy(dich);
+        mh.group.rotation.y = rotDich;
+      }
+    });
+    const capNhat = () => {
+      if (huy) return;
+      const t = Math.min(1, (Date.now() - batDau) / dai);
+      mh.group.position.lerpVectors(tu.pos, dich, t);
+      mh.group.rotation.y = THREE.MathUtils.lerp(tu.rot, rotDich, t);
+      if (t < 1) requestAnimationFrame(capNhat);
+    };
+    requestAnimationFrame(capNhat);
+    const cancelGoc = hd.cancel;
+    return {
+      durationMs: hd.durationMs,
+      done: hd.done,
+      cancel: () => {
+        huy = true;
+        cancelGoc();
+      },
+    };
+  }
+
+  /**
+   * Điểm đặt panel rộng `beRong` mét sao cho vừa khung hình hiện tại: giải
+   * `beRong * 1/0.74 = 2 * d * tan(hfov/2)` ra khoảng cách `d`, rồi đi theo
+   * hướng nhìn ngang của máy quay. Nhờ vậy `screen.focus` không tràn khung
+   * 390 px (yêu cầu Boss 25/10) mà cũng không bé li ti trên màn rộng.
+   */
+  private choPanelTruocMay(beRong: number): THREE.Vector3 {
+    const vfov = (this.camera.fov * Math.PI) / 180;
+    const tanNua = Math.tan(vfov / 2) * this.camera.aspect;
+    const d = THREE.MathUtils.clamp(beRong / 0.74 / (2 * tanNua), 1.8, 9);
+    // Đi theo TRỤC NHÌN THẬT (có cả thành phần y), không phải hướng ngang: máy
+    // đứng cao 4,8 m và chúi xuống, nên nếu đặt panel ở độ cao 1,6 m thì nó rơi
+    // xuống mép dưới khung 390 px (ảnh thử 25/10) thay vì nằm giữa khung.
+    const truoc = new THREE.Vector3()
+      .subVectors(this.controls.target, this.camera.position)
+      .normalize();
+    const vt = this.camera.position.clone().add(truoc.multiplyScalar(d));
+    vt.y = Math.max(1.2, vt.y);
+    return vt;
+  }
+
+  private snapScreen(mh: ManHinh): ScreenSnapshot {
+    const do_ = this.doDungManHinh.get(mh.id) ?? null;
+    return {
+      id: mh.id,
+      pos: [tron(mh.group.position.x), tron(mh.group.position.y), tron(mh.group.position.z)],
+      showing: mh.kind,
+      streaming: mh.streaming,
+      lines: mh.soDong(),
+      chars: mh.noiDung.length,
+      bottomY: tronMm(mh.group.position.y - mh.beDuoi()),
+      restsOn: do_,
+    };
+  }
+
+  /* ------------------------------------------------------- A3: module + fx */
+
+  moduleBuild(p: ThamSoModuleBuild): Action {
+    if (this.props.has(p.id)) throw new Error(`Prop "${p.id}" đã có trên sân khấu`);
+    const durationMs = Math.max(400, p.durationMs ?? 2600);
+
+    const obj = dungHinhProp(p.shape);
+    obj.name = `prop:${p.id}`;
+    obj.visible = false;
+    obj.scale.setScalar(0.001);
+    this.scene.add(obj);
+
+    const nhan = dungNhanModule(p.label);
+    nhan.position.y = 0.2;
+    obj.add(nhan);
+
+    const d: DoVat = {
+      id: p.id,
+      kind: 'module',
+      shape: p.shape,
+      obj,
+      state: { label: p.label, building: true, from: p.from ?? null },
+      camBoi: null,
+    };
+    this.props.set(p.id, d);
+
+    // đích: giữa bục trung tâm, cao ngang tay — nơi vật "rơi vào tay nhân vật"
+    const dich = timPlace('buc-trung-tam')!;
+    const tamDich = new THREE.Vector3(dich.pos[0], 1.05, dich.pos[2]);
+    obj.position.copy(tamDich);
+
+    const nguon = p.from ? this.viTriMucTieu(p.from) : null;
+    const tuDiem = nguon
+      ? new THREE.Vector3(nguon[0], nguon[1], nguon[2])
+      : tamDich.clone().add(new THREE.Vector3(0, 0.6, 0));
+
+    // lấy mẫu thô bề mặt hình đích (toạ độ cục bộ, tâm 0,0,0) — `KetTinh` tự
+    // cộng `tamDich` để ra toạ độ thật trong scene, không hardcode hình dạng
+    const diemDich = maySurfacePoints((obj as THREE.Mesh).geometry, 400);
+
+    let huy = false;
+    const kt = new KetTinh({
+      scene: this.scene,
+      tu: tuDiem,
+      mauChinh: p.shape === 'crystal' || p.shape === 'orb' ? MAU_CYAN : MAU_CAM,
+      diemDich,
+      tamDich,
+      durationMs,
+      khiXong: () => {
+        if (huy) return;
+        obj.visible = true;
+        obj.scale.setScalar(1);
+        d.state = { ...d.state, building: false };
+      },
+    });
+    this.ketTinhDangChay.set(p.id, kt);
+
+    const done = new Promise<void>((resolve) => {
+      const kiemTra = () => {
+        if (!this.ketTinhDangChay.has(p.id)) {
+          resolve();
+          return;
+        }
+        setTimeout(kiemTra, 40);
+      };
+      kiemTra();
+    });
+
+    return {
+      durationMs,
+      done,
+      cancel: () => {
+        huy = true;
+        kt.huy();
+        this.ketTinhDangChay.delete(p.id);
+        // E2 — huỷ giữa đường mà module đã vào tay ai thì phải trả tay người
+        // đó về rỗng, không để `dangCam` trỏ vào prop vừa bị xoá.
+        if (d.camBoi) {
+          const nv = this.actors.get(d.camBoi);
+          if (nv) {
+            nv.dangCam = null;
+            nv.objCam = null;
+          }
+          d.camBoi = null;
+        }
+        this.scene.remove(obj);
+        this.props.delete(p.id);
+      },
+    };
+  }
+
+  fxPlay(name: string, at?: string | Vec3, durationMs?: number): Action {
+    const v = at !== undefined ? this.viTriMucTieu(at) : null;
+    const tam = v
+      ? new THREE.Vector3(v[0], v[1] + 1.2, v[2])
+      : (() => {
+          const bt = timPlace('buc-trung-tam')!;
+          return new THREE.Vector3(bt.pos[0], 1.3, bt.pos[2]);
+        })();
+
+    const hu = taoHieuUng(this.scene, name, tam, durationMs);
+    this.fxDangChay.push(hu);
+    const dai = durationMs ?? 1000;
+    // `hanhDongHenGio` dùng hẹn giờ HUỶ ĐƯỢC (clearTimeout khi cancel) — bản
+    // cũ tự tạo setTimeout rời, cancel() không clear nên hẹn giờ vẫn rò và
+    // resolve `done` muộn sau khi hành động đã bị cắt (trái bất biến CLAUDE.md).
+    return hanhDongHenGio(dai, () => {
+      hu.huy();
+      this.fxDangChay = this.fxDangChay.filter((x) => x !== hu);
+    });
+  }
+
+  async reset(): Promise<void> {
+    for (const id of [...this.actors.keys()]) this.actorRemove(id);
+    for (const id of [...this.props.keys()]) this.propRemove(id);
+    for (const id of [...this.screens.keys()]) this.screenRemove(id);
+    for (const kt of this.ketTinhDangChay.values()) kt.huy();
+    this.ketTinhDangChay.clear();
+    for (const hu of this.fxDangChay) hu.huy();
+    this.fxDangChay = [];
+    this.sceneLight('sang');
+    this.bossDaXoay = false;
+    this.tamTuBay = { vt: MAY_NGANG.vt.clone(), tam: MAY_NGANG.tam.clone() };
+    this.bus.emit('stage.resetting', {});
+    this.theoOwner = null;
+    await this.actorSpawn({
+      id: OWNER.id,
+      name: OWNER.ten,
+      model: OWNER.model,
+      // INT-07: Nam là CEO — xuất hiện ở bàn CEO (máy đội ngũ cho ngồi vào ghế nếu đang rảnh)
+      at: 'ban-ceo',
+      controlledBy: 'owner',
+    });
+    await this.actorSpawn({
+      id: GEN.id,
+      name: GEN.ten,
+      model: GEN.model,
+      at: 'ban-dieu-khien',
+      controlledBy: 'agent',
+    });
+    this.actorIdleStyle(GEN.id, 'cham-chu');
+    this.actorLookAt(GEN.id, 'ban-dieu-khien');
+    for (const id of Object.keys(MAC_DINH_MAN_HINH)) await this.screenSpawn({ id });
+  }
+
+  /* -------------------------------------------------------------- describe */
+
+  describe(): StageState {
+    const now = new Date();
+    const dsActor = [...this.actors.values()].map((nv) => this.snapActor(nv));
+    return {
+      version: '0.1',
+      time: {
+        clock: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+        bossPresent: document.visibilityState === 'visible',
+        idleSec: Math.round((Date.now() - this.lanCuoiBossHoatDong) / 1000),
+      },
+      actors: dsActor,
+      places: this.snapPlaces(dsActor),
+      screens: [...this.screens.values()].map((mh) => this.snapScreen(mh)),
+      props: [...this.props.values()].map((d) => this.snapProp(d)),
+      lastEvents: this.bus.recent(10),
+      scene: { light: this.denPreset },
+      // C0 (#28) — máy quay LÀ chỗ Sếp đang đứng xem; não cần toạ độ này để
+      // biết "quay về phía Sếp" là quay về đâu.
+      camera: {
+        preset: this.mayPreset,
+        pos: [tron(this.camera.position.x), tron(this.camera.position.y), tron(this.camera.position.z)],
+      },
+      // C0 (#28) — số do bridge báo xuống, sân khấu chỉ đọc lại (`so-nao.ts`)
+      brainConnected: coNao(),
+      // V1 (INT-06) — sân khấu đang vẽ đủ hay chế độ nền tiết kiệm
+      renderMode: this.cheDoVe,
+    };
+  }
+
+  /**
+   * `occupiedBy` lấy từ chính `at` của actor (place gần nhất của người đó), nên
+   * một actor không bao giờ bị tính là đang chiếm hai place cùng lúc.
+   */
+  private snapPlaces(dsActor: ActorSnapshot[]): PlaceSnapshot[] {
+    return dsPlaces().map((p) => ({
+      id: p.id,
+      pos: p.pos,
+      kind: p.kind,
+      occupiedBy: dsActor.find((a) => a.at === p.id)?.id ?? null,
+    }));
+  }
+
+  private snapActor(nv: NhanVat): ActorSnapshot {
+    const distances: Record<string, number> = {};
+    for (const p of dsPlaces()) {
+      distances[p.id] = tron(khoangCach(nv.goc.position, p.pos));
+    }
+    for (const d of this.props.values()) {
+      distances[d.id] = tron(
+        khoangCach(nv.goc.position, [d.obj.position.x, d.obj.position.y, d.obj.position.z]),
+      );
+    }
+
+    // place gần nhất — luôn tính, không phụ thuộc trạng thái
+    let ganNhat: string | null = null;
+    let gan = Infinity;
+    for (const p of dsPlaces()) {
+      const kc = Math.min(
+        khoangCach(nv.goc.position, p.pos),
+        p.standAt ? khoangCach(nv.goc.position, p.standAt) : Infinity,
+      );
+      if (kc < gan) {
+        gan = kc;
+        ganNhat = p.id;
+      }
+    }
+    // `at` chỉ có giá trị khi đã đứng yên tại chỗ: đang đi thì luôn null
+    const dangDiChuyen = nv.state === 'walking';
+    const at = !dangDiChuyen && gan <= BAN_KINH_AT ? ganNhat : null;
+
+    return {
+      id: nv.id,
+      name: nv.ten,
+      pos: [tron(nv.goc.position.x), tron(nv.goc.position.y), tron(nv.goc.position.z)],
+      facing: nv.facing,
+      at,
+      nearest: { place: ganNhat, distance: tron(gan) },
+      state: nv.state,
+      busy: nv.busy,
+      mood: nv.mood,
+      expression: nv.bieuCamHienTai,
+      /**
+       * E2 (#48 mục 3) — **một nguồn sự thật**: `holding` suy ra từ chính
+       * bảng prop (`camBoi`), không đọc `nv.dangCam`. Hai cờ song song từng
+       * lệch nhau (module bị `moduleBuild().cancel()` xoá khỏi bảng prop mà
+       * `dangCam` của nhân vật vẫn trỏ vào nó), nên `describe()` nói một đằng
+       * `props[].state.heldBy` nói một nẻo. Giờ hai trường LUÔN khớp vì cùng
+       * đọc một chỗ.
+       */
+      holding: this.propDangCam(nv.id),
+      lookingAt: nv.nhinTen,
+      distances,
+      queued: 0,
+      controlledBy: nv.dieuKhienBoi,
+      facingTarget: nv.huongVe,
+      label: this.theTen.get(nv.id)?.text ?? null,
+    };
+  }
+
+  /** Prop mà actor này đang cầm theo BẢNG PROP (`camBoi`) — nguồn sự thật. */
+  private propDangCam(actorId: string): string | null {
+    for (const d of this.props.values()) if (d.camBoi === actorId) return d.id;
+    return null;
+  }
+
+  private snapProp(d: DoVat): PropSnapshot {
+    return {
+      id: d.id,
+      kind: d.kind,
+      shape: d.shape,
+      at: (d.state.at as string | undefined) ?? null,
+      pos: [tron(d.obj.position.x), tron(d.obj.position.y), tron(d.obj.position.z)],
+      state: { ...d.state, heldBy: d.camBoi },
+    };
+  }
+}
+
+/* ------------------------------------------------------------- phụ trợ */
+
+function tron(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/** Tròn tới mm — chiều cao mặt bàn cần 3 số lẻ mới kiểm được "không nổi không chìm". */
+function tronMm(n: number): number {
+  return Math.round(n * 1000) / 1000;
+}
+
+/** Tên map chứa texture trên vật liệu — dọn hết để không rò GPU memory. */
+const TEN_MAP_VAT_LIEU = [
+  'map',
+  'emissiveMap',
+  'normalMap',
+  'roughnessMap',
+  'metalnessMap',
+  'alphaMap',
+  'aoMap',
+  'bumpMap',
+] as const;
+
+function disposeVatLieu(mat: THREE.Material): void {
+  const m = mat as unknown as Record<string, { dispose?: () => void } | undefined>;
+  for (const ten of TEN_MAP_VAT_LIEU) m[ten]?.dispose?.();
+  mat.dispose();
+}
+
+/**
+ * Dispose đệ quy cả cây Object3D: geometry + material + texture của mọi
+ * mesh/sprite con. Dùng cho `propRemove` — `module.build` gắn thêm sprite
+ * nhãn (CanvasTexture riêng) vào prop nên không thể chỉ dispose mesh gốc.
+ */
+function dispose3D(obj: THREE.Object3D): void {
+  obj.traverse((o) => {
+    const geo = (o as THREE.Mesh | THREE.Sprite).geometry as THREE.BufferGeometry | undefined;
+    geo?.dispose();
+    const mat = (o as THREE.Mesh | THREE.Sprite).material as
+      | THREE.Material
+      | THREE.Material[]
+      | undefined;
+    if (Array.isArray(mat)) mat.forEach(disposeVatLieu);
+    else if (mat) disposeVatLieu(mat);
+  });
+}
+
+function khoangCach(a: THREE.Vector3, b: Vec3 | readonly number[]): number {
+  const dx = a.x - (b[0] ?? 0);
+  const dz = a.z - (b[2] ?? 0);
+  return Math.sqrt(dx * dx + dz * dz);
+}
+
+/** Cảm xúc (tên emote) → biểu cảm VRM gần nhất. A2 thay bằng gói đầy đủ. */
+function bieuCamTuCamXuc(emotion: string): string {
+  const bang: Record<string, string> = {
+    vui: 'happy',
+    'rat-vui': 'happy',
+    'dong-y': 'happy',
+    chao: 'happy',
+    'thanh-cong': 'happy',
+    buon: 'sad',
+    'tu-choi': 'sad',
+    'that-bai': 'sad',
+    gian: 'angry',
+    'ngac-nhien': 'surprised',
+    'boi-roi': 'surprised',
+    met: 'relaxed',
+    'suy-nghi': 'neutral',
+    'ra-lenh': 'neutral',
+    'cham-chu': 'neutral',
+  };
+  if (bang[emotion]) return bang[emotion];
+  return (BIEU_CAM as readonly string[]).includes(emotion) ? emotion : 'neutral';
+}
+
+/**
+ * Hình khối cho prop A1: đủ để lệnh chạy thật và nhìn ra vật thể.
+ * A3 thay bằng model + hiệu ứng kết tinh.
+ */
+function dungHinhProp(shape: string): THREE.Mesh {
+  const mau: Record<string, number> = {
+    book: 0xd7a35c,
+    cube: 0x8fb8e8,
+    tool: 0x9aa4b2,
+    crystal: 0x9be8e0,
+    orb: 0xe8a0c8,
+  };
+  const mat = new THREE.MeshStandardMaterial({
+    color: mau[shape] ?? 0x8fb8e8,
+    roughness: 0.3,
+    metalness: 0.15,
+    emissive: new THREE.Color(mau[shape] ?? 0x8fb8e8).multiplyScalar(0.6),
+    emissiveIntensity: 0.9,
+  });
+
+  let geo: THREE.BufferGeometry;
+  switch (shape) {
+    case 'book':
+      geo = new RoundedBoxGeometry(0.2, 0.26, 0.05, 2, 0.012);
+      break;
+    case 'crystal':
+      geo = new THREE.OctahedronGeometry(0.13, 0);
+      break;
+    case 'orb':
+      geo = new THREE.SphereGeometry(0.12, 24, 16);
+      break;
+    case 'tool':
+      geo = new THREE.CylinderGeometry(0.035, 0.055, 0.26, 12);
+      break;
+    default:
+      geo = new RoundedBoxGeometry(0.18, 0.18, 0.18, 3, 0.02);
+  }
+  const m = new THREE.Mesh(geo, mat);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  return m;
+}
+
+/** Nhãn chữ nổi trên module (sprite luôn quay về camera) — spec 3.4b: "emissive + nhãn". */
+function dungNhanModule(label: string): THREE.Sprite {
+  const cv = document.createElement('canvas');
+  cv.width = 256;
+  cv.height = 64;
+  const g = cv.getContext('2d')!;
+  g.fillStyle = 'rgba(6,16,20,0.78)';
+  g.fillRect(0, 0, cv.width, cv.height);
+  g.strokeStyle = 'rgba(95,224,255,0.9)';
+  g.lineWidth = 3;
+  g.strokeRect(2, 2, cv.width - 4, cv.height - 4);
+  g.fillStyle = '#eafcff';
+  g.font = '600 28px sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(label.slice(0, 18), cv.width / 2, cv.height / 2);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+  const sp = new THREE.Sprite(mat);
+  sp.scale.set(0.5, 0.125, 1);
+  return sp;
+}
